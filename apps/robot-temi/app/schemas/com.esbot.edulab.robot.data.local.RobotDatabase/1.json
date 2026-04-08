@@ -1,0 +1,467 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "9bba2a9d914a98dea17e15c63363cf3f",
+    "entities": [
+      {
+        "tableName": "robot_snapshot",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `institutionName` TEXT NOT NULL, `assignedRobotName` TEXT NOT NULL, `classroomName` TEXT NOT NULL, `teacherName` TEXT NOT NULL, `activeMissionId` TEXT, `activeMissionName` TEXT, `activeStudentName` TEXT, `currentStepLabel` TEXT, `classPhase` TEXT NOT NULL, `bannerState` TEXT NOT NULL, `connectionState` TEXT NOT NULL, `batteryPercent` INTEGER NOT NULL, `batteryCharging` INTEGER NOT NULL, `progressPercent` INTEGER NOT NULL, `robotStatusLabel` TEXT NOT NULL, `languageCode` TEXT NOT NULL, `pairCode` TEXT NOT NULL, `sessionUri` TEXT NOT NULL, `waitingTeacher` INTEGER NOT NULL, `safeModeActive` INTEGER NOT NULL, `safeModeReason` TEXT, `lastErrorTitle` TEXT, `lastErrorMessage` TEXT, `studentCanResolve` INTEGER NOT NULL, `autoRetryPlanned` INTEGER NOT NULL, `promptTitle` TEXT, `promptBody` TEXT, `promptOptions` TEXT, `promptExpectedAnswer` TEXT, `promptCountdownSeconds` INTEGER, `allowVoice` INTEGER NOT NULL, `allowButtons` INTEGER NOT NULL, `allowTouch` INTEGER NOT NULL, `lastUpdatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "institutionName",
+            "columnName": "institutionName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "assignedRobotName",
+            "columnName": "assignedRobotName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "classroomName",
+            "columnName": "classroomName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teacherName",
+            "columnName": "teacherName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeMissionId",
+            "columnName": "activeMissionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeMissionName",
+            "columnName": "activeMissionName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeStudentName",
+            "columnName": "activeStudentName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "currentStepLabel",
+            "columnName": "currentStepLabel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "classPhase",
+            "columnName": "classPhase",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bannerState",
+            "columnName": "bannerState",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "connectionState",
+            "columnName": "connectionState",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "batteryPercent",
+            "columnName": "batteryPercent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "batteryCharging",
+            "columnName": "batteryCharging",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "progressPercent",
+            "columnName": "progressPercent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "robotStatusLabel",
+            "columnName": "robotStatusLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "languageCode",
+            "columnName": "languageCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pairCode",
+            "columnName": "pairCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionUri",
+            "columnName": "sessionUri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "waitingTeacher",
+            "columnName": "waitingTeacher",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "safeModeActive",
+            "columnName": "safeModeActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "safeModeReason",
+            "columnName": "safeModeReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastErrorTitle",
+            "columnName": "lastErrorTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastErrorMessage",
+            "columnName": "lastErrorMessage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "studentCanResolve",
+            "columnName": "studentCanResolve",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "autoRetryPlanned",
+            "columnName": "autoRetryPlanned",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "promptTitle",
+            "columnName": "promptTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "promptBody",
+            "columnName": "promptBody",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "promptOptions",
+            "columnName": "promptOptions",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "promptExpectedAnswer",
+            "columnName": "promptExpectedAnswer",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "promptCountdownSeconds",
+            "columnName": "promptCountdownSeconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "allowVoice",
+            "columnName": "allowVoice",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allowButtons",
+            "columnName": "allowButtons",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allowTouch",
+            "columnName": "allowTouch",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdatedAt",
+            "columnName": "lastUpdatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "queue_commands",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `missionId` TEXT NOT NULL, `commandIndex` INTEGER NOT NULL, `commandType` TEXT NOT NULL, `title` TEXT NOT NULL, `primaryValue` TEXT, `secondaryValue` TEXT, `tertiaryValue` TEXT, `optionsCsv` TEXT, `status` TEXT NOT NULL, `requiresTeacherApproval` INTEGER NOT NULL, `retryCount` INTEGER NOT NULL, `blockingReason` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "missionId",
+            "columnName": "missionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commandIndex",
+            "columnName": "commandIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commandType",
+            "columnName": "commandType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "primaryValue",
+            "columnName": "primaryValue",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "secondaryValue",
+            "columnName": "secondaryValue",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tertiaryValue",
+            "columnName": "tertiaryValue",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "optionsCsv",
+            "columnName": "optionsCsv",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "requiresTeacherApproval",
+            "columnName": "requiresTeacherApproval",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retryCount",
+            "columnName": "retryCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockingReason",
+            "columnName": "blockingReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_queue_commands_missionId",
+            "unique": false,
+            "columnNames": [
+              "missionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_queue_commands_missionId` ON `${TABLE_NAME}` (`missionId`)"
+          },
+          {
+            "name": "index_queue_commands_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_queue_commands_status` ON `${TABLE_NAME}` (`status`)"
+          }
+        ]
+      },
+      {
+        "tableName": "map_locations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`name` TEXT NOT NULL, `floorLabel` TEXT NOT NULL, `available` INTEGER NOT NULL, `detail` TEXT, `lastValidatedAt` INTEGER NOT NULL, PRIMARY KEY(`name`))",
+        "fields": [
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "floorLabel",
+            "columnName": "floorLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "available",
+            "columnName": "available",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detail",
+            "columnName": "detail",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastValidatedAt",
+            "columnName": "lastValidatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "name"
+          ]
+        }
+      },
+      {
+        "tableName": "safety_incidents",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `code` TEXT NOT NULL, `title` TEXT NOT NULL, `details` TEXT NOT NULL, `severity` TEXT NOT NULL, `status` TEXT NOT NULL, `teacherActionRequired` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "code",
+            "columnName": "code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "details",
+            "columnName": "details",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "severity",
+            "columnName": "severity",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teacherActionRequired",
+            "columnName": "teacherActionRequired",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_safety_incidents_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_safety_incidents_status` ON `${TABLE_NAME}` (`status`)"
+          },
+          {
+            "name": "index_safety_incidents_code",
+            "unique": false,
+            "columnNames": [
+              "code"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_safety_incidents_code` ON `${TABLE_NAME}` (`code`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9bba2a9d914a98dea17e15c63363cf3f')"
+    ]
+  }
+}

@@ -14,3 +14,7 @@ tsconfig.tsbuildinfo
 chrome-profile/
 pdf-images/
 pdf-page.png
+.gradle/
+**/build/
+**/local.properties
+**/.cxx/

@@ -72,3 +72,7 @@ En este entorno, Vitest, Next build y Playwright requieren permiso para lanzar p
 - Estudiante: ampliar Blockly con más misiones reales y validadores por misión. MakeCode se evaluaría solo si se decide usar su ecosistema completo.
 - Robot: conectar el adaptador demo con Temi V3 SDK, manteniéndolo separado de UI y de la lógica de misiones.
 - Analítica: eventos de progreso, entregas, calificaciones y reportes por institución/curso.
+
+## Robot Temi
+
+La capa robot ahora vive en `apps/robot-temi`. Es una app Android nativa con Kotlin + Compose, Room para cola local y snapshot operativo, puente aislado al SDK oficial de temi, pantallas de standby, clase, ejecucion, interaccion, error y modo seguro, mas diagnostico inicial de mapa y ubicaciones.
