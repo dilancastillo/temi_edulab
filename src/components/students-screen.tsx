@@ -2,6 +2,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ConfirmDialog, Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/demo-store-provider";
@@ -14,10 +15,13 @@ const progressFilters = ["Todos", "En curso", "Revisar", "Calificado"] as const;
 
 export function StudentsScreen() {
   const { addStudent, courses, deleteStudent, importStudents, missions, students, updateStudent } = useDemoStore();
+  const searchParams = useSearchParams();
+  const initialMissionId = searchParams.get("mision") ?? "all";
+
   const [query, setQuery] = useState("");
   const [courseId, setCourseId] = useState("all");
   const [progress, setProgress] = useState<(typeof progressFilters)[number]>("Todos");
-  const [missionId, setMissionId] = useState("all");
+  const [missionId, setMissionId] = useState(initialMissionId);
   const [page, setPage] = useState(1);
   const [mode, setMode] = useState<"add" | "import" | null>(null);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);

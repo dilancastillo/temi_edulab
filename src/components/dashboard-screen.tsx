@@ -61,7 +61,7 @@ export function DashboardScreen() {
                   </p>
                 </div>
                 <div className="assignment-actions">
-                  <Link className="button button-secondary" href="/profesor/estudiantes">
+                  <Link className="button button-secondary" href={`/profesor/estudiantes?mision=${assignment.missionId}`}>
                     Ver progreso
                   </Link>
                   <Link className="button button-ghost" href="/profesor/biblioteca">
