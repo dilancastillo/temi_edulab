@@ -715,7 +715,7 @@ td {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 9999;
   display: grid;
   place-items: center;
   padding: 1rem;
@@ -955,7 +955,7 @@ td {
 .student-topbar {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 1000;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
