@@ -306,6 +306,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
 
   const logout = useCallback(() => {
     setSession(null);
+    setProfile(demoTeacherProfile);
   }, []);
 
   const addStudent = useCallback((input: StudentInput) => {
