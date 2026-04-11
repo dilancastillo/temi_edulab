@@ -14,7 +14,7 @@ const pageSize = 5;
 const progressFilters = ["Todos", "En curso", "Revisar", "Calificado"] as const;
 
 export function StudentsScreen() {
-  const { addStudent, courses, deleteStudent, importStudents, missions, students, updateStudent } = useDemoStore();
+  const { addStudent, courses, assignments, deleteStudent, importStudents, missions, students, studentWorks, updateStudent } = useDemoStore();
   const searchParams = useSearchParams();
   const initialMissionId = searchParams.get("mision") ?? "all";
 
@@ -30,6 +30,15 @@ export function StudentsScreen() {
   const filteredStudents = useMemo(() => {
     const normalisedQuery = query.trim().toLowerCase();
 
+    // Para el filtro de misión: buscar qué cursos tienen esa misión asignada
+    const courseIdsWithMission = missionId === "all"
+      ? null
+      : new Set(
+          assignments
+            .filter((a) => a.status === "active" && a.missionId === missionId)
+            .map((a) => a.courseId)
+        );
+
     return students.filter((student) => {
       const matchesQuery =
         !normalisedQuery ||
@@ -37,10 +46,10 @@ export function StudentsScreen() {
         student.email.toLowerCase().includes(normalisedQuery);
       const matchesCourse = courseId === "all" || student.courseId === courseId;
       const matchesProgress = progress === "Todos" || student.progress === progress;
-      const matchesMission = missionId === "all" || student.currentMissionId === missionId;
+      const matchesMission = courseIdsWithMission === null || courseIdsWithMission.has(student.courseId);
       return matchesQuery && matchesCourse && matchesProgress && matchesMission;
     });
-  }, [courseId, missionId, progress, query, students]);
+  }, [assignments, courseId, missionId, progress, query, students]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
   const boundedPage = Math.min(page, totalPages);
@@ -155,7 +164,21 @@ export function StudentsScreen() {
             <tbody>
               {pageStudents.map((student) => {
                 const course = courses.find((candidate) => candidate.id === student.courseId);
-                const mission = missions.find((candidate) => candidate.id === student.currentMissionId);
+                const displayMissionId = missionId !== "all" ? missionId : student.currentMissionId;
+                const mission = missions.find((candidate) => candidate.id === displayMissionId);
+
+                // Calcular progreso por misión usando studentWorks
+                const missionAssignment = missionId !== "all"
+                  ? assignments.find((a) => a.missionId === missionId && a.courseId === student.courseId && a.status === "active")
+                  : null;
+                const studentWork = missionAssignment
+                  ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === missionAssignment.id)
+                  : null;
+                const missionProgress: typeof student.progress = studentWork?.status === "submitted"
+                  ? "Revisar"
+                  : missionId !== "all"
+                    ? "En curso"
+                    : student.progress;
 
                 return (
                   <tr key={student.id}>
@@ -174,8 +197,8 @@ export function StudentsScreen() {
                     </td>
                     <td>{course?.name ?? "Sin curso"}</td>
                     <td>
-                      <span className={`status-pill status-${student.progress.toLowerCase().replace(" ", "-")}`}>
-                        {student.progress}
+                      <span className={`status-pill status-${missionProgress.toLowerCase().replace(" ", "-")}`}>
+                        {missionProgress}
                       </span>
                     </td>
                     <td>{mission?.title ?? "Sin misión"}</td>

@@ -402,7 +402,13 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
 
       setStudents((current) =>
         current.map((student) =>
-          student.courseId === input.courseId ? { ...student, currentMissionId: input.missionId, progress: "En curso" } : student
+          student.courseId === input.courseId
+            ? {
+                ...student,
+                currentMissionId: student.currentMissionId ?? input.missionId,
+                progress: "En curso"
+              }
+            : student
         )
       );
     },
