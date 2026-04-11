@@ -3,12 +3,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { LogoMark } from "@/components/logo";
 import { useDemoStore } from "@/components/demo-store-provider";
 
 export function LoginScreen() {
   const router = useRouter();
-  const { isReady, loginWithPassword, loginWithProvider, session } = useDemoStore();
+  const { isReady, loginWithPassword, loginWithGoogle, session } = useDemoStore();
   const [email, setEmail] = useState("profesor@esbot.test");
   const [password, setPassword] = useState("demo2026");
   const [error, setError] = useState("");
@@ -33,9 +34,15 @@ export function LoginScreen() {
     router.push("/profesor");
   }
 
-  function handleProvider(provider: "google" | "microsoft") {
-    loginWithProvider(provider);
-    router.push("/profesor");
+  function handleGoogleSuccess(credentialResponse: CredentialResponse) {
+    if (credentialResponse.credential) {
+      loginWithGoogle(credentialResponse.credential);
+      router.push("/profesor");
+    }
+  }
+
+  function handleGoogleError() {
+    setError("No se pudo iniciar sesión con Google. Intenta de nuevo.");
   }
 
   return (
@@ -90,12 +97,18 @@ export function LoginScreen() {
           </button>
         </form>
         <div className="provider-grid" aria-label="Opciones de acceso">
-          <button className="button button-secondary" onClick={() => handleProvider("google")} type="button">
-            Continuar con Google
-          </button>
-          <button className="button button-secondary" onClick={() => handleProvider("microsoft")} type="button">
-            Continuar con Microsoft
-          </button>
+          <div className="google-button-container">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap={false}
+              theme="outline"
+              size="large"
+              text="signin_with"
+              shape="rectangular"
+              width="100%"
+            />
+          </div>
         </div>
         <Link className="text-link" href="/estudiante/login">
           Entrar como estudiante

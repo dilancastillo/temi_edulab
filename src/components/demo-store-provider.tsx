@@ -58,6 +58,7 @@ type DemoStore = {
   profile: TeacherProfile;
   session: Session | null;
   loginWithPassword: (email: string, password: string) => AuthResult;
+  loginWithGoogle: (credential: string) => void;
   loginWithProvider: (provider: Extract<AuthProvider, "google" | "microsoft">) => void;
   loginStudentWithPassword: (email: string, password: string) => StudentLoginResult;
   loginStudentWithMissionCode: (missionCode: string, studentId: string) => StudentLoginResult;
@@ -227,6 +228,33 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
 
     setSession(createSession("password"));
     return { ok: true };
+  }, []);
+
+  const loginWithGoogle = useCallback((credential: string) => {
+    try {
+      const payload = JSON.parse(atob(credential.split(".")[1]));
+      const email = payload.email ?? "";
+      const name = payload.name ?? "Profesor Google";
+      const picture = payload.picture ?? "";
+      
+      setSession({
+        userId: `google-${payload.sub}`,
+        institutionId: demoInstitution.id,
+        role: "teacher",
+        provider: "google",
+        displayName: name,
+        email: email
+      });
+
+      setProfile((current) => ({
+        ...current,
+        fullName: name,
+        email: email,
+        avatarUrl: picture || current.avatarUrl
+      }));
+    } catch {
+      console.error("Error al procesar credencial de Google");
+    }
   }, []);
 
   const loginWithProvider = useCallback((provider: Extract<AuthProvider, "google" | "microsoft">) => {
@@ -522,6 +550,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       profile,
       session,
       loginWithPassword,
+      loginWithGoogle,
       loginWithProvider,
       loginStudentWithPassword,
       loginStudentWithMissionCode,
@@ -548,6 +577,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       importStudents,
       isReady,
       loginWithPassword,
+      loginWithGoogle,
       loginWithProvider,
       loginStudentWithMissionCode,
       loginStudentWithPassword,
