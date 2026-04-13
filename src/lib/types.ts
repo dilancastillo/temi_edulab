@@ -50,7 +50,13 @@ export type Student = {
 
 export type MissionCategory = "Fundamentos" | "Logica" | "Control" | "Robotica";
 
-export type MissionAgeBand = "7-10" | "11-14" | "15-18";
+export type MissionStep = {
+  type: string;
+  label: string;
+  helper: string;
+};
+
+export type MissionAgeBand = "7-10" | "9-10" | "11-14" | "15-18";
 
 export type Mission = {
   id: string;
@@ -62,6 +68,7 @@ export type Mission = {
   outcomes: string[];
   status: "published" | "draft";
   coverTone: "blue" | "green" | "yellow" | "red" | "indigo" | "slate";
+  steps?: MissionStep[];
 };
 
 export type AssignmentStatus = "active" | "archived";

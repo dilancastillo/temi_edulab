@@ -42,22 +42,22 @@ export type ProgramEvaluation = {
   message: string;
 };
 
-export function evaluateOrderSteps(sequence: string[]): ProgramEvaluation {
+export function evaluateOrderSteps(sequence: string[], program = orderStepsProgram): ProgramEvaluation {
   let completedSteps = 0;
 
-  for (const expectedStep of orderStepsProgram) {
+  for (const expectedStep of program) {
     if (sequence[completedSteps] !== expectedStep.type) {
       break;
     }
     completedSteps += 1;
   }
 
-  const nextStep = orderStepsProgram[completedSteps];
+  const nextStep = program[completedSteps];
 
-  if (completedSteps === orderStepsProgram.length) {
+  if (completedSteps === program.length) {
     return {
       completedSteps,
-      totalSteps: orderStepsProgram.length,
+      totalSteps: program.length,
       isComplete: true,
       message: "Secuencia completa. Ya puedes enviar tu misión."
     };
@@ -65,7 +65,7 @@ export function evaluateOrderSteps(sequence: string[]): ProgramEvaluation {
 
   return {
     completedSteps,
-    totalSteps: orderStepsProgram.length,
+    totalSteps: program.length,
     isComplete: false,
     nextStep,
     message: nextStep ? `Siguiente bloque: ${nextStep.label}.` : "Revisa el orden de los bloques."

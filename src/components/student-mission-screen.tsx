@@ -22,7 +22,8 @@ export function StudentMissionScreen() {
   const [notice, setNotice] = useState("");
   const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
 
-  const evaluation = useMemo(() => evaluateOrderSteps(sequence), [sequence]);
+  const missionSteps = mission?.steps ?? orderStepsProgram;
+  const evaluation = useMemo(() => evaluateOrderSteps(sequence, missionSteps), [sequence, missionSteps]);
   const isSubmitted = work?.status === "submitted";
 
   if (!student || !assignment || !mission) {
@@ -91,11 +92,11 @@ export function StudentMissionScreen() {
 
       <section className="mission-editor-layout">
         <aside className="mission-instructions" aria-labelledby="mission-steps-title">
-          <h2 id="mission-steps-title">Ordena los pasos</h2>
+          <h2 id="mission-steps-title">{mission.title}</h2>
           <p>Arrastra los bloques en el orden correcto. Conéctalos debajo de “cuando inicia”.</p>
           <ol className="step-list">
-            {orderStepsProgram.map((step, index) => (
-              <li className={index < evaluation.completedSteps ? "step-done" : ""} key={step.type}>
+            {missionSteps.map((step, index) => (
+              <li className={index < evaluation.completedSteps ? "step-done" : ""} key={`${step.type}-${index}`}>
                 <strong>{step.label}</strong>
                 <span>{step.helper}</span>
               </li>

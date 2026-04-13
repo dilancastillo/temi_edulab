@@ -25,14 +25,51 @@ export const demoTeacherProfile: TeacherProfile = {
 export const demoMissions: Mission[] = [
   {
     id: "mission-order-steps",
-    title: "Ordena los pasos",
-    summary: "Organiza instrucciones paso a paso para que el robot llegue correctamente a la meta.",
+    title: "Taller Guía mi salón",
+    summary: "Hoy Temi será el guía oficial del salón. Llegó una visita especial al colegio y necesita conocer el aula. Tu misión es programar a Temi para que recorra tres lugares importantes del salón y explique qué hay en cada uno.",
     category: "Fundamentos",
-    ageBand: "7-10",
-    durationMinutes: 20,
-    outcomes: ["Secuenciación", "Resolución de problemas"],
+    ageBand: "9-10",
+    durationMinutes: 90,
+    outcomes: ["Resolución de problemas", "Comunicación creativa", "Pensamiento computacional"],
     status: "published",
-    coverTone: "blue"
+    coverTone: "blue",
+    steps: [
+      {
+        type: "temi_start",
+        label: "Cuando inicia",
+        helper: "Todo programa necesita un bloque de inicio."
+      },
+      {
+        type: "temi_move",
+        label: "Avanzar 2 pasos",
+        helper: "Haz que Temi se mueva al primer lugar del salón."
+      },
+      {
+        type: "temi_say",
+        label: "Decir algo",
+        helper: "Temi explica qué hay en este lugar."
+      },
+      {
+        type: "temi_move",
+        label: "Avanzar 2 pasos",
+        helper: "Ahora mueve a Temi al segundo lugar."
+      },
+      {
+        type: "temi_say",
+        label: "Decir algo",
+        helper: "Temi describe el segundo lugar del salón."
+      },
+      {
+        type: "temi_move",
+        label: "Avanzar 2 pasos",
+        helper: "Lleva a Temi al tercer y último lugar."
+      },
+      {
+        type: "temi_say",
+        label: "Decir algo",
+        helper: "Temi termina explicando el último lugar."
+      }
+    ]
   },
   {
     id: "mission-foundations",
