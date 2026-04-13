@@ -21,12 +21,12 @@ export function LoginScreen() {
     }
   }, [isReady, router, session]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = loginWithPassword(email, password);
+    const result = await loginWithPassword(email, password);
 
     if (!result.ok) {
-      setError(result.message ?? "No se pudo iniciar sesión.");
+      setError(result.message ?? "No se pudo iniciar sesion.");
       return;
     }
 
@@ -34,7 +34,13 @@ export function LoginScreen() {
   }
 
   function handleProvider(provider: "google" | "microsoft") {
-    loginWithProvider(provider);
+    const result = loginWithProvider(provider);
+
+    if (!result.ok) {
+      setError(result.message ?? "No se pudo iniciar sesion.");
+      return;
+    }
+
     router.push("/profesor");
   }
 
@@ -50,9 +56,9 @@ export function LoginScreen() {
       <section className="login-card" aria-labelledby="login-title">
         <LogoMark />
         <div>
-          <p className="eyebrow">Acceso local</p>
-          <h2 id="login-title">Iniciar sesión</h2>
-          <p className="muted">Usa la cuenta demo o entra en modo local con Google/Microsoft.</p>
+          <p className="eyebrow">Acceso seguro</p>
+          <h2 id="login-title">Iniciar sesion</h2>
+          <p className="muted">Usa tu cuenta docente. Google y Microsoft quedaran listos cuando registremos las credenciales OAuth reales.</p>
         </div>
         <form className="form-stack" onSubmit={handleSubmit}>
           <div className="field">
@@ -68,7 +74,7 @@ export function LoginScreen() {
             />
           </div>
           <div className="field">
-            <label htmlFor="password">Contraseña</label>
+            <label htmlFor="password">Contrasena</label>
             <input
               autoComplete="current-password"
               id="password"
@@ -86,7 +92,7 @@ export function LoginScreen() {
             </p>
           ) : null}
           <button className="button button-primary button-full" type="submit">
-            Iniciar sesión
+            Iniciar sesion
           </button>
         </form>
         <div className="provider-grid" aria-label="Opciones de acceso">
@@ -100,7 +106,7 @@ export function LoginScreen() {
         <Link className="text-link" href="/estudiante/login">
           Entrar como estudiante
         </Link>
-        <p className="hint">Para producción se conectarán proveedores OAuth reales y políticas de sesión seguras.</p>
+        <p className="hint">La sesion web viaja por cookie segura desde el backend compartido.</p>
       </section>
     </main>
   );

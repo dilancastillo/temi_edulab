@@ -48,7 +48,7 @@ export function StudentShell({ children }: Readonly<{ children: React.ReactNode 
         <Link href="/estudiante" aria-label="Ir al inicio estudiante">
           <LogoMark />
         </Link>
-        <nav aria-label="Navegación estudiante">
+        <nav aria-label="Navegacion estudiante">
           <ul className="student-nav-list">
             {studentNavItems.map((item) => (
               <li key={item.href}>
@@ -61,8 +61,8 @@ export function StudentShell({ children }: Readonly<{ children: React.ReactNode 
         </nav>
         <button
           className="button button-secondary topbar-action"
-          onClick={() => {
-            logout();
+          onClick={async () => {
+            await logout();
             router.replace("/estudiante/login");
           }}
           type="button"

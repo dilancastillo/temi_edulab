@@ -51,8 +51,8 @@ export function SettingsScreen() {
           </dl>
         </div>
         <div className="profile-footer">
-          <button className="button button-danger-outline" onClick={resetDemoData} type="button">
-            Restablecer demo local
+          <button className="button button-secondary" onClick={() => void resetDemoData()} type="button">
+            Recargar desde el servidor
           </button>
         </div>
       </section>
@@ -61,8 +61,8 @@ export function SettingsScreen() {
         <ProfileFormModal
           initialProfile={profile}
           onClose={() => setIsEditing(false)}
-          onSubmit={(input) => {
-            updateProfile(input);
+          onSubmit={async (input) => {
+            await updateProfile(input);
             setIsEditing(false);
           }}
         />
@@ -78,7 +78,7 @@ function ProfileFormModal({
 }: Readonly<{
   initialProfile: ProfileInput;
   onClose: () => void;
-  onSubmit: (input: ProfileInput) => void;
+  onSubmit: (input: ProfileInput) => Promise<void>;
 }>) {
   const [fullName, setFullName] = useState(initialProfile.fullName);
   const [email, setEmail] = useState(initialProfile.email);
@@ -100,9 +100,9 @@ function ProfileFormModal({
     setAvatarUrl(await readFileAsDataUrl(file));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit({ avatarUrl, biography, email, fullName });
+    await onSubmit({ avatarUrl, biography, email, fullName });
   }
 
   return (

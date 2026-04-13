@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogoMark } from "@/components/logo";
@@ -8,19 +8,13 @@ import { useDemoStore } from "@/components/demo-store-provider";
 
 export function StudentLoginScreen() {
   const router = useRouter();
-  const { assignments, isReady, loginStudentWithMissionCode, loginStudentWithPassword, session, students } = useDemoStore();
+  const { isReady, loginStudentWithMissionCode, loginStudentWithPassword, session } = useDemoStore();
   const [mode, setMode] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("ana.garcia@esbot.test");
   const [password, setPassword] = useState("estudiante2026");
-  const [missionCode, setMissionCode] = useState(assignments[0]?.missionCode ?? "SGKRBY");
-  const [studentId, setStudentId] = useState(students[0]?.id ?? "");
+  const [missionCode, setMissionCode] = useState("SGKRBY");
+  const [studentEmail, setStudentEmail] = useState("ana.garcia@esbot.test");
   const [error, setError] = useState("");
-
-  const activeStudents = useMemo(
-    () => students.filter((student) => assignments.some((assignment) => assignment.status === "active" && assignment.courseId === student.courseId)),
-    [assignments, students]
-  );
-  const selectedStudentId = studentId || activeStudents[0]?.id || "";
 
   useEffect(() => {
     if (isReady && session?.role === "student") {
@@ -28,24 +22,24 @@ export function StudentLoginScreen() {
     }
   }, [isReady, router, session]);
 
-  function handleEmailLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleEmailLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = loginStudentWithPassword(email, password);
+    const result = await loginStudentWithPassword(email, password);
 
     if (!result.ok) {
-      setError(result.message ?? "No se pudo iniciar sesión.");
+      setError(result.message ?? "No se pudo iniciar sesion.");
       return;
     }
 
     router.push("/estudiante");
   }
 
-  function handleCodeLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleCodeLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = loginStudentWithMissionCode(missionCode, selectedStudentId);
+    const result = await loginStudentWithMissionCode(missionCode, studentEmail);
 
     if (!result.ok) {
-      setError(result.message ?? "No se pudo entrar con ese código.");
+      setError(result.message ?? "No se pudo entrar con ese codigo.");
       return;
     }
 
@@ -58,16 +52,16 @@ export function StudentLoginScreen() {
         <LogoMark />
         <div>
           <p className="eyebrow">Espacio estudiante</p>
-          <h1 id="student-login-title">Elige cómo entrar</h1>
-          <p>Continúa tu misión, prueba bloques y envía tu solución cuando esté lista.</p>
+          <h1 id="student-login-title">Elige como entrar</h1>
+          <p>Continua tu mision, prueba bloques y envia tu solucion cuando este lista.</p>
         </div>
 
-        <div className="segmented-control" aria-label="Método de acceso">
+        <div className="segmented-control" aria-label="Metodo de acceso">
           <button aria-pressed={mode === "email"} className="segment-button" onClick={() => setMode("email")} type="button">
             Correo
           </button>
           <button aria-pressed={mode === "code"} className="segment-button" onClick={() => setMode("code")} type="button">
-            Código de misión
+            Codigo de mision
           </button>
         </div>
 
@@ -85,7 +79,7 @@ export function StudentLoginScreen() {
               />
             </label>
             <label className="field" htmlFor="student-password">
-              Contraseña
+              Contrasena
               <input
                 autoComplete="current-password"
                 id="student-password"
@@ -104,7 +98,7 @@ export function StudentLoginScreen() {
         ) : (
           <form className="form-stack" onSubmit={handleCodeLogin}>
             <label className="field" htmlFor="mission-code">
-              Código de misión
+              Codigo de mision
               <input
                 id="mission-code"
                 maxLength={12}
@@ -113,19 +107,20 @@ export function StudentLoginScreen() {
                 value={missionCode}
               />
             </label>
-            <label className="field" htmlFor="student-selector">
-              Soy
-              <select id="student-selector" onChange={(event) => setStudentId(event.target.value)} required value={selectedStudentId}>
-                {activeStudents.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.fullName}
-                  </option>
-                ))}
-              </select>
+            <label className="field" htmlFor="student-email-code">
+              Correo del estudiante
+              <input
+                autoComplete="email"
+                id="student-email-code"
+                onChange={(event) => setStudentEmail(event.target.value)}
+                required
+                type="email"
+                value={studentEmail}
+              />
             </label>
             {error ? <p className="form-error">{error}</p> : null}
             <button className="button button-primary button-full" type="submit">
-              Entrar a la misión
+              Entrar a la mision
             </button>
           </form>
         )}

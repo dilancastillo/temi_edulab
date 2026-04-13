@@ -11,7 +11,7 @@ const navItems = [
   { href: "/profesor/estudiantes", label: "Estudiantes" },
   { href: "/profesor/biblioteca", label: "Biblioteca" },
   { href: "/profesor/misiones", label: "Misiones en curso" },
-  { href: "/profesor/configuracion", label: "Configuración" }
+  { href: "/profesor/configuracion", label: "Configuracion" }
 ] as const;
 
 export function ProfessorShell({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -66,13 +66,13 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
         </nav>
         <button
           className="nav-link nav-link-button"
-          onClick={() => {
-            logout();
+          onClick={async () => {
+            await logout();
             router.replace("/login");
           }}
           type="button"
         >
-          Cerrar sesión
+          Cerrar sesion
         </button>
       </aside>
       <main className="content-shell" id="main-content">

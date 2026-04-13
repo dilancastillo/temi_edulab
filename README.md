@@ -1,78 +1,161 @@
 # Esbot EduLab
 
-App web local-first para la capa profesor de Esbot EduLab. La base usa TypeScript end-to-end con Next.js, React y datos demo persistidos en el navegador para validar flujos antes de conectar PostgreSQL, OAuth real y las capas de estudiante, analítica, administrador/institución y robot.
+Monorepo de Esbot EduLab con tres piezas:
+
+- web Next.js para profesor y estudiante
+- API Fastify + Prisma + PostgreSQL para auth, sesiones, misiones, robots y sincronizacion
+- app Android nativa para Temi V3 en `apps/robot-temi`
+
+## Arquitectura
+
+La web ya no depende de `localStorage` como fuente principal. Ahora trabaja asi:
+
+1. la web habla con rutas internas de Next (`/api/...`)
+2. esas rutas guardan la sesion web en cookie `HttpOnly`
+3. Next reenvia las solicitudes al backend en `apps/api`
+4. el backend persiste en PostgreSQL con Prisma
+5. el robot se integrara contra ese mismo backend por polling y token de dispositivo
 
 ## Stack
 
-- Next.js 16.2.2 + React 19.2.4 + TypeScript.
-- CSS moderno sin librería de UI, con HTML semántico, foco visible, layout responsive y componentes accesibles.
-- Vitest + Testing Library para pruebas unitarias/componentes.
-- Playwright para pruebas end-to-end.
+- Next.js 16.2.3 + React 19 + TypeScript
+- Fastify + Prisma + PostgreSQL
+- Kotlin + Jetpack Compose + Room + Temi SDK
+- Vitest + Testing Library
+- Docker Compose para PostgreSQL y Redis local
 
-Se eligió Next.js sobre una SPA Vite porque el producto necesitará sesiones, roles, permisos, formularios server-side, rendering híbrido, caché HTTP y rutas protegidas por institución. Vite seguiría siendo una buena opción para experiencias puramente cliente, pero aquí Next deja mejor camino hacia API, PostgreSQL y seguridad de sesión.
+## Estructura
 
-## PWA
+- raiz: app web Next.js
+- `apps/api`: backend compartido web-robot
+- `apps/robot-temi`: app Android para Temi V3
 
-No se activó PWA todavía. Conviene evaluarla en la capa estudiante/robot, cuando haya requerimientos concretos de trabajo offline, caché de misiones, instalación en tablets o reintentos de envío. Para la capa profesor local-first actual, una PWA agregaría complejidad de caché y actualizaciones sin un beneficio claro.
+## Arranque rapido
 
-## Ejecutar localmente
+1. Instala dependencias:
 
 ```powershell
 npm.cmd install
-npm.cmd run dev
 ```
 
-Abre `http://localhost:3000`.
+2. Levanta base de datos y Redis:
 
-Credenciales demo profesor:
+```powershell
+npm.cmd run db:up
+```
 
-- Correo: `profesor@esbot.test`
-- Contraseña: `demo2026`
+3. Crea tu archivo de entorno para la web:
 
-Credenciales demo estudiante:
+```powershell
+Copy-Item .env.example .env.local
+```
 
-- Correo: `ana.garcia@esbot.test`
-- Contraseña: `estudiante2026`
-- Código de misión: `SGKRBY`
+4. Crea tu archivo de entorno para la API:
 
-Los botones de Google y Microsoft funcionan como acceso local de demostración. Para producción deben conectarse con OAuth real y cookies/sesiones endurecidas.
+```powershell
+Copy-Item apps\api\.env.example apps\api\.env
+```
+
+5. Genera Prisma y aplica la migracion inicial:
+
+```powershell
+npm.cmd run prisma:generate
+npm.cmd run prisma:migrate
+npm.cmd run prisma:seed
+```
+
+6. En una terminal corre la API:
+
+```powershell
+npm.cmd run dev:api
+```
+
+7. En otra terminal corre la web:
+
+```powershell
+npm.cmd run dev:web
+```
+
+8. Abre `http://localhost:3000`.
+
+## Credenciales demo
+
+Profesor:
+
+- `profesor@esbot.test`
+- `demo2026`
+
+Administrador institucion:
+
+- `admin@esbot.test`
+- `admin2026`
+
+Estudiante:
+
+- `ana.garcia@esbot.test`
+- `estudiante2026`
+
+Codigo de mision demo:
+
+- `SGKRBY`
+
+## Lo que ya quedo conectado
+
+- login web por backend con cookie segura
+- bootstrap de profesor y estudiante desde PostgreSQL
+- CRUD de estudiantes
+- importacion CSV
+- biblioteca y asignacion de misiones
+- misiones en curso y archivado
+- perfil docente
+- guardado y envio de entregas de estudiante
+- dashboard profesor con estado de robot y sesiones de clase
+- endpoints backend para pairing, heartbeat, sync de ubicaciones, polling de sesiones y eventos de robot
+
+## Lo que sigue en la integracion robot
+
+El backend ya quedo listo para que la app de Temi consuma:
+
+- `POST /v1/robot/pairing-requests`
+- `GET /v1/robot/pairing-requests/:pairingRequestId`
+- `POST /v1/robot/locations/sync`
+- `POST /v1/robot/heartbeat`
+- `GET /v1/robot/sessions/next`
+- `POST /v1/robot/events`
+
+Falta la siguiente fase: reemplazar en `apps/robot-temi` el runtime/mock local por llamadas reales a esos endpoints.
 
 ## Verificacion
+
+Web:
 
 ```powershell
 npm.cmd run typecheck
 npm.cmd run lint
 npm.cmd run test
 npm.cmd run build
-npm.cmd run test:e2e
 ```
 
-En este entorno, Vitest, Next build y Playwright requieren permiso para lanzar procesos nativos o navegador.
+API:
 
-## Alcance implementado
+```powershell
+npm.cmd run typecheck:api
+npm.cmd run build:api
+```
 
-- Login docente local con email/contraseña y accesos demo Google/Microsoft.
-- Layout docente con rutas para inicio, estudiantes, biblioteca, misiones y configuración.
-- Dashboard con metricas derivadas de estudiantes/asignaciones.
-- CRUD de estudiantes, filtros, busqueda, paginacion y carga de avatar con validacion.
-- Importación CSV de estudiantes con validación de encabezados, correo, duplicados y curso.
-- Biblioteca de misiones existentes con filtros por categoría/edad, preview y asignación a grupo.
-- Misiones en curso/archivadas con acciones de archivar y eliminar.
-- Perfil docente editable con carga de imagen local.
-- Login de estudiante por correo/contraseña o código de misión.
-- Dashboard estudiante con juego libre, misiones en progreso y misiones asignadas.
-- Editor Blockly real para la misión “Ordena los pasos”.
-- Guardado local de workspace y envío de entrega que marca al estudiante como “Revisar” en la capa profesor.
-- Interfaz de adaptador robot para Temi V3 en modo demo, sin ejecución contra hardware todavía.
+## Seguridad
 
-## Siguientes capas
+- sesion web en cookie `HttpOnly`
+- tokens opacos para web y robot
+- hash de token en base de datos
+- rate limiting en la API
+- validacion de entrada con Zod
+- control por institucion
+- `next` actualizado a `16.2.3` para corregir la vulnerabilidad alta reportada por `npm audit`
 
-- PostgreSQL: reemplazar `DemoStoreProvider` por repositorios/API y migraciones.
-- Auth: credenciales reales + Google/Microsoft OAuth, sesiones seguras, CSRF, rate limiting y RBAC por institución.
-- Estudiante: ampliar Blockly con más misiones reales y validadores por misión. MakeCode se evaluaría solo si se decide usar su ecosistema completo.
-- Robot: conectar el adaptador demo con Temi V3 SDK, manteniéndolo separado de UI y de la lógica de misiones.
-- Analítica: eventos de progreso, entregas, calificaciones y reportes por institución/curso.
+## Notas
 
-## Robot Temi
-
-La capa robot ahora vive en `apps/robot-temi`. Es una app Android nativa con Kotlin + Compose, Room para cola local y snapshot operativo, puente aislado al SDK oficial de temi, pantallas de standby, clase, ejecucion, interaccion, error y modo seguro, mas diagnostico inicial de mapa y ubicaciones.
+- Google y Microsoft quedan listos en UI, pero la integracion OAuth real aun necesita credenciales del proyecto.
+- La PWA sigue desactivada por ahora.
+- Redis ya queda en `docker-compose.yml`, pero en esta fase todavia no se usa para colas productivas.
+- La migracion inicial ya vive en `apps/api/prisma/migrations/20260411_initial/migration.sql`.

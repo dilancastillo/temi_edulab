@@ -39,9 +39,9 @@ export function StudentMissionScreen() {
     );
   }
 
-  function saveWork() {
+  async function saveWork() {
     if (!student || !assignment) return;
-    saveStudentWork({
+    await saveStudentWork({
       studentId: student.id,
       assignmentId: assignment.id,
       missionId: assignment.missionId,
@@ -51,9 +51,9 @@ export function StudentMissionScreen() {
     setNotice("Progreso guardado en este dispositivo.");
   }
 
-  function submitWork() {
+  async function submitWork() {
     if (!student || !assignment) return;
-    submitStudentWork({
+    await submitStudentWork({
       studentId: student.id,
       assignmentId: assignment.id,
       missionId: assignment.missionId,
@@ -75,7 +75,7 @@ export function StudentMissionScreen() {
           <p className="muted">Código: {assignment.missionCode}</p>
         </div>
         <div className="editor-actions">
-          <button className="button button-secondary" disabled={isSubmitted} onClick={saveWork} type="button">
+          <button className="button button-secondary" disabled={isSubmitted} onClick={() => void saveWork()} type="button">
             Guardar
           </button>
           <button
@@ -131,11 +131,10 @@ export function StudentMissionScreen() {
           }
           confirmLabel="Enviar"
           onCancel={() => setIsConfirmingSubmit(false)}
-          onConfirm={submitWork}
+          onConfirm={() => void submitWork()}
           title="¿Listo para enviar?"
         />
       ) : null}
     </div>
   );
 }
-

@@ -63,7 +63,7 @@ export function MissionsScreen() {
               </div>
               <div className="assignment-actions assignment-actions-right">
                 {assignment.status === "active" ? (
-                  <button className="button button-primary" onClick={() => archiveAssignment(assignment.id)} type="button">
+                  <button className="button button-primary" onClick={() => void archiveAssignment(assignment.id)} type="button">
                     Archivar
                   </button>
                 ) : null}
@@ -86,8 +86,8 @@ export function MissionsScreen() {
           }
           confirmLabel="Eliminar misión"
           onCancel={() => setAssignmentToDelete(null)}
-          onConfirm={() => {
-            deleteAssignment(assignmentToDelete.id);
+          onConfirm={async () => {
+            await deleteAssignment(assignmentToDelete.id);
             setAssignmentToDelete(null);
           }}
           title="Eliminar misión"

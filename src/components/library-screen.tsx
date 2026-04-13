@@ -97,8 +97,8 @@ export function LibraryScreen() {
           courses={courses}
           mission={assignmentMission}
           onClose={() => setAssignmentMission(null)}
-          onSubmit={(courseId, instructions) => {
-            assignMission({ courseId, missionId: assignmentMission.id, instructions });
+          onSubmit={async (courseId, instructions) => {
+            await assignMission({ courseId, missionId: assignmentMission.id, instructions });
             setAssignmentMission(null);
             setPreviewMission(null);
           }}
@@ -158,14 +158,14 @@ function AssignMissionModal({
   courses: { id: string; name: string }[];
   mission: Mission;
   onClose: () => void;
-  onSubmit: (courseId: string, instructions: string) => void;
+  onSubmit: (courseId: string, instructions: string) => Promise<void>;
 }>) {
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [instructions, setInstructions] = useState("");
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit(courseId, instructions);
+    await onSubmit(courseId, instructions);
   }
 
   return (

@@ -1,23 +1,18 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import {
-  demoAssignments,
-  demoCourses,
-  demoInstitution,
-  demoMissions,
-  demoStudentWorks,
-  demoStudents,
-  demoTeacherProfile
-} from "@/lib/demo-data";
+import { emptyBootstrap } from "@/lib/empty-bootstrap";
 import type {
+  AppBootstrap,
   Assignment,
   AuthProvider,
+  ClassSession,
   Course,
   ImportedStudent,
   Institution,
   Mission,
   ProfileInput,
+  Robot,
   Session,
   Student,
   StudentInput,
@@ -47,6 +42,12 @@ type SaveStudentWorkInput = {
 
 type SubmitStudentWorkInput = SaveStudentWorkInput;
 
+type CreateClassSessionInput = {
+  assignmentId: string;
+  robotId: string;
+  activeStudentName?: string;
+};
+
 type DemoStore = {
   isReady: boolean;
   institution: Institution;
@@ -57,470 +58,300 @@ type DemoStore = {
   studentWorks: StudentWork[];
   profile: TeacherProfile;
   session: Session | null;
-  loginWithPassword: (email: string, password: string) => AuthResult;
-  loginWithProvider: (provider: Extract<AuthProvider, "google" | "microsoft">) => void;
-  loginStudentWithPassword: (email: string, password: string) => StudentLoginResult;
-  loginStudentWithMissionCode: (missionCode: string, studentId: string) => StudentLoginResult;
-  logout: () => void;
-  addStudent: (input: StudentInput) => void;
-  updateStudent: (studentId: string, input: StudentInput) => void;
-  deleteStudent: (studentId: string) => void;
-  importStudents: (students: ImportedStudent[]) => { added: number; skipped: string[] };
-  assignMission: (input: AssignMissionInput) => void;
-  archiveAssignment: (assignmentId: string) => void;
-  deleteAssignment: (assignmentId: string) => void;
-  saveStudentWork: (input: SaveStudentWorkInput) => void;
-  submitStudentWork: (input: SubmitStudentWorkInput) => void;
-  updateProfile: (input: ProfileInput) => void;
-  resetDemoData: () => void;
+  robots: Robot[];
+  classSessions: ClassSession[];
+  loginWithPassword: (email: string, password: string) => Promise<AuthResult>;
+  loginWithProvider: (provider: Extract<AuthProvider, "google" | "microsoft">) => AuthResult;
+  loginStudentWithPassword: (email: string, password: string) => Promise<StudentLoginResult>;
+  loginStudentWithMissionCode: (missionCode: string, email: string) => Promise<StudentLoginResult>;
+  logout: () => Promise<void>;
+  addStudent: (input: StudentInput) => Promise<void>;
+  updateStudent: (studentId: string, input: StudentInput) => Promise<void>;
+  deleteStudent: (studentId: string) => Promise<void>;
+  importStudents: (students: ImportedStudent[]) => Promise<{ added: number; skipped: string[] }>;
+  assignMission: (input: AssignMissionInput) => Promise<void>;
+  archiveAssignment: (assignmentId: string) => Promise<void>;
+  deleteAssignment: (assignmentId: string) => Promise<void>;
+  saveStudentWork: (input: SaveStudentWorkInput) => Promise<void>;
+  submitStudentWork: (input: SubmitStudentWorkInput) => Promise<void>;
+  updateProfile: (input: ProfileInput) => Promise<void>;
+  createClassSession: (input: CreateClassSessionInput) => Promise<void>;
+  approveClassSession: (classSessionId: string) => Promise<void>;
+  resetDemoData: () => Promise<void>;
+  refreshData: () => Promise<void>;
+};
+
+type ErrorPayload = {
+  message?: string;
 };
 
 const DemoStoreContext = createContext<DemoStore | null>(null);
 
-const storageKeys = {
-  session: "esbot.session.v1",
-  students: "esbot.students.v1",
-  assignments: "esbot.assignments.v1",
-  studentWorks: "esbot.studentWorks.v1",
-  profile: "esbot.profile.v1"
-};
+async function parseResponse<T>(response: Response) {
+  if (!response.ok) {
+    let message = "No pudimos completar la solicitud.";
 
-const demoPassword = "demo2026";
-const studentDemoPassword = "estudiante2026";
+    try {
+      const payload = (await response.json()) as ErrorPayload;
+      if (payload.message) {
+        message = payload.message;
+      }
+    } catch {
+      // Keep the default message.
+    }
 
-function readStoredValue<T>(key: string, fallback: T): T {
-  const storage = getLocalStorage();
-  if (!storage) return fallback;
-  const rawValue = storage.getItem(key);
-  if (!rawValue) return fallback;
-
-  try {
-    return JSON.parse(rawValue) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function getLocalStorage() {
-  if (typeof window === "undefined") return null;
-  const storage = window.localStorage;
-
-  if (
-    !storage ||
-    typeof storage.getItem !== "function" ||
-    typeof storage.setItem !== "function" ||
-    typeof storage.removeItem !== "function"
-  ) {
-    return null;
+    throw new Error(message);
   }
 
-  return storage;
-}
-
-function writeStoredValue(key: string, value: unknown) {
-  const storage = getLocalStorage();
-  storage?.setItem(key, JSON.stringify(value));
-}
-
-function removeStoredValue(key: string) {
-  const storage = getLocalStorage();
-  storage?.removeItem(key);
-}
-
-function createSession(provider: AuthProvider): Session {
-  return {
-    userId: demoTeacherProfile.id,
-    institutionId: demoInstitution.id,
-    role: "teacher",
-    provider,
-    displayName: demoTeacherProfile.fullName,
-    email: demoTeacherProfile.email
-  };
-}
-
-function createStudentSession(student: Student, provider: Extract<AuthProvider, "password" | "mission_code">): Session {
-  return {
-    userId: student.id,
-    studentId: student.id,
-    institutionId: student.institutionId,
-    role: "student",
-    provider,
-    displayName: student.fullName,
-    email: student.email
-  };
-}
-
-function createId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
+  if (response.status === 204) {
+    return undefined as T;
   }
 
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const responseType = response.headers.get("content-type") ?? "";
+  if (!responseType.includes("application/json")) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
 }
 
-function createMissionCode() {
-  return Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6).padEnd(6, "7");
+async function fetchJson<T>(input: RequestInfo, init?: RequestInit) {
+  const hasBody = init?.body !== undefined && init.body !== null;
+  const response = await fetch(input, {
+    ...init,
+    headers: hasBody
+      ? {
+          "content-type": "application/json",
+          ...(init?.headers ?? {})
+        }
+      : init?.headers
+  });
+
+  return parseResponse<T>(response);
 }
 
 export function DemoStoreProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const [isReady, setIsReady] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
-  const [students, setStudents] = useState<Student[]>(demoStudents);
-  const [assignments, setAssignments] = useState<Assignment[]>(demoAssignments);
-  const [studentWorks, setStudentWorks] = useState<StudentWork[]>(demoStudentWorks);
-  const [profile, setProfile] = useState<TeacherProfile>(demoTeacherProfile);
+  const [bootstrap, setBootstrap] = useState<AppBootstrap>(emptyBootstrap);
 
-  useEffect(() => {
-    const abortController = new AbortController();
-
-    queueMicrotask(() => {
-      if (abortController.signal.aborted) return;
-      setSession(readStoredValue<Session | null>(storageKeys.session, null));
-      setStudents(readStoredValue(storageKeys.students, demoStudents));
-      setAssignments(readStoredValue(storageKeys.assignments, demoAssignments));
-      setStudentWorks(readStoredValue(storageKeys.studentWorks, demoStudentWorks));
-      setProfile(readStoredValue(storageKeys.profile, demoTeacherProfile));
-      setIsReady(true);
-    });
-
-    return () => abortController.abort();
+  const refreshData = useCallback(async () => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/bootstrap");
+    setBootstrap(nextBootstrap);
   }, []);
 
   useEffect(() => {
-    if (!isReady) return;
-    if (session) {
-      writeStoredValue(storageKeys.session, session);
-    } else {
-      removeStoredValue(storageKeys.session);
-    }
-  }, [isReady, session]);
+    let cancelled = false;
 
-  useEffect(() => {
-    if (!isReady) return;
-    writeStoredValue(storageKeys.students, students);
-  }, [isReady, students]);
+    void (async () => {
+      try {
+        const nextBootstrap = await fetchJson<AppBootstrap>("/api/bootstrap");
+        if (!cancelled) {
+          setBootstrap(nextBootstrap);
+        }
+      } catch {
+        if (!cancelled) {
+          setBootstrap(emptyBootstrap);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsReady(true);
+        }
+      }
+    })();
 
-  useEffect(() => {
-    if (!isReady) return;
-    writeStoredValue(storageKeys.assignments, assignments);
-  }, [assignments, isReady]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  useEffect(() => {
-    if (!isReady) return;
-    writeStoredValue(storageKeys.studentWorks, studentWorks);
-  }, [isReady, studentWorks]);
+  const loginWithPassword = useCallback(async (email: string, password: string) => {
+    try {
+      const nextBootstrap = await fetchJson<AppBootstrap>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password })
+      });
 
-  useEffect(() => {
-    if (!isReady) return;
-    writeStoredValue(storageKeys.profile, profile);
-  }, [isReady, profile]);
-
-  const loginWithPassword = useCallback((email: string, password: string) => {
-    const normalisedEmail = email.trim().toLowerCase();
-
-    if (normalisedEmail !== demoTeacherProfile.email || password !== demoPassword) {
+      setBootstrap(nextBootstrap);
+      return { ok: true };
+    } catch (error) {
       return {
         ok: false,
-        message: "Usa profesor@esbot.test con la clave demo2026 para entrar al modo local."
+        message: error instanceof Error ? error.message : "No se pudo iniciar sesion."
       };
     }
-
-    setSession(createSession("password"));
-    return { ok: true };
   }, []);
 
   const loginWithProvider = useCallback((provider: Extract<AuthProvider, "google" | "microsoft">) => {
-    setSession(createSession(provider));
+    const providerName = provider === "google" ? "Google" : "Microsoft";
+    return {
+      ok: false,
+      message: `El acceso con ${providerName} queda listo para cuando registremos las credenciales OAuth reales.`
+    };
   }, []);
 
-  const loginStudentWithPassword = useCallback(
-    (email: string, password: string) => {
-      const normalisedEmail = email.trim().toLowerCase();
-      const student = students.find((candidate) => candidate.email.toLowerCase() === normalisedEmail);
-
-      if (!student || password !== studentDemoPassword) {
-        return {
-          ok: false,
-          message: "Usa un correo de estudiante demo con la clave estudiante2026."
-        };
-      }
-
-      setSession(createStudentSession(student, "password"));
-      return { ok: true };
-    },
-    [students]
-  );
-
-  const loginStudentWithMissionCode = useCallback(
-    (missionCode: string, studentId: string) => {
-      const student = students.find((candidate) => candidate.id === studentId);
-      const normalisedCode = missionCode.trim().toUpperCase();
-      const assignment = assignments.find(
-        (candidate) =>
-          student &&
-          candidate.status === "active" &&
-          candidate.courseId === student.courseId &&
-          candidate.missionCode.toUpperCase() === normalisedCode
-      );
-
-      if (!student || !assignment) {
-        return {
-          ok: false,
-          message: "El código no coincide con una misión activa para ese estudiante."
-        };
-      }
-
-      setSession(createStudentSession(student, "mission_code"));
-      return { ok: true };
-    },
-    [assignments, students]
-  );
-
-  const logout = useCallback(() => {
-    setSession(null);
-  }, []);
-
-  const addStudent = useCallback((input: StudentInput) => {
-    setStudents((current) => [
-      {
-        id: createId("student"),
-        institutionId: demoInstitution.id,
-        courseId: input.courseId,
-        fullName: input.fullName.trim(),
-        email: input.email.trim().toLowerCase(),
-        progress: "En curso",
-        avatarUrl: input.avatarUrl,
-        createdAt: new Date().toISOString()
-      },
-      ...current
-    ]);
-  }, []);
-
-  const updateStudent = useCallback((studentId: string, input: StudentInput) => {
-    setStudents((current) =>
-      current.map((student) =>
-        student.id === studentId
-          ? {
-              ...student,
-              courseId: input.courseId,
-              fullName: input.fullName.trim(),
-              email: input.email.trim().toLowerCase(),
-              avatarUrl: input.avatarUrl
-            }
-          : student
-      )
-    );
-  }, []);
-
-  const deleteStudent = useCallback((studentId: string) => {
-    setStudents((current) => current.filter((student) => student.id !== studentId));
-  }, []);
-
-  const importStudents = useCallback((importedStudents: ImportedStudent[]) => {
-    const existingEmails = new Set(students.map((student) => student.email.toLowerCase()));
-    const skipped: string[] = [];
-    const nextStudents: Student[] = [];
-
-    for (const importedStudent of importedStudents) {
-      const course = demoCourses.find(
-        (candidate) => candidate.name.toLowerCase() === importedStudent.courseName.trim().toLowerCase()
-      );
-
-      if (!course) {
-        skipped.push(`${importedStudent.fullName}: curso "${importedStudent.courseName}" no existe.`);
-        continue;
-      }
-
-      if (existingEmails.has(importedStudent.email)) {
-        skipped.push(`${importedStudent.fullName}: correo duplicado.`);
-        continue;
-      }
-
-      existingEmails.add(importedStudent.email);
-      nextStudents.push({
-        id: createId("student"),
-        institutionId: demoInstitution.id,
-        courseId: course.id,
-        fullName: importedStudent.fullName,
-        email: importedStudent.email,
-        progress: "En curso",
-        createdAt: new Date().toISOString()
-      });
-    }
-
-    setStudents((current) => [...nextStudents, ...current]);
-    return { added: nextStudents.length, skipped };
-  }, [students]);
-
-  const assignMission = useCallback(
-    (input: AssignMissionInput) => {
-      setAssignments((current) => [
-        {
-          id: createId("assignment"),
-          institutionId: demoInstitution.id,
-          courseId: input.courseId,
-          missionId: input.missionId,
-          missionCode: createMissionCode(),
-          instructions: input.instructions?.trim(),
-          status: "active",
-          assignedAt: new Date().toISOString(),
-          assignedBy: profile.id,
-          completedCount: 0,
-          reviewCount: 0
-        },
-        ...current
-      ]);
-
-      setStudents((current) =>
-        current.map((student) =>
-          student.courseId === input.courseId ? { ...student, currentMissionId: input.missionId, progress: "En curso" } : student
-        )
-      );
-    },
-    [profile.id]
-  );
-
-  const archiveAssignment = useCallback((assignmentId: string) => {
-    setAssignments((current) =>
-      current.map((assignment) => (assignment.id === assignmentId ? { ...assignment, status: "archived" } : assignment))
-    );
-  }, []);
-
-  const deleteAssignment = useCallback((assignmentId: string) => {
-    setAssignments((current) => current.filter((assignment) => assignment.id !== assignmentId));
-  }, []);
-
-  const saveStudentWork = useCallback((input: SaveStudentWorkInput) => {
-    setStudentWorks((current) => {
-      const existing = current.find(
-        (work) => work.studentId === input.studentId && work.assignmentId === input.assignmentId
-      );
-
-      if (existing) {
-        return current.map((work) =>
-          work.id === existing.id
-            ? {
-                ...work,
-                workspaceState: input.workspaceState,
-                stepIndex: input.stepIndex,
-                status: work.status === "submitted" ? "submitted" : "draft",
-                updatedAt: new Date().toISOString()
-              }
-            : work
-        );
-      }
-
-      return [
-        {
-          id: createId("work"),
-          institutionId: demoInstitution.id,
-          studentId: input.studentId,
-          assignmentId: input.assignmentId,
-          missionId: input.missionId,
-          workspaceState: input.workspaceState,
-          stepIndex: input.stepIndex,
-          status: "draft",
-          updatedAt: new Date().toISOString()
-        },
-        ...current
-      ];
-    });
-  }, []);
-
-  const submitStudentWork = useCallback(
-    (input: SubmitStudentWorkInput) => {
-      const submittedAt = new Date().toISOString();
-
-      setStudentWorks((current) => {
-        const existing = current.find(
-          (work) => work.studentId === input.studentId && work.assignmentId === input.assignmentId
-        );
-
-        if (existing) {
-          return current.map((work) =>
-            work.id === existing.id
-              ? {
-                  ...work,
-                  workspaceState: input.workspaceState,
-                  stepIndex: input.stepIndex,
-                  status: "submitted",
-                  submittedAt,
-                  updatedAt: submittedAt
-                }
-              : work
-          );
-        }
-
-        return [
-          {
-            id: createId("work"),
-            institutionId: demoInstitution.id,
-            studentId: input.studentId,
-            assignmentId: input.assignmentId,
-            missionId: input.missionId,
-            workspaceState: input.workspaceState,
-            stepIndex: input.stepIndex,
-            status: "submitted",
-            submittedAt,
-            updatedAt: submittedAt
-          },
-          ...current
-        ];
-      });
-
-      setStudents((current) =>
-        current.map((student) =>
-          student.id === input.studentId ? { ...student, progress: "Revisar", currentMissionId: input.missionId } : student
-        )
-      );
-
-      setAssignments((current) =>
-        current.map((assignment) => {
-          if (assignment.id !== input.assignmentId) return assignment;
-          const alreadySubmitted = studentWorks.some(
-            (work) => work.studentId === input.studentId && work.assignmentId === input.assignmentId && work.status === "submitted"
-          );
-
-          return {
-            ...assignment,
-            reviewCount: alreadySubmitted ? assignment.reviewCount : assignment.reviewCount + 1
-          };
+  const loginStudentWithPassword = useCallback(async (email: string, password: string) => {
+    try {
+      const nextBootstrap = await fetchJson<AppBootstrap>("/api/auth/student-login", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "password",
+          email,
+          password
         })
-      );
-    },
-    [studentWorks]
-  );
+      });
 
-  const updateProfile = useCallback((input: ProfileInput) => {
-    setProfile((current) => ({
-      ...current,
-      fullName: input.fullName.trim(),
-      email: input.email.trim().toLowerCase(),
-      biography: input.biography.trim(),
-      avatarUrl: input.avatarUrl
-    }));
+      setBootstrap(nextBootstrap);
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "No se pudo iniciar sesion."
+      };
+    }
   }, []);
 
-  const resetDemoData = useCallback(() => {
-    setSession(null);
-    setStudents(demoStudents);
-    setAssignments(demoAssignments);
-    setStudentWorks(demoStudentWorks);
-    setProfile(demoTeacherProfile);
-    Object.values(storageKeys).forEach((key) => removeStoredValue(key));
+  const loginStudentWithMissionCode = useCallback(async (missionCode: string, email: string) => {
+    try {
+      const nextBootstrap = await fetchJson<AppBootstrap>("/api/auth/student-login", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "mission_code",
+          email,
+          missionCode
+        })
+      });
+
+      setBootstrap(nextBootstrap);
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "No se pudo entrar con ese codigo."
+      };
+    }
   }, []);
+
+  const logout = useCallback(async () => {
+    await fetchJson("/api/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({})
+    });
+    setBootstrap(emptyBootstrap);
+  }, []);
+
+  const addStudent = useCallback(async (input: StudentInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/students", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const updateStudent = useCallback(async (studentId: string, input: StudentInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>(`/api/students/${studentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const deleteStudent = useCallback(async (studentId: string) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>(`/api/students/${studentId}`, {
+      method: "DELETE"
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const importStudents = useCallback(async (studentsToImport: ImportedStudent[]) => {
+    const result = await fetchJson<{ added: number; skipped: string[]; bootstrap: AppBootstrap }>("/api/students/import", {
+      method: "POST",
+      body: JSON.stringify({ students: studentsToImport })
+    });
+    setBootstrap(result.bootstrap);
+    return {
+      added: result.added,
+      skipped: result.skipped
+    };
+  }, []);
+
+  const assignMission = useCallback(async (input: AssignMissionInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/assignments", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const archiveAssignment = useCallback(async (assignmentId: string) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>(`/api/assignments/${assignmentId}/archive`, {
+      method: "POST"
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const deleteAssignment = useCallback(async (assignmentId: string) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>(`/api/assignments/${assignmentId}`, {
+      method: "DELETE"
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const saveStudentWork = useCallback(async (input: SaveStudentWorkInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/student-work/save", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const submitStudentWork = useCallback(async (input: SubmitStudentWorkInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/student-work/submit", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const updateProfile = useCallback(async (input: ProfileInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/profile", {
+      method: "PATCH",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const createClassSession = useCallback(async (input: CreateClassSessionInput) => {
+    const result = await fetchJson<{ bootstrap: AppBootstrap }>("/api/class-sessions", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(result.bootstrap);
+  }, []);
+
+  const approveClassSession = useCallback(async (classSessionId: string) => {
+    const result = await fetchJson<{ bootstrap: AppBootstrap }>(`/api/class-sessions/${classSessionId}/approve`, {
+      method: "POST"
+    });
+    setBootstrap(result.bootstrap);
+  }, []);
+
+  const resetDemoData = useCallback(async () => {
+    await refreshData();
+  }, [refreshData]);
 
   const value = useMemo<DemoStore>(
     () => ({
       isReady,
-      institution: demoInstitution,
-      courses: demoCourses,
-      missions: demoMissions,
-      students,
-      assignments,
-      studentWorks,
-      profile,
-      session,
+      institution: bootstrap.institution,
+      courses: bootstrap.courses,
+      missions: bootstrap.missions,
+      students: bootstrap.students,
+      assignments: bootstrap.assignments,
+      studentWorks: bootstrap.studentWorks,
+      profile: bootstrap.profile,
+      session: bootstrap.session,
+      robots: bootstrap.robots,
+      classSessions: bootstrap.classSessions,
       loginWithPassword,
       loginWithProvider,
       loginStudentWithPassword,
@@ -536,28 +367,30 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       saveStudentWork,
       submitStudentWork,
       updateProfile,
-      resetDemoData
+      createClassSession,
+      approveClassSession,
+      resetDemoData,
+      refreshData
     }),
     [
       addStudent,
+      approveClassSession,
       archiveAssignment,
       assignMission,
-      assignments,
+      bootstrap,
+      createClassSession,
       deleteAssignment,
       deleteStudent,
       importStudents,
       isReady,
-      loginWithPassword,
-      loginWithProvider,
       loginStudentWithMissionCode,
       loginStudentWithPassword,
+      loginWithPassword,
+      loginWithProvider,
       logout,
-      profile,
+      refreshData,
       resetDemoData,
       saveStudentWork,
-      session,
-      studentWorks,
-      students,
       submitStudentWork,
       updateProfile,
       updateStudent

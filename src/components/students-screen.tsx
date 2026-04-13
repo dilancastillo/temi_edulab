@@ -218,8 +218,8 @@ export function StudentsScreen() {
         <StudentFormModal
           courses={courses}
           onClose={() => setMode(null)}
-          onSubmit={(input) => {
-            addStudent(input);
+          onSubmit={async (input) => {
+            await addStudent(input);
             setMode(null);
           }}
           title="Agregar estudiante"
@@ -231,8 +231,8 @@ export function StudentsScreen() {
           courses={courses}
           initialStudent={studentToEdit}
           onClose={() => setStudentToEdit(null)}
-          onSubmit={(input) => {
-            updateStudent(studentToEdit.id, input);
+          onSubmit={async (input) => {
+            await updateStudent(studentToEdit.id, input);
             setStudentToEdit(null);
           }}
           title="Editar estudiante"
@@ -242,8 +242,8 @@ export function StudentsScreen() {
       {mode === "import" ? (
         <ImportStudentsModal
           onClose={() => setMode(null)}
-          onImport={(rows) => {
-            const result = importStudents(rows);
+          onImport={async (rows) => {
+            const result = await importStudents(rows);
             return result;
           }}
         />
@@ -259,8 +259,8 @@ export function StudentsScreen() {
           }
           confirmLabel="Eliminar definitivamente"
           onCancel={() => setStudentToDelete(null)}
-          onConfirm={() => {
-            deleteStudent(studentToDelete.id);
+          onConfirm={async () => {
+            await deleteStudent(studentToDelete.id);
             setStudentToDelete(null);
           }}
           title="Eliminar estudiante"
@@ -281,7 +281,7 @@ function StudentFormModal({
   courses: Course[];
   initialStudent?: Student;
   onClose: () => void;
-  onSubmit: (input: StudentInput) => void;
+  onSubmit: (input: StudentInput) => Promise<void>;
   title: string;
 }>) {
   const [fullName, setFullName] = useState(initialStudent?.fullName ?? "");
@@ -304,9 +304,9 @@ function StudentFormModal({
     setAvatarUrl(await readFileAsDataUrl(file));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit({ avatarUrl, courseId, email, fullName });
+    await onSubmit({ avatarUrl, courseId, email, fullName });
   }
 
   return (
@@ -372,7 +372,7 @@ function ImportStudentsModal({
   onImport
 }: Readonly<{
   onClose: () => void;
-  onImport: (rows: ReturnType<typeof parseStudentsCsv>["students"]) => { added: number; skipped: string[] };
+  onImport: (rows: ReturnType<typeof parseStudentsCsv>["students"]) => Promise<{ added: number; skipped: string[] }>;
 }>) {
   const [csvName, setCsvName] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
@@ -402,7 +402,7 @@ function ImportStudentsModal({
       return;
     }
 
-    const result = onImport(parsed.students);
+    const result = await onImport(parsed.students);
     setErrors(result.skipped);
     setSummary(`${result.added} estudiantes importados desde ${file.name}.`);
   }

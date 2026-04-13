@@ -124,3 +124,48 @@ export type StudentLoginResult = {
   ok: boolean;
   message?: string;
 };
+
+export type Robot = {
+  id: string;
+  institutionId: string;
+  courseId?: string;
+  displayName: string;
+  classroomName?: string;
+  pairCode?: string;
+  connectionState: string;
+  batteryPercent?: number;
+  statusLabel?: string;
+  lastSeenAt?: string;
+};
+
+export type ClassSession = {
+  id: string;
+  institutionId: string;
+  robotId: string;
+  courseId: string;
+  assignmentId: string;
+  classroomName: string;
+  missionTitle: string;
+  activeStudentName?: string;
+  status: string;
+  currentStepLabel?: string;
+  progressPercent: number;
+  approvedAt?: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AppBootstrap = {
+  session: Session | null;
+  institution: Institution;
+  courses: Course[];
+  missions: Mission[];
+  students: Student[];
+  assignments: Assignment[];
+  studentWorks: StudentWork[];
+  profile: TeacherProfile;
+  robots: Robot[];
+  classSessions: ClassSession[];
+};

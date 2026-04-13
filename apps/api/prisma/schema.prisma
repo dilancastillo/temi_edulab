@@ -1,0 +1,321 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  TEACHER
+  STUDENT
+  INSTITUTION_ADMIN
+  ADMIN
+}
+
+enum AuthProvider {
+  PASSWORD
+  GOOGLE
+  MICROSOFT
+  MISSION_CODE
+  DEVICE
+}
+
+enum StudentProgress {
+  IN_PROGRESS
+  NEEDS_REVIEW
+  GRADED
+}
+
+enum MissionCategory {
+  FUNDAMENTALS
+  LOGIC
+  CONTROL
+  ROBOTICS
+}
+
+enum MissionAgeBand {
+  AGE_7_10
+  AGE_11_14
+  AGE_15_18
+}
+
+enum MissionStatus {
+  PUBLISHED
+  DRAFT
+}
+
+enum CoverTone {
+  BLUE
+  GREEN
+  YELLOW
+  RED
+  INDIGO
+  SLATE
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum StudentWorkStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum ClassSessionStatus {
+  PENDING_APPROVAL
+  READY
+  RUNNING
+  PAUSED
+  ERROR
+  SAFE_MODE
+  COMPLETED
+}
+
+enum PairingStatus {
+  PENDING
+  CONFIRMED
+  CONSUMED
+  EXPIRED
+}
+
+model Institution {
+  id            String          @id
+  name          String
+  slug          String          @unique
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  courses       Course[]
+  users         User[]
+  assignments   Assignment[]
+  studentWorks  StudentWork[]
+  robots        Robot[]
+  classSessions ClassSession[]
+  pairingRequests PairingRequest[]
+}
+
+model Course {
+  id            String          @id
+  institutionId String
+  name          String
+  level         String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  institution   Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  students      User[]          @relation("CourseStudents")
+  assignments   Assignment[]
+  robots        Robot[]
+  classSessions ClassSession[]
+
+  @@unique([institutionId, name])
+}
+
+model User {
+  id               String           @id
+  institutionId    String?
+  courseId         String?
+  role             UserRole
+  authProvider     AuthProvider     @default(PASSWORD)
+  fullName         String
+  email            String           @unique
+  passwordHash     String?
+  biography        String?
+  avatarUrl        String?
+  progress         StudentProgress?
+  currentMissionId String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  institution      Institution?     @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  course           Course?          @relation("CourseStudents", fields: [courseId], references: [id], onDelete: SetNull)
+  teacherAssignments Assignment[]   @relation("AssignmentsByTeacher")
+  studentWorks     StudentWork[]    @relation("StudentWorksByStudent")
+  webSessions      WebSession[]
+  taughtSessions   ClassSession[]   @relation("ClassSessionsByTeacher")
+  pairingApprovals PairingRequest[] @relation("PairingApprovedBy")
+}
+
+model WebSession {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Mission {
+  id              String          @id
+  title           String
+  summary         String
+  category        MissionCategory
+  ageBand         MissionAgeBand
+  durationMinutes Int
+  outcomes        Json
+  status          MissionStatus
+  coverTone       CoverTone
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  assignments     Assignment[]
+  studentWorks    StudentWork[]
+}
+
+model Assignment {
+  id             String           @id
+  institutionId  String
+  courseId       String
+  missionId      String
+  missionCode    String           @unique
+  instructions   String?
+  status         AssignmentStatus
+  assignedAt     DateTime
+  assignedById   String
+  completedCount Int              @default(0)
+  reviewCount    Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  institution    Institution      @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  mission        Mission          @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  assignedBy     User             @relation("AssignmentsByTeacher", fields: [assignedById], references: [id], onDelete: Restrict)
+  studentWorks   StudentWork[]
+  classSessions  ClassSession[]
+
+  @@index([institutionId, status])
+  @@index([courseId, status])
+}
+
+model StudentWork {
+  id            String            @id
+  institutionId String
+  studentId     String
+  assignmentId  String
+  missionId     String
+  workspaceState Json?
+  stepIndex     Int
+  status        StudentWorkStatus
+  updatedAt     DateTime
+  submittedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  institution   Institution       @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  student       User              @relation("StudentWorksByStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  assignment    Assignment        @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  mission       Mission           @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, assignmentId])
+}
+
+model Robot {
+  id              String          @id
+  institutionId   String
+  courseId        String?
+  displayName     String
+  slug            String          @unique
+  classroomName   String?
+  pairCode        String?         @unique
+  pairCodeExpiresAt DateTime?
+  deviceTokenHash String?         @unique
+  tokenExpiresAt  DateTime?
+  connectionState String          @default("CHECKING")
+  batteryPercent  Int?
+  statusLabel     String?
+  lastSeenAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  institution     Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  course          Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  locations       RobotLocation[]
+  classSessions   ClassSession[]
+  robotEvents     RobotEvent[]
+  pairingRequests PairingRequest[]
+
+  @@index([institutionId])
+}
+
+model RobotLocation {
+  id              String   @id @default(cuid())
+  robotId         String
+  name            String
+  normalizedName  String
+  available       Boolean
+  detail          String?
+  lastValidatedAt DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  robot           Robot    @relation(fields: [robotId], references: [id], onDelete: Cascade)
+
+  @@unique([robotId, normalizedName])
+  @@index([robotId, available])
+}
+
+model ClassSession {
+  id               String             @id
+  institutionId    String
+  robotId          String
+  courseId         String
+  assignmentId     String
+  teacherId        String
+  classroomName    String
+  missionTitle     String
+  activeStudentName String?
+  status           ClassSessionStatus
+  missionRuntime   Json
+  currentStepLabel String?
+  progressPercent  Int                @default(0)
+  approvedAt       DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  institution      Institution        @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  robot            Robot              @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  course           Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignment       Assignment         @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  teacher          User               @relation("ClassSessionsByTeacher", fields: [teacherId], references: [id], onDelete: Restrict)
+  robotEvents      RobotEvent[]
+
+  @@index([robotId, status])
+  @@index([institutionId, status])
+}
+
+model RobotEvent {
+  id             String       @id @default(cuid())
+  robotId        String
+  classSessionId String?
+  idempotencyKey String       @unique
+  eventType      String
+  payload        Json
+  createdAt      DateTime     @default(now())
+  robot          Robot        @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  classSession   ClassSession? @relation(fields: [classSessionId], references: [id], onDelete: SetNull)
+
+  @@index([robotId, createdAt])
+}
+
+model PairingRequest {
+  id                 String        @id @default(cuid())
+  robotId            String?
+  institutionId      String?
+  confirmedById      String?
+  code               String        @unique
+  proposedName       String
+  classroomName      String?
+  sessionUri         String?
+  status             PairingStatus @default(PENDING)
+  pendingDeviceToken String?
+  expiresAt          DateTime
+  confirmedAt        DateTime?
+  consumedAt         DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  robot              Robot?        @relation(fields: [robotId], references: [id], onDelete: SetNull)
+  institution        Institution?  @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  confirmedBy        User?         @relation("PairingApprovedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@index([status, expiresAt])
+}

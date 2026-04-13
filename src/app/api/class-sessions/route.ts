@@ -1,0 +1,33 @@
+import { NextRequest, NextResponse } from "next/server";
+import { callBackend } from "@/lib/server/backend";
+import { getSessionToken } from "@/lib/server/auth-cookie";
+import { toRouteErrorResponse } from "@/lib/server/route-response";
+
+export async function GET() {
+  try {
+    const token = await getSessionToken();
+    const result = await callBackend("/v1/class-sessions", {
+      token
+    });
+
+    return NextResponse.json(result);
+  } catch (error) {
+    return toRouteErrorResponse(error);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const token = await getSessionToken();
+    const body = await request.json();
+    const result = await callBackend("/v1/class-sessions", {
+      method: "POST",
+      body,
+      token
+    });
+
+    return NextResponse.json(result);
+  } catch (error) {
+    return toRouteErrorResponse(error);
+  }
+}
