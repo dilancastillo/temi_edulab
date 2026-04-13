@@ -113,7 +113,6 @@ export function LoginScreen() {
         <Link className="text-link" href="/estudiante/login">
           Entrar como estudiante
         </Link>
-        <p className="hint">Para producción se conectarán proveedores OAuth reales y políticas de sesión seguras.</p>
       </section>
     </main>
   );

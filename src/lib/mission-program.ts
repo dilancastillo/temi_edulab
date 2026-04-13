@@ -6,6 +6,16 @@ export type ProgramStep = {
   helper: string;
 };
 
+export type BlockWithFields = {
+  type: ProgramBlockType;
+  fields?: Record<string, string>;
+};
+
+export type NavigateStep = {
+  type: "Navigate";
+  primaryValue: string;
+};
+
 export const orderStepsProgram: ProgramStep[] = [
   {
     type: "temi_start",
@@ -14,8 +24,8 @@ export const orderStepsProgram: ProgramStep[] = [
   },
   {
     type: "temi_move",
-    label: "Avanzar 2 pasos",
-    helper: "Haz que Temi avance antes de hablar."
+    label: "Ir a ubicación",
+    helper: "Haz que Temi navegue a una ubicación del mapa."
   },
   {
     type: "temi_say",
@@ -42,11 +52,25 @@ export type ProgramEvaluation = {
   message: string;
 };
 
-export function evaluateOrderSteps(sequence: string[], program = orderStepsProgram): ProgramEvaluation {
+export function extractNavigateStep(block: BlockWithFields): NavigateStep | null {
+  const location = block.fields?.LOCATION ?? "";
+  if (!location) {
+    console.warn("temi_move: campo LOCATION vacío o ausente, se omite el paso.");
+    return null;
+  }
+  return { type: "Navigate", primaryValue: location };
+}
+
+export function evaluateOrderSteps(
+  sequence: string[] | BlockWithFields[],
+  program = orderStepsProgram
+): ProgramEvaluation {
   let completedSteps = 0;
 
   for (const expectedStep of program) {
-    if (sequence[completedSteps] !== expectedStep.type) {
+    const item = sequence[completedSteps];
+    const blockType = typeof item === "string" ? item : item?.type;
+    if (blockType !== expectedStep.type) {
       break;
     }
     completedSteps += 1;

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { BlocklyWorkspace } from "@/components/blockly-workspace";
 import { ConfirmDialog } from "@/components/modal";
+import { ExecuteButton } from "@/components/execute-button";
 import { useDemoStore } from "@/components/demo-store-provider";
 import { evaluateOrderSteps, orderStepsProgram } from "@/lib/mission-program";
 
@@ -120,6 +121,7 @@ export function StudentMissionScreen() {
           }}
           readOnly={isSubmitted}
         />
+        <ExecuteButton workspaceState={workspaceState} sequence={sequence} />
       </section>
 
       {isConfirmingSubmit ? (

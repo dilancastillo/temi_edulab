@@ -1,0 +1,197 @@
+From d72f7ba59ec90908c884354ea9a0df4093e397da Mon Sep 17 00:00:00 2001
+From: andrespatrabajo02-crypto <andrespatrabajo02@gmail.com>
+Date: Sat, 11 Apr 2026 12:17:36 -0500
+Subject: [PATCH 1/2] Fix: Student progress by mission in the directory
+
+---
+ FIX_STUDENT_PROGRESS_BY_MISSION.md     | 81 ++++++++++++++++++++++++++
+ src/components/demo-store-provider.tsx |  8 ++-
+ src/components/students-screen.tsx     | 35 +++++++++--
+ 3 files changed, 117 insertions(+), 7 deletions(-)
+ create mode 100644 FIX_STUDENT_PROGRESS_BY_MISSION.md
+
+diff --git a/FIX_STUDENT_PROGRESS_BY_MISSION.md b/FIX_STUDENT_PROGRESS_BY_MISSION.md
+new file mode 100644
+index 0000000..0d4d82d
+--- /dev/null
++++ b/FIX_STUDENT_PROGRESS_BY_MISSION.md
+@@ -0,0 +1,81 @@
++# Fix: Progreso de estudiante por misión en el directorio
++
++## Problema
++
++En el directorio de estudiantes, al filtrar por una misión específica, la columna "Progreso" mostraba el progreso global del estudiante (`student.progress`), no el progreso real en esa misión. Esto causaba que Ana apareciera como "Revisar" en todas las misiones aunque solo había enviado una.
++
++Además, el filtro de misión usaba `student.currentMissionId` (un solo campo), por lo que un estudiante con dos misiones asignadas solo aparecía en el filtro de una de ellas.
++
++## Causa
++
++### 1. Filtro de misión incorrecto
++```ts
++// Antes - solo filtraba por la misión actual del estudiante
++const matchesMission = missionId === "all" || student.currentMissionId === missionId;
++```
++
++### 2. Progreso global en lugar de por misión
++```tsx
++// Antes - mostraba el progreso global
++<span className={`status-pill status-${student.progress...}`}>
++  {student.progress}
++</span>
++```
++
++### 3. assignMission sobreescribía currentMissionId
++```ts
++// Antes - la segunda misión asignada borraba la primera
++currentMissionId: input.missionId
++```
++
++## Solución
++
++### 1. Filtro por asignaciones activas del curso
++```ts
++const courseIdsWithMission = missionId === "all"
++  ? null
++  : new Set(
++      assignments
++        .filter((a) => a.status === "active" && a.missionId === missionId)
++        .map((a) => a.courseId)
++    );
++
++const matchesMission = courseIdsWithMission === null || courseIdsWithMission.has(student.courseId);
++```
++
++### 2. Progreso calculado por misión usando studentWorks
++```ts
++const missionAssignment = missionId !== "all"
++  ? assignments.find((a) => a.missionId === missionId && a.courseId === student.courseId && a.status === "active")
++  : null;
++const studentWork = missionAssignment
++  ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === missionAssignment.id)
++  : null;
++const missionProgress = studentWork?.status === "submitted"
++  ? "Revisar"
++  : missionId !== "all"
++    ? "En curso"
++    : student.progress;
++```
++
++### 3. assignMission no sobreescribe currentMissionId si ya existe
++```ts
++// Después - conserva la misión anterior
++currentMissionId: student.currentMissionId ?? input.missionId
++```
++
++### 4. Datos demo limpiados
++Se eliminaron `currentMissionId`, `demoAssignments` y `demoStudentWorks` pre-cargados para que el docente asigne misiones manualmente y el flujo funcione correctamente desde cero.
++
++## Archivos modificados
++
++- `src/components/students-screen.tsx`
++- `src/components/demo-store-provider.tsx`
++- `src/lib/demo-data.ts`
++
++## Comportamiento esperado
++
++1. Docente asigna dos misiones al mismo curso (ej: "Toma decisiones" y "Acciones y eventos")
++2. Al presionar "Ver progreso" de "Toma decisiones" → aparecen todos los estudiantes del curso con su progreso real en esa misión
++3. Al presionar "Ver progreso" de "Acciones y eventos" → aparecen todos los estudiantes con su progreso real en esa misión
++4. Si Ana solo envió "Acciones y eventos", aparece "Revisar" en esa misión y "En curso" en "Toma decisiones"
+diff --git a/src/components/demo-store-provider.tsx b/src/components/demo-store-provider.tsx
+index 8662f65..d4008c3 100644
+--- a/src/components/demo-store-provider.tsx
++++ b/src/components/demo-store-provider.tsx
+@@ -402,7 +402,13 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
+ 
+       setStudents((current) =>
+         current.map((student) =>
+-          student.courseId === input.courseId ? { ...student, currentMissionId: input.missionId, progress: "En curso" } : student
++          student.courseId === input.courseId
++            ? {
++                ...student,
++                currentMissionId: student.currentMissionId ?? input.missionId,
++                progress: "En curso"
++              }
++            : student
+         )
+       );
+     },
+diff --git a/src/components/students-screen.tsx b/src/components/students-screen.tsx
+index 66218c0..a97a8e9 100644
+--- a/src/components/students-screen.tsx
++++ b/src/components/students-screen.tsx
+@@ -14,7 +14,7 @@ const pageSize = 5;
+ const progressFilters = ["Todos", "En curso", "Revisar", "Calificado"] as const;
+ 
+ export function StudentsScreen() {
+-  const { addStudent, courses, deleteStudent, importStudents, missions, students, updateStudent } = useDemoStore();
++  const { addStudent, courses, assignments, deleteStudent, importStudents, missions, students, studentWorks, updateStudent } = useDemoStore();
+   const searchParams = useSearchParams();
+   const initialMissionId = searchParams.get("mision") ?? "all";
+ 
+@@ -30,6 +30,15 @@ export function StudentsScreen() {
+   const filteredStudents = useMemo(() => {
+     const normalisedQuery = query.trim().toLowerCase();
+ 
++    // Para el filtro de misión: buscar qué cursos tienen esa misión asignada
++    const courseIdsWithMission = missionId === "all"
++      ? null
++      : new Set(
++          assignments
++            .filter((a) => a.status === "active" && a.missionId === missionId)
++            .map((a) => a.courseId)
++        );
++
+     return students.filter((student) => {
+       const matchesQuery =
+         !normalisedQuery ||
+@@ -37,10 +46,10 @@ export function StudentsScreen() {
+         student.email.toLowerCase().includes(normalisedQuery);
+       const matchesCourse = courseId === "all" || student.courseId === courseId;
+       const matchesProgress = progress === "Todos" || student.progress === progress;
+-      const matchesMission = missionId === "all" || student.currentMissionId === missionId;
++      const matchesMission = courseIdsWithMission === null || courseIdsWithMission.has(student.courseId);
+       return matchesQuery && matchesCourse && matchesProgress && matchesMission;
+     });
+-  }, [courseId, missionId, progress, query, students]);
++  }, [assignments, courseId, missionId, progress, query, students]);
+ 
+   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+   const boundedPage = Math.min(page, totalPages);
+@@ -155,7 +164,21 @@ export function StudentsScreen() {
+             <tbody>
+               {pageStudents.map((student) => {
+                 const course = courses.find((candidate) => candidate.id === student.courseId);
+-                const mission = missions.find((candidate) => candidate.id === student.currentMissionId);
++                const displayMissionId = missionId !== "all" ? missionId : student.currentMissionId;
++                const mission = missions.find((candidate) => candidate.id === displayMissionId);
++
++                // Calcular progreso por misión usando studentWorks
++                const missionAssignment = missionId !== "all"
++                  ? assignments.find((a) => a.missionId === missionId && a.courseId === student.courseId && a.status === "active")
++                  : null;
++                const studentWork = missionAssignment
++                  ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === missionAssignment.id)
++                  : null;
++                const missionProgress: typeof student.progress = studentWork?.status === "submitted"
++                  ? "Revisar"
++                  : missionId !== "all"
++                    ? "En curso"
++                    : student.progress;
+ 
+                 return (
+                   <tr key={student.id}>
+@@ -174,8 +197,8 @@ export function StudentsScreen() {
+                     </td>
+                     <td>{course?.name ?? "Sin curso"}</td>
+                     <td>
+-                      <span className={`status-pill status-${student.progress.toLowerCase().replace(" ", "-")}`}>
+-                        {student.progress}
++                      <span className={`status-pill status-${missionProgress.toLowerCase().replace(" ", "-")}`}>
++                        {missionProgress}
+                       </span>
+                     </td>
+                     <td>{mission?.title ?? "Sin misión"}</td>
+-- 
+2.45.1.windows.1
+

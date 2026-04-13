@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { BlocklyWorkspace } from "@/components/blockly-workspace";
+import { ExecuteButton } from "@/components/execute-button";
 import { evaluateOrderSteps } from "@/lib/mission-program";
 
 export function StudentFreePlayScreen() {
   const [sequence, setSequence] = useState<string[]>([]);
+  const [workspaceState, setWorkspaceState] = useState<unknown>(undefined);
   const evaluation = evaluateOrderSteps(sequence);
 
   return (
@@ -17,9 +19,13 @@ export function StudentFreePlayScreen() {
       </section>
       <BlocklyWorkspace
         initialState={undefined}
-        onChange={({ sequence: nextSequence }) => setSequence(nextSequence)}
+        onChange={({ sequence: nextSequence, workspaceState: nextState }) => {
+          setSequence(nextSequence);
+          setWorkspaceState(nextState);
+        }}
         readOnly={false}
       />
+      <ExecuteButton workspaceState={workspaceState} sequence={sequence} />
       <p className="success-message" aria-live="polite">
         {evaluation.message}
       </p>

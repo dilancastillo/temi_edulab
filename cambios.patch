@@ -1,0 +1,12 @@
+diff --git a/src/components/login-screen.tsx b/src/components/login-screen.tsx
+index d56ec81..c4a9c17 100644
+--- a/src/components/login-screen.tsx
++++ b/src/components/login-screen.tsx
+@@ -113,7 +113,6 @@ export function LoginScreen() {
+         <Link className="text-link" href="/estudiante/login">
+           Entrar como estudiante
+         </Link>
+-        <p className="hint">Para producción se conectarán proveedores OAuth reales y políticas de sesión seguras.</p>
+       </section>
+     </main>
+   );

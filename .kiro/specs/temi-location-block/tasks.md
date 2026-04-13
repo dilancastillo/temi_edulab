@@ -2,22 +2,25 @@
 
 ## Overview
 
-Reemplazar el bloque Blockly `temi_move` ("avanzar N pasos") por un bloque "ir a [ubicación ▼]" con dropdown de ubicaciones reales del mapa del robot Temi V3. El plan cubre: servidor HTTP embebido en Android, consulta de ubicaciones desde la Web App, redefinición del bloque Blockly, actualización de `mission-program.ts` y verificación de la ejecución del `Navigate_Command` en la Temi_App.
+Reemplazar el bloque Blockly `temi_move` ("avanzar N pasos") por un bloque "ir a [ubicación ▼]" con dropdown de ubicaciones reales del mapa del robot Temi V3. El plan cubre: servidor HTTP embebido en Android (usando Hilt para DI), consulta de ubicaciones desde la Web App, redefinición del bloque Blockly, actualización de `mission-program.ts`.
+
+**App Android de referencia:** `apps/App_Edulab` (arquitectura Hilt + reflexión Temi SDK)
 
 ## Tasks
 
-- [ ] 1. Crear `LocationHttpServer` en la app Android
-  - Crear `apps/robot-temi/app/src/main/java/com/esbot/edulab/robot/runtime/LocationHttpServer.kt`
+- [x] 1. Crear interfaz y clase `LocationServer` en la app Android
+  - Crear `apps/App_Edulab/app/src/main/java/com/esbot/edulab/core/robot/LocationServer.kt`
+  - Definir interfaz `LocationServer` con métodos `start()` y `stop()` (mismo patrón que `BatteryStatusProvider`)
+  - Crear `apps/App_Edulab/app/src/main/java/com/esbot/edulab/core/robot/TemiLocationServer.kt`
   - Usar `com.sun.net.httpserver.HttpServer` en el puerto 8765
-  - El handler lee `dao.getLocations()`, filtra `available = true` y serializa a `{"locations": [...]}` con la función de extensión `List<String>.toLocationsJson()`
-  - Incluir cabecera `Access-Control-Allow-Origin: *` y `Content-Type: application/json` en todas las respuestas
-  - Responder HTTP 404 para paths desconocidos; capturar excepciones del DAO y responder `{"locations": []}` con HTTP 200 logueando con `Log.w`
-  - Exponer métodos `start()` y `stop()`
+  - El handler obtiene las ubicaciones del robot via reflexión sobre el SDK de Temi (igual que `TemiBatteryObserver` usa reflexión)
+  - Incluir cabecera `Access-Control-Allow-Origin: *` y `Content-Type: application/json`
+  - Responder HTTP 404 para paths desconocidos; capturar excepciones y responder `{"locations": []}` con HTTP 200 logueando con `Log.w`
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
   - [ ]* 1.1 Escribir property test P1: serialización JSON solo incluye ubicaciones disponibles
-    - Usar Kotest Property Testing con listas aleatorias de `MapLocationEntity` con `available` aleatorio
-    - Verificar que el JSON producido solo contiene nombres con `available = true`
+    - Usar Kotest Property Testing con listas aleatorias de nombres con disponibilidad aleatoria
+    - Verificar que el JSON producido solo contiene nombres disponibles
     - **Property 1: Serialización JSON solo incluye ubicaciones disponibles**
     - **Validates: Requirements 1.2, 1.3**
 
@@ -25,22 +28,22 @@ Reemplazar el bloque Blockly `temi_move` ("avanzar N pasos") por un bloque "ir a
     - Iniciar el servidor, hacer petición GET `/locations`, verificar `Access-Control-Allow-Origin: *`
     - _Requirements: 1.4_
 
-- [ ] 2. Integrar `LocationHttpServer` en `MissionRuntimeEngine` y `AppContainer`
-  - Modificar `MissionRuntimeEngine` para recibir `LocationHttpServer` como parámetro en el constructor
-  - Llamar a `locationServer.start()` en `boot()` y `locationServer.stop()` en `resetToStandby()`
-  - Modificar `AppContainer` para instanciar `LocationHttpServer(database.robotDao())` y pasarlo al `MissionRuntimeEngine`
+- [x] 2. Registrar `LocationServer` en Hilt via `RobotModule`
+  - Añadir `@Provides @Singleton fun provideLocationServer(...): LocationServer = TemiLocationServer(...)` en `RobotModule.kt`
+  - Inyectar `LocationServer` en `HomeViewModel` via constructor con `@Inject`
+  - Llamar a `locationServer.start()` en `init {}` del ViewModel y `locationServer.stop()` en `onCleared()`
   - _Requirements: 1.1, 1.5_
 
-  - [ ]* 2.1 Escribir property test P2: el servidor refleja el estado actual de la base de datos
-    - Usar Kotest PBT con dos listas distintas A y B
-    - Verificar que tras actualizar la DB a B, la siguiente petición retorna B
-    - **Property 2: El servidor refleja el estado actual de la base de datos**
+  - [ ]* 2.1 Escribir property test P2: el servidor refleja el estado actual del robot
+    - Usar Kotest PBT verificando que tras actualizar las ubicaciones del robot, la siguiente petición retorna la lista actualizada
+    - **Property 2: El servidor refleja el estado actual del robot**
     - **Validates: Requirements 1.5**
 
-- [ ] 3. Checkpoint — Verificar que la app Android compila y los tests pasan
+- [x] 3. Checkpoint — Verificar que la app Android compila y los tests pasan
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Agregar `fetchRobotLocations` en `src/lib/robot-adapter.ts`
+- [x] 4. Agregar `fetchRobotLocations` en `src/lib/robot-adapter.ts`
+  - Crear el archivo `src/lib/robot-adapter.ts` si no existe
   - Añadir la constante `ROBOT_API_URL` usando `process.env.NEXT_PUBLIC_ROBOT_API_URL ?? "http://localhost:8765"`
   - Añadir la constante `FALLBACK_LOCATIONS = ["Sala Principal"]`
   - Implementar `fetchRobotLocations(): Promise<string[]>` con timeout de 3000 ms usando `AbortController`
@@ -61,7 +64,7 @@ Reemplazar el bloque Blockly `temi_move` ("avanzar N pasos") por un bloque "ir a
     - Test: URL construida desde `NEXT_PUBLIC_ROBOT_API_URL`
     - _Requirements: 2.1, 2.2, 2.4_
 
-- [ ] 5. Redefinir el bloque `temi_move` en `BlocklyWorkspace` con `field_dropdown`
+- [x] 5. Redefinir el bloque `temi_move` en `BlocklyWorkspace` con `field_dropdown`
   - Modificar `defineTemiBlocks` en `src/components/blockly-workspace.tsx` para aceptar un parámetro `locations: string[]`
   - Reemplazar la definición de `temi_move`: `message0: "ir a %1"`, `args0[0]` de tipo `field_dropdown` con nombre `LOCATION` y opciones `locations.map(l => [l, l])`
   - Si `locations` está vacío, usar `[["Sala Principal", "Sala Principal"]]` como opciones
@@ -80,7 +83,7 @@ Reemplazar el bloque Blockly `temi_move` ("avanzar N pasos") por un bloque "ir a
     - Test: fallback `[["Sala Principal", "Sala Principal"]]` cuando la lista está vacía
     - _Requirements: 3.1, 3.3_
 
-- [ ] 6. Actualizar `mission-program.ts` para el nuevo bloque `temi_move`
+- [x] 6. Actualizar `mission-program.ts` para el nuevo bloque `temi_move`
   - En `src/lib/mission-program.ts`, cambiar el entry de `temi_move` en `orderStepsProgram`:
     - `label`: `"Avanzar 2 pasos"` → `"Ir a ubicación"`
     - `helper`: actualizar a `"Haz que Temi navegue a una ubicación del mapa."`
@@ -99,7 +102,7 @@ Reemplazar el bloque Blockly `temi_move` ("avanzar N pasos") por un bloque "ir a
     - Test: campo `LOCATION` vacío omite el paso y llama `console.warn`
     - _Requirements: 4.3, 4.4_
 
-- [ ] 7. Verificar la serialización y deserialización del workspace con el nuevo bloque
+- [x] 7. Verificar la serialización y deserialización del workspace con el nuevo bloque
   - Confirmar que el `try/catch` existente en `loadBlockly` captura workspaces con el formato antiguo (`STEPS`) sin lanzar excepción
   - No se requieren cambios de código adicionales; este task valida el comportamiento existente con el nuevo bloque
   - _Requirements: 6.1, 6.2, 6.4_
@@ -114,26 +117,15 @@ Reemplazar el bloque Blockly `temi_move` ("avanzar N pasos") por un bloque "ir a
     - Cargar un JSON con `"fields": { "STEPS": 2 }`, verificar que no se lanza excepción
     - _Requirements: 6.4_
 
-- [ ] 8. Verificar la ejecución del `Navigate_Command` en `MissionRuntimeEngine`
-  - Confirmar que `executeNavigate` en `MissionRuntimeEngine.kt` ya implementa correctamente la búsqueda por nombre (case-insensitive) y los casos de error
-  - No se requieren cambios funcionales; este task valida el comportamiento existente contra los requisitos
-  - _Requirements: 5.1, 5.2, 5.3, 5.4_
-
-  - [ ]* 8.1 Escribir property test P7: lookup de ubicación en executeNavigate es correcto
-    - Usar Kotest PBT con listas de `MapLocationEntity` y nombres aleatorios
-    - Verificar que `bridge.goTo` se llama si y solo si existe una entidad con ese nombre (case-insensitive) y `available = true`; en caso contrario se llama `showRecoverableError` con `studentCanResolve = false, autoRetryPlanned = false`
-    - **Property 7: Lookup de ubicación en executeNavigate es correcto**
-    - **Validates: Requirements 5.1, 5.2, 5.3**
-
-  - [ ]* 8.2 Escribir unit test: `bridge.goTo` fallido llama `showRecoverableError` con `autoRetryPlanned = true`
-    - _Requirements: 5.4_
-
-- [ ] 9. Checkpoint final — Ensure all tests pass, ask the user if questions arise.
+- [x] 8. Checkpoint final — Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
 
 - Las tareas marcadas con `*` son opcionales y pueden omitirse para un MVP más rápido
-- Cada tarea referencia los requisitos específicos para trazabilidad
-- `executeNavigate` en `MissionRuntimeEngine` ya implementa la lógica correcta (Req 5); las tareas 8 y 8.1/8.2 son de validación
+- **App Android de referencia:** `apps/App_Edulab` — usa Hilt para DI y reflexión para el SDK de Temi
+- La tarea 1 sigue el patrón `BatteryStatusProvider` (interfaz) + `TemiBatteryObserver` (implementación)
+- La tarea 2 sigue el patrón `RobotModule` para registrar el servidor en Hilt
+- No existe `MissionRuntimeEngine` en `App_Edulab`; el ciclo de vida del servidor se maneja desde `HomeViewModel`
 - Los property tests usan **Kotest Property Testing** (Android/Kotlin) y **fast-check** (TypeScript/Web)
 - La compatibilidad hacia atrás con workspaces en formato antiguo (`STEPS`) está cubierta por el `try/catch` existente en `loadBlockly`
+- El spec original referenciaba `apps/robot-temi` y `AppContainer` — ambos reemplazados por `apps/App_Edulab` y Hilt

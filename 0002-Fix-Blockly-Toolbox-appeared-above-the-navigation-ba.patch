@@ -1,0 +1,81 @@
+From 76d9edf39ebf7e0eb813dcdd42d3aa55b3bee2ec Mon Sep 17 00:00:00 2001
+From: andrespatrabajo02-crypto <andrespatrabajo02@gmail.com>
+Date: Sat, 11 Apr 2026 12:25:45 -0500
+Subject: [PATCH 2/2] Fix: Blockly Toolbox appeared above the navigation bar
+ and modal
+
+---
+ FIX_BLOCKLY_ZINDEX.md | 38 ++++++++++++++++++++++++++++++++++++++
+ src/app/globals.css   |  4 ++--
+ 2 files changed, 40 insertions(+), 2 deletions(-)
+ create mode 100644 FIX_BLOCKLY_ZINDEX.md
+
+diff --git a/FIX_BLOCKLY_ZINDEX.md b/FIX_BLOCKLY_ZINDEX.md
+new file mode 100644
+index 0000000..8b305ad
+--- /dev/null
++++ b/FIX_BLOCKLY_ZINDEX.md
+@@ -0,0 +1,38 @@
++# Fix: Toolbox de Blockly aparecía sobre el navbar y el modal
++
++## Problema
++
++El toolbox de Blockly (categorías: Movimiento, Hablar, Mostrar, Audio) aparecía por encima de:
++- La barra de navegación del estudiante al hacer scroll
++- El modal "¿Listo para enviar?" al abrirlo
++
++## Causa
++
++Blockly inyecta su toolbox directamente en el `body` del DOM con un z-index interno muy alto (~70-999). Los elementos del proyecto tenían z-index bajos:
++
++```css
++/* Antes */
++.student-topbar { z-index: 5; }
++.modal-backdrop { z-index: 10; }
++```
++
++Ambos valores eran menores al z-index que Blockly usa internamente, por lo que el toolbox quedaba visible por encima de ellos.
++
++## Solución
++
++Subir el z-index del navbar y del modal por encima del toolbox de Blockly:
++
++```css
++/* Después */
++.student-topbar { z-index: 1000; }
++.modal-backdrop { z-index: 9999; }
++```
++
++## Archivo modificado
++
++- `src/app/globals.css`
++
++## Comportamiento esperado
++
++1. Al hacer scroll en la pantalla de misión, el navbar permanece por encima del toolbox de Blockly
++2. Al abrir el modal "¿Listo para enviar?", el toolbox no aparece encima del modal
+diff --git a/src/app/globals.css b/src/app/globals.css
+index a131bdb..dcfabf2 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -715,7 +715,7 @@ td {
+ .modal-backdrop {
+   position: fixed;
+   inset: 0;
+-  z-index: 10;
++  z-index: 9999;
+   display: grid;
+   place-items: center;
+   padding: 1rem;
+@@ -955,7 +955,7 @@ td {
+ .student-topbar {
+   position: sticky;
+   top: 0;
+-  z-index: 5;
++  z-index: 1000;
+   display: grid;
+   grid-template-columns: auto minmax(0, 1fr) auto;
+   align-items: center;
+-- 
+2.45.1.windows.1
+

@@ -47,8 +47,11 @@ const toolbox = {
   ]
 };
 
-function defineTemiBlocks(Blockly: typeof BlocklyType) {
+function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
   if (Blockly.Blocks.temi_start) return;
+
+  const dropdownOptions: [string, string][] =
+    locations.length > 0 ? locations.map((l) => [l, l]) : [["Sala Principal", "Sala Principal"]];
 
   Blockly.common.defineBlocksWithJsonArray([
     {
@@ -61,8 +64,8 @@ function defineTemiBlocks(Blockly: typeof BlocklyType) {
     },
     {
       type: "temi_move",
-      message0: "avanzar %1 pasos",
-      args0: [{ type: "field_number", name: "STEPS", value: 2, min: 1, max: 5 }],
+      message0: "ir a %1",
+      args0: [{ type: "field_dropdown", name: "LOCATION", options: dropdownOptions }],
       previousStatement: null,
       nextStatement: null,
       colour: 215,
@@ -154,7 +157,10 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false }: R
       const Blockly = await import("blockly");
       if (!isMounted || !containerRef.current) return;
 
-      defineTemiBlocks(Blockly);
+      const { fetchRobotLocations } = await import("@/lib/robot-adapter");
+      const locations = await fetchRobotLocations();
+
+      defineTemiBlocks(Blockly, locations);
       blocklyRef.current = Blockly;
 
       const workspace = Blockly.inject(containerRef.current, {
