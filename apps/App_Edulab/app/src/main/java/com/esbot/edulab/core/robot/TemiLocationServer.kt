@@ -139,17 +139,15 @@ class TemiLocationServer @Inject constructor(
             return 400 to """{"ok":false,"message":"Bad request"}"""
         }
 
-        // Ejecutar comandos Navigate; ignorar tipos desconocidos
-        for (command in commands) {
-            val result = commandRunner.run(command)
-            if (result.isFailure) {
-                val msg = result.exceptionOrNull()?.message ?: "Error desconocido"
-                Log.e(TAG, "commandRunner.run falló: $msg")
-                return 500 to """{"ok":false,"message":"${msg.replace("\"", "\\\"")}"}"""
-            }
+        // Ejecutar comandos secuencialmente
+        val result = commandRunner.runSequence(commands)
+        if (result.isFailure) {
+            val msg = result.exceptionOrNull()?.message ?: "Error desconocido"
+            Log.e(TAG, "runSequence falló: $msg")
+            return 500 to """{"ok":false,"message":"${msg.replace("\"", "\\\"")}"}"""
         }
 
-        return 200 to """{"ok":true,"message":"Navigate dispatched"}"""
+        return 200 to """{"ok":true,"message":"Ejecutado"}"""
     }
 
     /**
@@ -185,6 +183,13 @@ class TemiLocationServer @Inject constructor(
                         val location = locationMatch?.groupValues?.getOrNull(1)
                         if (!location.isNullOrEmpty()) {
                             commands.add(RobotCommand.Navigate(location))
+                        }
+                    }
+                    "Say" -> {
+                        val textMatch = Regex(""""text"\s*:\s*"([^"]*)"""").find(objStr)
+                        val text = textMatch?.groupValues?.getOrNull(1)
+                        if (!text.isNullOrEmpty()) {
+                            commands.add(RobotCommand.Say(text))
                         }
                     }
                     else -> {

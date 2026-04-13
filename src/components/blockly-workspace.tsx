@@ -11,6 +11,7 @@ type WorkspaceChange = {
 type BlocklyWorkspaceProps = {
   initialState?: unknown;
   readOnly?: boolean;
+  allowedCategories?: string[];
   onChange: (change: WorkspaceChange) => void;
 };
 
@@ -139,7 +140,7 @@ function collectSequence(workspace: BlocklyType.WorkspaceSvg) {
   return sequence;
 }
 
-export function BlocklyWorkspace({ initialState, onChange, readOnly = false }: Readonly<BlocklyWorkspaceProps>) {
+export function BlocklyWorkspace({ initialState, onChange, readOnly = false, allowedCategories }: Readonly<BlocklyWorkspaceProps>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<BlocklyType.WorkspaceSvg | null>(null);
   const blocklyRef = useRef<typeof BlocklyType | null>(null);
@@ -163,8 +164,12 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false }: R
       defineTemiBlocks(Blockly, locations);
       blocklyRef.current = Blockly;
 
+      const filteredToolbox = allowedCategories
+        ? { ...toolbox, contents: toolbox.contents.filter((c) => allowedCategories.includes(c.name)) }
+        : toolbox;
+
       const workspace = Blockly.inject(containerRef.current, {
-        toolbox,
+        toolbox: filteredToolbox,
         readOnly,
         trashcan: !readOnly,
         renderer: "zelos",

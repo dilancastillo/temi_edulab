@@ -2,8 +2,10 @@ package com.esbot.edulab.core.robot
 
 sealed class RobotCommand {
     data class Navigate(val location: String) : RobotCommand()
+    data class Say(val text: String) : RobotCommand()
 }
 
 interface RobotCommandRunner {
     fun run(command: RobotCommand): Result<Unit>
+    fun runSequence(commands: List<RobotCommand>): Result<Unit>
 }

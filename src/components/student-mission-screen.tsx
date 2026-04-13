@@ -120,8 +120,8 @@ export function StudentMissionScreen() {
             setNotice("");
           }}
           readOnly={isSubmitted}
+          allowedCategories={mission.allowedCategories}
         />
-        <ExecuteButton workspaceState={workspaceState} sequence={sequence} />
       </section>
 
       {isConfirmingSubmit ? (

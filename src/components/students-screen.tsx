@@ -9,6 +9,8 @@ import { useDemoStore } from "@/components/demo-store-provider";
 import { getInitials, parseStudentsCsv } from "@/lib/csv";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
 import type { Course, Student, StudentInput } from "@/lib/types";
+import { ExecuteButton } from "@/components/execute-button";
+import { extractCommandsFromWorkspace } from "@/lib/robot-adapter";
 
 const pageSize = 5;
 const progressFilters = ["Todos", "En curso", "Revisar", "Calificado"] as const;
@@ -17,9 +19,10 @@ export function StudentsScreen() {
   const { addStudent, courses, assignments, deleteStudent, importStudents, missions, students, studentWorks, updateStudent } = useDemoStore();
   const searchParams = useSearchParams();
   const initialMissionId = searchParams.get("mision") ?? "all";
+  const initialCourseId = searchParams.get("curso") ?? "all";
 
   const [query, setQuery] = useState("");
-  const [courseId, setCourseId] = useState("all");
+  const [courseId, setCourseId] = useState(initialCourseId);
   const [progress, setProgress] = useState<(typeof progressFilters)[number]>("Todos");
   const [missionId, setMissionId] = useState(initialMissionId);
   const [page, setPage] = useState(1);
@@ -202,14 +205,22 @@ export function StudentsScreen() {
                       </span>
                     </td>
                     <td>{mission?.title ?? "Sin misión"}</td>
-                    <td>
-                      <div className="table-actions">
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <div className="table-actions" style={{ flexWrap: "nowrap" }}>
                         <button className="button button-secondary" onClick={() => setStudentToEdit(student)} type="button">
                           Editar
                         </button>
                         <button className="button button-danger-outline" onClick={() => setStudentToDelete(student)} type="button">
                           Eliminar
                         </button>
+                        {studentWork?.workspaceState && (
+                          <ExecuteButton
+                            inline
+                            label="Ejecutar"
+                            workspaceState={studentWork.workspaceState}
+                            sequence={extractCommandsFromWorkspace(studentWork.workspaceState).map((c) => c.type === "Navigate" ? "temi_move" : "temi_say")}
+                          />
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -44,8 +44,16 @@ export function StudentDashboardScreen() {
               <Link className="student-mission-card" href={`/estudiante/misiones/${assignment.id}`} key={assignment.id}>
                 <span className={`mission-preview mission-preview-${mission.coverTone}`} aria-hidden="true" />
                 <strong>{mission.title}</strong>
-                <small>{work?.status === "submitted" ? "Enviado" : `${work?.stepIndex ?? 0} de 5 pasos`}</small>
-                <progress aria-label={`Progreso de ${mission.title}`} max={5} value={work?.status === "submitted" ? 5 : work?.stepIndex ?? 0} />
+                {(() => {
+                  const total = mission.steps?.length ?? 5;
+                  const current = work?.status === "submitted" ? total : (work?.stepIndex ?? 0);
+                  return (
+                    <>
+                      <small>{work?.status === "submitted" ? "Enviado" : `${current} de ${total} pasos`}</small>
+                      <progress aria-label={`Progreso de ${mission.title}`} max={total} value={current} />
+                    </>
+                  );
+                })()}
               </Link>
             );
           })}

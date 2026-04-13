@@ -69,6 +69,7 @@ export type Mission = {
   status: "published" | "draft";
   coverTone: "blue" | "green" | "yellow" | "red" | "indigo" | "slate";
   steps?: MissionStep[];
+  allowedCategories?: ("Movimiento" | "Hablar" | "Mostrar" | "Audio")[];
 };
 
 export type AssignmentStatus = "active" | "archived";
