@@ -120,7 +120,6 @@ class RobotReflectionRunner @Inject constructor(
             val requestId = ttsRequestClass.getMethod("getId").invoke(ttsRequest)
 
             val latch = CountDownLatch(1)
-            var ttsError: String? = null
 
             // Build a dynamic proxy for Robot.TtsListener
             val ttsListenerClass = Class.forName("com.robotemi.sdk.Robot\$TtsListener")
@@ -144,7 +143,8 @@ class RobotReflectionRunner @Inject constructor(
                         when (statusName) {
                             "COMPLETED" -> latch.countDown()
                             "ERROR", "NOT_ALLOWED" -> {
-                                ttsError = "TTS error: $statusName"
+                                // TTS errors are non-fatal — log and continue sequence
+                                Log.w(TAG, "TTS status: $statusName — continuando secuencia")
                                 latch.countDown()
                             }
                         }
@@ -161,7 +161,6 @@ class RobotReflectionRunner @Inject constructor(
             rClass.getMethod("removeTtsListener", ttsListenerClass).invoke(robot, ttsListener)
 
             if (!completed) return Result.failure(RuntimeException("Speak timeout after ${SPEAK_TIMEOUT_S}s"))
-            if (ttsError != null) return Result.failure(RuntimeException(ttsError))
 
             Log.d(TAG, "speak('$text') completado")
             Result.success(Unit)

@@ -10,6 +10,7 @@ import { ImageUploadPanel } from "@/components/image-upload-panel";
 import { useDemoStore } from "@/components/demo-store-provider";
 import { evaluateOrderSteps, orderStepsProgram } from "@/lib/mission-program";
 import { extractFieldFromBlock, extractShowImageBlocks } from "@/lib/robot-adapter";
+import { useUnsavedChanges } from "@/components/unsaved-changes-provider";
 
 export function StudentMissionScreen() {
   const router = useRouter();
@@ -25,6 +26,10 @@ export function StudentMissionScreen() {
   const [notice, setNotice] = useState("");
   const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
   const updateImageBase64Ref = useRef<((blockId: string, base64: string) => void) | null>(null);
+  const { setUnsavedState } = useUnsavedChanges();
+
+  // Track unsaved changes: compare current workspace with last saved
+  const savedWorkspaceRef = useRef<unknown>(work?.workspaceState ?? null);
 
   const missionSteps = mission?.steps ?? orderStepsProgram;
   const evaluation = useMemo(() => evaluateOrderSteps(sequence, missionSteps), [sequence, missionSteps]);
@@ -53,6 +58,8 @@ export function StudentMissionScreen() {
       workspaceState,
       stepIndex: evaluation.completedSteps
     });
+    savedWorkspaceRef.current = workspaceState;
+    setUnsavedState(null);
     setNotice("Progreso guardado en este dispositivo.");
   }
 
@@ -121,6 +128,9 @@ export function StudentMissionScreen() {
             setSequence(nextSequence);
             setWorkspaceState(nextState);
             setNotice("");
+            // Mark as unsaved if different from last save
+            const isDirty = JSON.stringify(nextState) !== JSON.stringify(savedWorkspaceRef.current);
+            setUnsavedState(isDirty ? nextState : null);
           }}
           readOnly={isSubmitted}
           allowedCategories={mission.allowedCategories}

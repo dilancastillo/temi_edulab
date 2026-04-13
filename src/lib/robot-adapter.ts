@@ -68,7 +68,7 @@ export async function executeRobotCommands(
   commands: RobotExecuteCommand[]
 ): Promise<RobotRunResult> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min para secuencias largas
+  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min para secuencias con imágenes
   try {
     const response = await fetch(`${ROBOT_API_URL}/execute`, {
       method: "POST",

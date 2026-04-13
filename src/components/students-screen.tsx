@@ -228,7 +228,7 @@ export function StudentsScreen() {
                             inline
                             label="Ejecutar"
                             workspaceState={studentWork.workspaceState}
-                            sequence={extractCommandsFromWorkspace(studentWork.workspaceState).map((c) => c.type === "Navigate" ? "temi_move" : "temi_say")}
+                            sequence={extractCommandsFromWorkspace(studentWork.workspaceState).map((c) => c.type === "Navigate" ? "temi_move" : c.type === "Say" ? "temi_say" : "temi_show_image")}
                           />
                         )}
                       </div>

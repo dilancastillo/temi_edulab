@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LogoMark } from "@/components/logo";
 import { useDemoStore } from "@/components/demo-store-provider";
+import { UnsavedChangesProvider, useUnsavedChanges } from "@/components/unsaved-changes-provider";
 
 const studentNavItems = [
   { href: "/estudiante", label: "Inicio" },
@@ -12,9 +13,18 @@ const studentNavItems = [
 ] as const;
 
 export function StudentShell({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <UnsavedChangesProvider>
+      <StudentShellInner>{children}</StudentShellInner>
+    </UnsavedChangesProvider>
+  );
+}
+
+function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
   const { isReady, logout, session } = useDemoStore();
+  const { requestNavigation } = useUnsavedChanges();
   const isLoginRoute = pathname === "/estudiante/login";
 
   useEffect(() => {
@@ -45,26 +55,35 @@ export function StudentShell({ children }: Readonly<{ children: React.ReactNode 
   return (
     <div className="student-shell">
       <header className="student-topbar">
-        <Link href="/estudiante" aria-label="Ir al inicio estudiante">
+        <button
+          aria-label="Ir al inicio estudiante"
+          className="button-reset"
+          onClick={() => requestNavigation(() => router.push("/estudiante"))}
+          type="button"
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+        >
           <LogoMark />
-        </Link>
+        </button>
         <nav aria-label="Navegación estudiante">
           <ul className="student-nav-list">
             {studentNavItems.map((item) => (
               <li key={item.href}>
-                <Link aria-current={pathname === item.href ? "page" : undefined} className="student-nav-link" href={item.href}>
+                <button
+                  aria-current={pathname === item.href ? "page" : undefined}
+                  className="student-nav-link"
+                  onClick={() => requestNavigation(() => router.push(item.href))}
+                  type="button"
+                  style={{ background: "none", border: "none", cursor: "pointer" }}
+                >
                   {item.label}
-                </Link>
+                </button>
               </li>
             ))}
           </ul>
         </nav>
         <button
           className="button button-secondary topbar-action"
-          onClick={() => {
-            logout();
-            router.replace("/estudiante/login");
-          }}
+          onClick={() => requestNavigation(() => { logout(); router.replace("/estudiante/login"); })}
           type="button"
         >
           Salir

@@ -30,6 +30,9 @@ class TemiLocationServer @Inject constructor(
     @Volatile
     private var running = false
 
+    @Volatile
+    private var executing = false
+
     /** Returns the actual bound port after [start] is called. Useful for tests using port 0. */
     val localPort: Int get() = serverSocket?.localPort ?: port
 
@@ -87,7 +90,13 @@ class TemiLocationServer @Inject constructor(
                         200 to locations.toLocationsJson()
                     }
                     method == "POST" && path == PATH_EXECUTE -> {
-                        handleExecuteRequest(reader)
+                        if (executing) {
+                            // Must drain headers before responding to avoid broken pipe
+                            drainHeaders(reader)
+                            503 to """{"ok":false,"message":"Robot ocupado, espera a que termine la ejecución actual"}"""
+                        } else {
+                            handleExecuteRequest(reader)
+                        }
                     }
                     else -> 404 to ""
                 }
@@ -111,6 +120,17 @@ class TemiLocationServer @Inject constructor(
         }
     }
 
+    private fun drainHeaders(reader: java.io.BufferedReader) {
+        try {
+            var line = reader.readLine()
+            while (line != null && line.isNotEmpty()) {
+                line = reader.readLine()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "drainHeaders falló: ${e.message}")
+        }
+    }
+
     private fun handleExecuteRequest(reader: java.io.BufferedReader): Pair<Int, String> {
         // Leer headers para obtener Content-Length
         var contentLength = 0
@@ -122,21 +142,29 @@ class TemiLocationServer @Inject constructor(
             line = reader.readLine()
         }
 
-        // Leer body completo (loop necesario para payloads grandes como imágenes base64)
         if (contentLength <= 0) {
             return 400 to """{"ok":false,"message":"Bad request"}"""
         }
-        val bodyChars = CharArray(contentLength)
-        var totalRead = 0
-        while (totalRead < contentLength) {
-            val read = reader.read(bodyChars, totalRead, contentLength - totalRead)
+
+        // Leer body como chars (el BufferedReader ya decodificó UTF-8 al construirse)
+        // Usamos readText con límite para evitar bloqueos con caracteres multibyte
+        val sb = StringBuilder(contentLength)
+        val buf = CharArray(8192)
+        var remaining = contentLength
+        while (remaining > 0) {
+            val toRead = minOf(buf.size, remaining)
+            val read = reader.read(buf, 0, toRead)
             if (read == -1) break
-            totalRead += read
+            sb.append(buf, 0, read)
+            // Decrease by actual chars read (not bytes) — stop when we have enough content
+            remaining -= read
+            // Safety: if we have a complete JSON object, stop early
+            if (sb.contains("}") && sb.trimEnd().endsWith("}")) break
         }
-        if (totalRead <= 0) {
+        val body = sb.toString()
+        if (body.isEmpty()) {
             return 400 to """{"ok":false,"message":"Bad request"}"""
         }
-        val body = String(bodyChars, 0, totalRead)
 
         // Parsear comandos manualmente
         val commands = parseCommandsFromJson(body)
@@ -145,7 +173,12 @@ class TemiLocationServer @Inject constructor(
         }
 
         // Ejecutar comandos secuencialmente
-        val result = commandRunner.runSequence(commands)
+        executing = true
+        val result = try {
+            commandRunner.runSequence(commands)
+        } finally {
+            executing = false
+        }
         if (result.isFailure) {
             val msg = result.exceptionOrNull()?.message ?: "Error desconocido"
             Log.e(TAG, "runSequence falló: $msg")
