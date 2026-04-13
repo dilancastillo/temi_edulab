@@ -56,7 +56,12 @@ export type SayCommand = {
   text: string;
 };
 
-export type RobotExecuteCommand = NavigateCommand | SayCommand;
+export type ShowImageCommand = {
+  type: "ShowImage";
+  imageBase64: string;
+};
+
+export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand;
 
 // 1.2 Enviar comandos al robot vía POST /execute con timeout de 5s
 export async function executeRobotCommands(
@@ -114,6 +119,9 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
       } else if (b["type"] === "temi_say") {
         const text = fields?.["TEXT"];
         if (text) commands.push({ type: "Say", text });
+      } else if (b["type"] === "temi_show_image") {
+        const imageBase64 = fields?.["IMAGE_BASE64"];
+        if (imageBase64) commands.push({ type: "ShowImage", imageBase64 });
       }
 
       const next = (b["next"] as Record<string, unknown>)?.["block"];
@@ -127,7 +135,38 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
   }
 }
 
-function extractFieldFromBlock(workspaceState: unknown, blockType: string, fieldName: string): string | null {
+// Extract all temi_show_image blocks with their IDs and current base64 values
+export function extractShowImageBlocks(workspaceState: unknown): Array<{ id: string; base64: string | null; index: number }> {
+  try {
+    if (!workspaceState || typeof workspaceState !== "object") return [];
+    const ws = workspaceState as Record<string, unknown>;
+    const topBlocks = (ws["blocks"] as Record<string, unknown>)?.["blocks"];
+    if (!Array.isArray(topBlocks)) return [];
+
+    const result: Array<{ id: string; base64: string | null; index: number }> = [];
+    let showImageIndex = 0;
+
+    function walk(block: unknown): void {
+      if (!block || typeof block !== "object") return;
+      const b = block as Record<string, unknown>;
+      if (b["type"] === "temi_show_image") {
+        const id = b["id"] as string;
+        const fields = b["fields"] as Record<string, string> | undefined;
+        const base64 = fields?.["IMAGE_BASE64"] ?? null;
+        result.push({ id, base64: base64 && base64.length > 0 ? base64 : null, index: showImageIndex++ });
+      }
+      const next = (b["next"] as Record<string, unknown>)?.["block"];
+      if (next) walk(next);
+    }
+
+    for (const block of topBlocks) walk(block);
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+export function extractFieldFromBlock(workspaceState: unknown, blockType: string, fieldName: string): string | null {
   try {
     if (!workspaceState || typeof workspaceState !== "object") return null;
     const ws = workspaceState as Record<string, unknown>;

@@ -11,11 +11,14 @@ private const val NAVIGATE_TIMEOUT_S = 60L
 private const val SPEAK_TIMEOUT_S = 30L
 
 @Singleton
-class RobotReflectionRunner @Inject constructor() : RobotCommandRunner {
+class RobotReflectionRunner @Inject constructor(
+    private val imageOverlayController: ImageOverlayController
+) : RobotCommandRunner {
 
     override fun run(command: RobotCommand): Result<Unit> = when (command) {
         is RobotCommand.Navigate -> navigateAndWait(command.location)
         is RobotCommand.Say -> speakAndWait(command.text)
+        is RobotCommand.ShowImage -> showImageAndWait(command.imageBase64, command.durationMs)
     }
 
     override fun runSequence(commands: List<RobotCommand>): Result<Unit> {
@@ -217,6 +220,24 @@ class RobotReflectionRunner @Inject constructor() : RobotCommandRunner {
         } catch (e: Exception) {
             Log.d(TAG, "tryGoTo1Param falló: ${e.message}")
             null
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // ShowImage — shows overlay via Compose StateFlow, waits durationMs
+    // -------------------------------------------------------------------------
+
+    private fun showImageAndWait(imageBase64: String, durationMs: Long): Result<Unit> {
+        return try {
+            imageOverlayController.show(imageBase64)
+            Thread.sleep(durationMs)
+            imageOverlayController.hide()
+            Log.d(TAG, "showImage completado (${durationMs}ms)")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            imageOverlayController.hide()
+            Log.e(TAG, "showImageAndWait falló: ${e.message}", e)
+            Result.failure(e)
         }
     }
 }

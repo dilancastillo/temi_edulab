@@ -122,16 +122,21 @@ class TemiLocationServer @Inject constructor(
             line = reader.readLine()
         }
 
-        // Leer body
+        // Leer body completo (loop necesario para payloads grandes como imágenes base64)
         if (contentLength <= 0) {
             return 400 to """{"ok":false,"message":"Bad request"}"""
         }
         val bodyChars = CharArray(contentLength)
-        val read = reader.read(bodyChars, 0, contentLength)
-        if (read <= 0) {
+        var totalRead = 0
+        while (totalRead < contentLength) {
+            val read = reader.read(bodyChars, totalRead, contentLength - totalRead)
+            if (read == -1) break
+            totalRead += read
+        }
+        if (totalRead <= 0) {
             return 400 to """{"ok":false,"message":"Bad request"}"""
         }
-        val body = String(bodyChars, 0, read)
+        val body = String(bodyChars, 0, totalRead)
 
         // Parsear comandos manualmente
         val commands = parseCommandsFromJson(body)
@@ -161,42 +166,49 @@ class TemiLocationServer @Inject constructor(
         return try {
             val commands = mutableListOf<RobotCommand>()
 
-            // Extraer el array de commands: todo lo que hay entre "commands":[  y el cierre ]
             val commandsArrayMatch = Regex(""""commands"\s*:\s*\[(.*)]\s*\}""", RegexOption.DOT_MATCHES_ALL)
                 .find(body) ?: return null
             val arrayContent = commandsArrayMatch.groupValues[1].trim()
 
             if (arrayContent.isEmpty()) return null
 
-            // Extraer cada objeto {...} del array
-            val objectRegex = Regex("""\{[^}]*\}""")
-            val objects = objectRegex.findAll(arrayContent)
+            // Split objects by finding each {"type":...} entry
+            // Use a state-machine approach to handle large base64 values
+            val typeRegex = Regex(""""type"\s*:\s*"([^"]+)"""")
+            val locationRegex = Regex(""""location"\s*:\s*"([^"]+)"""")
+            val textRegex = Regex(""""text"\s*:\s*"([^"]+)"""")
+            // base64 only uses A-Za-z0-9+/= so safe to match greedily
+            val imageBase64Regex = Regex(""""imageBase64"\s*:\s*"([A-Za-z0-9+/=\r\n]+)"""")
 
-            for (obj in objects) {
-                val objStr = obj.value
-                val typeMatch = Regex(""""type"\s*:\s*"([^"]*)"""").find(objStr)
-                val type = typeMatch?.groupValues?.getOrNull(1) ?: continue
+            // Find all type occurrences and extract surrounding context
+            var searchStart = 0
+            while (searchStart < arrayContent.length) {
+                val typeMatch = typeRegex.find(arrayContent, searchStart) ?: break
+                val type = typeMatch.groupValues[1]
+                val contextStart = typeMatch.range.first
+                // Context window: from object start to next object or end
+                val nextTypeMatch = typeRegex.find(arrayContent, typeMatch.range.last + 1)
+                val contextEnd = nextTypeMatch?.range?.first ?: arrayContent.length
+                val context = arrayContent.substring(contextStart, contextEnd)
 
                 when (type) {
                     "Navigate" -> {
-                        val locationMatch = Regex(""""location"\s*:\s*"([^"]*)"""").find(objStr)
-                        val location = locationMatch?.groupValues?.getOrNull(1)
-                        if (!location.isNullOrEmpty()) {
-                            commands.add(RobotCommand.Navigate(location))
-                        }
+                        val location = locationRegex.find(context)?.groupValues?.getOrNull(1)
+                        if (!location.isNullOrEmpty()) commands.add(RobotCommand.Navigate(location))
                     }
                     "Say" -> {
-                        val textMatch = Regex(""""text"\s*:\s*"([^"]*)"""").find(objStr)
-                        val text = textMatch?.groupValues?.getOrNull(1)
-                        if (!text.isNullOrEmpty()) {
-                            commands.add(RobotCommand.Say(text))
-                        }
+                        val text = textRegex.find(context)?.groupValues?.getOrNull(1)
+                        if (!text.isNullOrEmpty()) commands.add(RobotCommand.Say(text))
                     }
-                    else -> {
-                        // Tipo desconocido: ignorar (forward-compatibility)
-                        Log.d(TAG, "Tipo de comando desconocido ignorado: $type")
+                    "ShowImage" -> {
+                        // Search in full body for base64 (may be very long)
+                        val imgMatch = imageBase64Regex.find(body, typeMatch.range.first)
+                        val imageBase64 = imgMatch?.groupValues?.getOrNull(1)?.replace("\r", "")?.replace("\n", "")
+                        if (!imageBase64.isNullOrEmpty()) commands.add(RobotCommand.ShowImage(imageBase64))
                     }
+                    else -> Log.d(TAG, "Tipo desconocido ignorado: $type")
                 }
+                searchStart = typeMatch.range.last + 1
             }
 
             if (commands.isEmpty()) null else commands

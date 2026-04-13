@@ -13,6 +13,7 @@ type BlocklyWorkspaceProps = {
   readOnly?: boolean;
   allowedCategories?: string[];
   onChange: (change: WorkspaceChange) => void;
+  onWorkspaceReady?: (updateImageBase64ById: (blockId: string, base64: string) => void) => void;
 };
 
 const toolbox = {
@@ -37,7 +38,10 @@ const toolbox = {
       kind: "category",
       name: "Mostrar",
       colour: "#c8891f",
-      contents: [{ kind: "block", type: "temi_show" }]
+      contents: [
+        { kind: "block", type: "temi_show" },
+        { kind: "block", type: "temi_show_image" }
+      ]
     },
     {
       kind: "category",
@@ -104,6 +108,15 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       helpUrl: ""
     },
     {
+      type: "temi_show_image",
+      message0: "mostrar imagen 🖼",
+      previousStatement: null,
+      nextStatement: null,
+      colour: 40,
+      tooltip: "Muestra una imagen en pantalla completa durante 7 segundos",
+      helpUrl: ""
+    },
+    {
       type: "temi_audio",
       message0: "reproducir audio %1",
       args0: [
@@ -124,6 +137,20 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       helpUrl: ""
     }
   ]);
+
+  // Add hidden IMAGE_BASE64 field and visible LABEL field to temi_show_image block
+  Blockly.Blocks["temi_show_image"].init = function (this: BlocklyType.Block) {
+    this.appendDummyInput()
+      .appendField("mostrar imagen")
+      .appendField(new Blockly.FieldLabel("(sin imagen)"), "LABEL");
+    this.appendDummyInput("IMAGE_FIELD")
+      .appendField(new Blockly.FieldTextInput(""), "IMAGE_BASE64")
+      .setVisible(false);
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(40);
+    this.setTooltip("Muestra una imagen en pantalla completa durante 7 segundos");
+  };
 }
 
 function collectSequence(workspace: BlocklyType.WorkspaceSvg) {
@@ -140,7 +167,7 @@ function collectSequence(workspace: BlocklyType.WorkspaceSvg) {
   return sequence;
 }
 
-export function BlocklyWorkspace({ initialState, onChange, readOnly = false, allowedCategories }: Readonly<BlocklyWorkspaceProps>) {
+export function BlocklyWorkspace({ initialState, onChange, readOnly = false, allowedCategories, onWorkspaceReady }: Readonly<BlocklyWorkspaceProps>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<BlocklyType.WorkspaceSvg | null>(null);
   const blocklyRef = useRef<typeof BlocklyType | null>(null);
@@ -201,6 +228,32 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
 
       emitChange();
       setIsLoading(false);
+
+      // Restore LABEL for temi_show_image blocks that already have IMAGE_BASE64
+      workspace.getAllBlocks(false)
+        .filter((b) => b.type === "temi_show_image")
+        .forEach((block, idx) => {
+          const base64 = block.getFieldValue("IMAGE_BASE64");
+          if (base64 && base64.length > 0) {
+            block.setFieldValue(`(imagen ${idx + 1} ✅)`, "LABEL");
+          }
+        });
+
+      // Expose a function to update IMAGE_BASE64 field by block ID
+      if (onWorkspaceReady) {
+        onWorkspaceReady((blockId: string, base64: string) => {
+          const block = workspace.getBlockById(blockId);
+          if (block) {
+            block.setFieldValue(base64, "IMAGE_BASE64");
+            // Update the visible label with the image number
+            const allShowImageBlocks = workspace.getAllBlocks(false)
+              .filter((b) => b.type === "temi_show_image");
+            const imgNumber = allShowImageBlocks.indexOf(block) + 1;
+            block.setFieldValue(`(imagen ${imgNumber} ✅)`, "LABEL");
+            emitChange();
+          }
+        });
+      }
     }
 
     void loadBlockly();

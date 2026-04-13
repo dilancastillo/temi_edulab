@@ -33,42 +33,47 @@ export const demoMissions: Mission[] = [
     outcomes: ["Resolución de problemas", "Comunicación creativa", "Pensamiento computacional"],
     status: "published",
     coverTone: "blue",
-    allowedCategories: ["Movimiento", "Hablar"],
+    allowedCategories: ["Movimiento", "Hablar", "Mostrar"],
     steps: [
       {
         type: "temi_start",
-        label: "Cuando inicia",
-        helper: "Todo programa necesita un bloque de inicio."
+        label: "¡Comienza la aventura!",
+        helper: "Todo comienza aquí."
       },
       {
         type: "temi_move",
-        label: "Avanzar 2 pasos",
-        helper: "Haz que Temi se mueva al primer lugar del salón."
+        label: "¡Primer reto!",
+        helper: "Lleva a Temi al primer lugar."
       },
       {
         type: "temi_say",
-        label: "Decir algo",
-        helper: "Temi explica qué hay en este lugar."
+        label: "¡Cuéntame qué ves!",
+        helper: "Haz que Temi cuente lo que ve."
+      },
+      {
+        type: "temi_show_image",
+        label: "¡Sorpresa en pantalla!",
+        helper: "Temi enseña una imagen."
       },
       {
         type: "temi_move",
-        label: "Avanzar 2 pasos",
-        helper: "Ahora mueve a Temi al segundo lugar."
+        label: "¡Sigamos explorando!",
+        helper: "Muévete al siguiente lugar."
       },
       {
         type: "temi_say",
-        label: "Decir algo",
-        helper: "Temi describe el segundo lugar del salón."
+        label: "¡Descubrimiento!",
+        helper: "Temi cuenta lo que encuentra otra vez."
+      },
+      {
+        type: "temi_show_image",
+        label: "¡Otra sorpresa!",
+        helper: "Temi enseña otra imagen."
       },
       {
         type: "temi_move",
-        label: "Avanzar 2 pasos",
-        helper: "Lleva a Temi al tercer y último lugar."
-      },
-      {
-        type: "temi_say",
-        label: "Decir algo",
-        helper: "Temi termina explicando el último lugar."
+        label: "¡Última parada!",
+        helper: "Llévalo al punto final."
       }
     ]
   },

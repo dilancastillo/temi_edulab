@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { BlocklyWorkspace } from "@/components/blockly-workspace";
 import { ConfirmDialog } from "@/components/modal";
 import { ExecuteButton } from "@/components/execute-button";
+import { ImageUploadPanel } from "@/components/image-upload-panel";
 import { useDemoStore } from "@/components/demo-store-provider";
 import { evaluateOrderSteps, orderStepsProgram } from "@/lib/mission-program";
+import { extractFieldFromBlock, extractShowImageBlocks } from "@/lib/robot-adapter";
 
 export function StudentMissionScreen() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export function StudentMissionScreen() {
   const [sequence, setSequence] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
   const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
+  const updateImageBase64Ref = useRef<((blockId: string, base64: string) => void) | null>(null);
 
   const missionSteps = mission?.steps ?? orderStepsProgram;
   const evaluation = useMemo(() => evaluateOrderSteps(sequence, missionSteps), [sequence, missionSteps]);
@@ -121,7 +124,18 @@ export function StudentMissionScreen() {
           }}
           readOnly={isSubmitted}
           allowedCategories={mission.allowedCategories}
+          onWorkspaceReady={(fn) => { updateImageBase64Ref.current = fn; }}
         />
+        {sequence.includes("temi_show_image") && !isSubmitted && (
+          extractShowImageBlocks(workspaceState).map(({ id, base64, index }) => (
+            <ImageUploadPanel
+              key={id}
+              label={`Imagen ${index + 1}`}
+              currentBase64={base64}
+              onImageSelected={(b64) => updateImageBase64Ref.current?.(id, b64)}
+            />
+          ))
+        )}
       </section>
 
       {isConfirmingSubmit ? (

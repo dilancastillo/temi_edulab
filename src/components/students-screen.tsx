@@ -10,7 +10,7 @@ import { getInitials, parseStudentsCsv } from "@/lib/csv";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
 import type { Course, Student, StudentInput } from "@/lib/types";
 import { ExecuteButton } from "@/components/execute-button";
-import { extractCommandsFromWorkspace } from "@/lib/robot-adapter";
+import { extractCommandsFromWorkspace, extractShowImageBlocks } from "@/lib/robot-adapter";
 
 const pageSize = 5;
 const progressFilters = ["Todos", "En curso", "Revisar", "Calificado"] as const;
@@ -29,6 +29,7 @@ export function StudentsScreen() {
   const [mode, setMode] = useState<"add" | "import" | null>(null);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [studentToPreview, setStudentToPreview] = useState<{ student: Student; workspaceState: unknown } | null>(null);
 
   const filteredStudents = useMemo(() => {
     const normalisedQuery = query.trim().toLowerCase();
@@ -214,6 +215,15 @@ export function StudentsScreen() {
                           Eliminar
                         </button>
                         {studentWork?.workspaceState && (
+                          <button
+                            className="button button-ghost"
+                            onClick={() => setStudentToPreview({ student, workspaceState: studentWork.workspaceState })}
+                            type="button"
+                          >
+                            Ver
+                          </button>
+                        )}
+                        {studentWork?.workspaceState && (
                           <ExecuteButton
                             inline
                             label="Ejecutar"
@@ -303,6 +313,14 @@ export function StudentsScreen() {
           }}
           title="Eliminar estudiante"
           tone="danger"
+        />
+      ) : null}
+
+      {studentToPreview ? (
+        <SequencePreviewModal
+          studentName={studentToPreview.student.fullName}
+          workspaceState={studentToPreview.workspaceState}
+          onClose={() => setStudentToPreview(null)}
         />
       ) : null}
     </div>
@@ -469,6 +487,93 @@ function ImportStudentsModal({
       <div className="modal-actions">
         <button className="button button-primary" onClick={onClose} type="button">
           Listo
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function SequencePreviewModal({
+  studentName,
+  workspaceState,
+  onClose
+}: Readonly<{
+  studentName: string;
+  workspaceState: unknown;
+  onClose: () => void;
+}>) {
+  const imageBlocks = extractShowImageBlocks(workspaceState);
+
+  // Build full sequence including temi_start
+  const allSteps = (() => {
+    try {
+      if (!workspaceState || typeof workspaceState !== "object") return [];
+      const ws = workspaceState as Record<string, unknown>;
+      const topBlocks = (ws["blocks"] as Record<string, unknown>)?.["blocks"];
+      if (!Array.isArray(topBlocks)) return [];
+
+      const result: Array<{ type: string; fields: Record<string, string> }> = [];
+
+      function walk(block: unknown): void {
+        if (!block || typeof block !== "object") return;
+        const b = block as Record<string, unknown>;
+        result.push({ type: b["type"] as string, fields: (b["fields"] as Record<string, string>) ?? {} });
+        const next = (b["next"] as Record<string, unknown>)?.["block"];
+        if (next) walk(next);
+      }
+
+      for (const block of topBlocks) walk(block);
+      return result;
+    } catch { return []; }
+  })();
+
+  let imgCounter = 0;
+  const steps = allSteps.map((block, i) => {
+    if (block.type === "temi_start") {
+      return { iconSrc: null, icon: "🚀", label: "Cuando inicia", base64: null, key: i };
+    }
+    if (block.type === "temi_move") {
+      return { iconSrc: "/ubicacion.png", icon: null, label: `Ir a: ${block.fields["LOCATION"] ?? ""}`, base64: null, key: i };
+    }
+    if (block.type === "temi_say") {
+      return { iconSrc: null, icon: "💬", label: `Decir: "${block.fields["TEXT"] ?? ""}"`, base64: null, key: i };
+    }
+    if (block.type === "temi_show_image") {
+      imgCounter++;
+      const imgNum = imgCounter;
+      const imgBlock = imageBlocks[imgNum - 1];
+      return { iconSrc: "/imagen.png", icon: null, label: `Mostrar imagen ${imgNum}`, base64: imgBlock?.base64 ?? null, key: i };
+    }
+    return { iconSrc: null, icon: "❓", label: block.type, base64: null, key: i };
+  });
+
+  return (
+    <Modal onClose={onClose} title={`Secuencia de ${studentName}`}>
+      {steps.length === 0 ? (
+        <p style={{ color: "var(--color-text-muted)", marginTop: "1rem" }}>
+          Este estudiante no tiene bloques ejecutables guardados.
+        </p>
+      ) : (
+        <ol style={{ listStyle: "none", padding: 0, margin: "1rem 0", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          {steps.map((step) => (
+            <li key={step.key} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem 0.75rem", background: "var(--color-surface)", borderRadius: "var(--radius)", border: "1px solid var(--color-border)" }}>
+              {step.iconSrc
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img alt="" src={step.iconSrc} style={{ width: 24, height: 24, objectFit: "contain" }} />
+                : <span style={{ fontSize: "1.25rem" }}>{step.icon}</span>
+              }
+              <span style={{ flex: 1 }}>{step.label}</span>
+              {step.base64 && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img alt="" src={`data:image/png;base64,${step.base64}`} style={{ height: 40, width: "auto", borderRadius: 4, border: "1px solid var(--color-border)" }} />
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="modal-actions">
+        <button className="button button-secondary" onClick={onClose} type="button">
+          Cerrar
         </button>
       </div>
     </Modal>
