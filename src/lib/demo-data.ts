@@ -29,7 +29,7 @@ export const demoMissions: Mission[] = [
     summary: "Hoy Temi será el guía oficial del salón. Llegó una visita especial al colegio y necesita conocer el aula. Tu misión es programar a Temi para que recorra tres lugares importantes del salón y explique qué hay en cada uno.",
     category: "Fundamentos",
     ageBand: "9-10",
-    durationMinutes: 90,
+    durationMinutes: 60,
     outcomes: ["Resolución de problemas", "Comunicación creativa", "Pensamiento computacional"],
     status: "published",
     coverTone: "blue",
@@ -69,6 +69,11 @@ export const demoMissions: Mission[] = [
         type: "temi_show_image",
         label: "¡Otra sorpresa!",
         helper: "Temi enseña otra imagen."
+      },
+      {
+        type: "temi_show_video",
+        label: "¡Acción en pantalla!",
+        helper: "Temi reproduce un video para el visitante."
       },
       {
         type: "temi_move",
