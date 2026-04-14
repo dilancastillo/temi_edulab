@@ -12,13 +12,15 @@ private const val SPEAK_TIMEOUT_S = 120L
 
 @Singleton
 class RobotReflectionRunner @Inject constructor(
-    private val imageOverlayController: ImageOverlayController
+    private val imageOverlayController: ImageOverlayController,
+    private val videoOverlayController: VideoOverlayController
 ) : RobotCommandRunner {
 
     override fun run(command: RobotCommand): Result<Unit> = when (command) {
         is RobotCommand.Navigate -> navigateAndWait(command.location)
         is RobotCommand.Say -> speakAndWait(command.text)
         is RobotCommand.ShowImage -> showImageAndWait(command.imageBase64, command.durationMs)
+        is RobotCommand.ShowVideo -> showVideoAndWait(command.videoUrl)
     }
 
     override fun runSequence(commands: List<RobotCommand>): Result<Unit> {
@@ -240,6 +242,21 @@ class RobotReflectionRunner @Inject constructor(
         } catch (e: Exception) {
             imageOverlayController.hide()
             Log.e(TAG, "showImageAndWait falló: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    private fun showVideoAndWait(videoUrl: String): Result<Unit> {
+        return try {
+            val latch = videoOverlayController.show(videoUrl)
+            Log.d(TAG, "showVideo iniciado: $videoUrl")
+            // Wait up to 10 minutes for video to complete
+            latch.await(600, java.util.concurrent.TimeUnit.SECONDS)
+            Log.d(TAG, "showVideo completado")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            videoOverlayController.onVideoCompleted()
+            Log.e(TAG, "showVideoAndWait falló: ${e.message}", e)
             Result.failure(e)
         }
     }

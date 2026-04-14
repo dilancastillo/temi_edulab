@@ -13,7 +13,7 @@ type BlocklyWorkspaceProps = {
   readOnly?: boolean;
   allowedCategories?: string[];
   onChange: (change: WorkspaceChange) => void;
-  onWorkspaceReady?: (updateImageBase64ById: (blockId: string, base64: string) => void) => void;
+  onWorkspaceReady?: (updateImageBase64ById: (blockId: string, base64: string) => void, updateVideoUrlById: (blockId: string, videoUrl: string) => void) => void;
 };
 
 const toolbox = {
@@ -40,7 +40,8 @@ const toolbox = {
       colour: "#c8891f",
       contents: [
         { kind: "block", type: "temi_show" },
-        { kind: "block", type: "temi_show_image" }
+        { kind: "block", type: "temi_show_image" },
+        { kind: "block", type: "temi_show_video" }
       ]
     },
     {
@@ -117,6 +118,15 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       helpUrl: ""
     },
     {
+      type: "temi_show_video",
+      message0: "reproducir video",
+      previousStatement: null,
+      nextStatement: null,
+      colour: 40,
+      tooltip: "Reproduce un video en pantalla completa",
+      helpUrl: ""
+    },
+    {
       type: "temi_audio",
       message0: "reproducir audio %1",
       args0: [
@@ -150,6 +160,20 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     this.setNextStatement(true);
     this.setColour(40);
     this.setTooltip("Muestra una imagen en pantalla completa durante 7 segundos");
+  };
+
+  // temi_show_video: hidden VIDEO_URL field + visible LABEL
+  Blockly.Blocks["temi_show_video"].init = function (this: BlocklyType.Block) {
+    this.appendDummyInput()
+      .appendField("reproducir video")
+      .appendField(new Blockly.FieldLabel("(sin video)"), "LABEL");
+    this.appendDummyInput("VIDEO_FIELD")
+      .appendField(new Blockly.FieldTextInput(""), "VIDEO_URL")
+      .setVisible(false);
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(40);
+    this.setTooltip("Reproduce un video en pantalla completa");
   };
 }
 
@@ -239,20 +263,39 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
           }
         });
 
-      // Expose a function to update IMAGE_BASE64 field by block ID
+      // Restore LABEL for temi_show_video blocks that already have VIDEO_URL
+      workspace.getAllBlocks(false)
+        .filter((b) => b.type === "temi_show_video")
+        .forEach((block, idx) => {
+          const url = block.getFieldValue("VIDEO_URL");
+          if (url && url.length > 0) {
+            block.setFieldValue(`(video ${idx + 1} ✅)`, "LABEL");
+          }
+        });
+
+      // Expose functions to update IMAGE_BASE64 and VIDEO_URL fields by block ID
       if (onWorkspaceReady) {
-        onWorkspaceReady((blockId: string, base64: string) => {
+        const updateImageBase64ById = (blockId: string, base64: string) => {
           const block = workspace.getBlockById(blockId);
           if (block) {
             block.setFieldValue(base64, "IMAGE_BASE64");
-            // Update the visible label with the image number
-            const allShowImageBlocks = workspace.getAllBlocks(false)
-              .filter((b) => b.type === "temi_show_image");
+            const allShowImageBlocks = workspace.getAllBlocks(false).filter((b) => b.type === "temi_show_image");
             const imgNumber = allShowImageBlocks.indexOf(block) + 1;
             block.setFieldValue(`(imagen ${imgNumber} ✅)`, "LABEL");
             emitChange();
           }
-        });
+        };
+        const updateVideoUrlById = (blockId: string, videoUrl: string) => {
+          const block = workspace.getBlockById(blockId);
+          if (block) {
+            block.setFieldValue(videoUrl, "VIDEO_URL");
+            const allVideoBlocks = workspace.getAllBlocks(false).filter((b) => b.type === "temi_show_video");
+            const vidNumber = allVideoBlocks.indexOf(block) + 1;
+            block.setFieldValue(`(video ${vidNumber} ✅)`, "LABEL");
+            emitChange();
+          }
+        };
+        onWorkspaceReady(updateImageBase64ById, updateVideoUrlById);
       }
     }
 

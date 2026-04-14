@@ -239,6 +239,11 @@ class TemiLocationServer @Inject constructor(
                         val imageBase64 = imgMatch?.groupValues?.getOrNull(1)?.replace("\r", "")?.replace("\n", "")
                         if (!imageBase64.isNullOrEmpty()) commands.add(RobotCommand.ShowImage(imageBase64))
                     }
+                    "ShowVideo" -> {
+                        val urlMatch = Regex(""""videoUrl"\s*:\s*"([^"]+)"""").find(context)
+                        val videoUrl = urlMatch?.groupValues?.getOrNull(1)
+                        if (!videoUrl.isNullOrEmpty()) commands.add(RobotCommand.ShowVideo(videoUrl))
+                    }
                     else -> Log.d(TAG, "Tipo desconocido ignorado: $type")
                 }
                 searchStart = typeMatch.range.last + 1

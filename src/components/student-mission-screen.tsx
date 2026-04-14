@@ -7,9 +7,10 @@ import { BlocklyWorkspace } from "@/components/blockly-workspace";
 import { ConfirmDialog } from "@/components/modal";
 import { ExecuteButton } from "@/components/execute-button";
 import { ImageUploadPanel } from "@/components/image-upload-panel";
+import { VideoUploadPanel } from "@/components/video-upload-panel";
 import { useDemoStore } from "@/components/demo-store-provider";
 import { evaluateOrderSteps, orderStepsProgram } from "@/lib/mission-program";
-import { extractFieldFromBlock, extractShowImageBlocks } from "@/lib/robot-adapter";
+import { extractFieldFromBlock, extractShowImageBlocks, extractVideoBlocks } from "@/lib/robot-adapter";
 import { useUnsavedChanges } from "@/components/unsaved-changes-provider";
 
 export function StudentMissionScreen() {
@@ -26,6 +27,7 @@ export function StudentMissionScreen() {
   const [notice, setNotice] = useState("");
   const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
   const updateImageBase64Ref = useRef<((blockId: string, base64: string) => void) | null>(null);
+  const updateVideoUrlRef = useRef<((blockId: string, videoUrl: string) => void) | null>(null);
   const { setUnsavedState } = useUnsavedChanges();
 
   // Track unsaved changes: compare current workspace with last saved
@@ -134,7 +136,10 @@ export function StudentMissionScreen() {
           }}
           readOnly={isSubmitted}
           allowedCategories={mission.allowedCategories}
-          onWorkspaceReady={(fn) => { updateImageBase64Ref.current = fn; }}
+          onWorkspaceReady={(fnImg, fnVid) => {
+            updateImageBase64Ref.current = fnImg;
+            updateVideoUrlRef.current = fnVid;
+          }}
         />
         {sequence.includes("temi_show_image") && !isSubmitted && (
           extractShowImageBlocks(workspaceState).map(({ id, base64, index }) => (
@@ -143,6 +148,16 @@ export function StudentMissionScreen() {
               label={`Imagen ${index + 1}`}
               currentBase64={base64}
               onImageSelected={(b64) => updateImageBase64Ref.current?.(id, b64)}
+            />
+          ))
+        )}
+        {sequence.includes("temi_show_video") && !isSubmitted && (
+          extractVideoBlocks(workspaceState).map(({ id, videoUrl, index }) => (
+            <VideoUploadPanel
+              key={id}
+              label={`Video ${index + 1}`}
+              currentVideoUrl={videoUrl}
+              onVideoUploaded={(url) => updateVideoUrlRef.current?.(id, url)}
             />
           ))
         )}

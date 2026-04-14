@@ -74,7 +74,25 @@ export type ShowImageCommand = {
   imageBase64: string;
 };
 
-export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand;
+export type ShowVideoCommand = {
+  type: "ShowVideo";
+  videoUrl: string;
+};
+
+export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand;
+
+export async function uploadVideo(file: File): Promise<{ ok: boolean; videoUrl?: string; message?: string }> {
+  try {
+    const formData = new FormData();
+    formData.append("video", file);
+    const res = await fetch("/api/video/upload", { method: "POST", body: formData });
+    const data = (await res.json()) as { ok: boolean; id?: string; videoUrl?: string; message?: string };
+    if (!data.ok || !data.videoUrl) return { ok: false, message: data.message ?? "Error subiendo video" };
+    return { ok: true, videoUrl: data.videoUrl };
+  } catch {
+    return { ok: false, message: "Error subiendo video" };
+  }
+}
 
 // 1.2 Enviar comandos al robot vía POST /execute con timeout de 5s
 export async function executeRobotCommands(
@@ -135,6 +153,9 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
       } else if (b["type"] === "temi_show_image") {
         const imageBase64 = fields?.["IMAGE_BASE64"];
         if (imageBase64) commands.push({ type: "ShowImage", imageBase64 });
+      } else if (b["type"] === "temi_show_video") {
+        const videoUrl = fields?.["VIDEO_URL"];
+        if (videoUrl) commands.push({ type: "ShowVideo", videoUrl });
       }
 
       const next = (b["next"] as Record<string, unknown>)?.["block"];
@@ -167,6 +188,36 @@ export function extractShowImageBlocks(workspaceState: unknown): Array<{ id: str
         const fields = b["fields"] as Record<string, string> | undefined;
         const base64 = fields?.["IMAGE_BASE64"] ?? null;
         result.push({ id, base64: base64 && base64.length > 0 ? base64 : null, index: showImageIndex++ });
+      }
+      const next = (b["next"] as Record<string, unknown>)?.["block"];
+      if (next) walk(next);
+    }
+
+    for (const block of topBlocks) walk(block);
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+export function extractVideoBlocks(workspaceState: unknown): Array<{ id: string; videoUrl: string | null; index: number }> {
+  try {
+    if (!workspaceState || typeof workspaceState !== "object") return [];
+    const ws = workspaceState as Record<string, unknown>;
+    const topBlocks = (ws["blocks"] as Record<string, unknown>)?.["blocks"];
+    if (!Array.isArray(topBlocks)) return [];
+
+    const result: Array<{ id: string; videoUrl: string | null; index: number }> = [];
+    let index = 0;
+
+    function walk(block: unknown): void {
+      if (!block || typeof block !== "object") return;
+      const b = block as Record<string, unknown>;
+      if (b["type"] === "temi_show_video") {
+        const id = b["id"] as string;
+        const fields = b["fields"] as Record<string, string> | undefined;
+        const videoUrl = fields?.["VIDEO_URL"] ?? null;
+        result.push({ id, videoUrl: videoUrl && videoUrl.length > 0 ? videoUrl : null, index: index++ });
       }
       const next = (b["next"] as Record<string, unknown>)?.["block"];
       if (next) walk(next);

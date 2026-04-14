@@ -68,4 +68,6 @@ dependencies {
     implementation("com.robotemi:sdk:1.137.1")
     testImplementation("io.kotest:kotest-property:5.9.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
 }

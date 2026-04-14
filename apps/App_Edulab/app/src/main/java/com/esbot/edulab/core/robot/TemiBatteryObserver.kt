@@ -42,13 +42,19 @@ class TemiBatteryObserver @Inject constructor(
             val readyListener = java.lang.reflect.Proxy.newProxyInstance(
                 readyClass.classLoader,
                 arrayOf(readyClass)
-            ) { _, method, args ->
-                if (method.name == "onRobotReady") {
-                    val isReady = args?.getOrNull(0) as? Boolean ?: false
-                    Log.d(TAG, "onRobotReady — isReady: $isReady")
-                    if (isReady) readInitialBattery(r, rClass)
+            ) { proxy, method, args ->
+                when (method.name) {
+                    "equals" -> proxy === args?.getOrNull(0)
+                    "hashCode" -> System.identityHashCode(proxy)
+                    "toString" -> "OnRobotReadyListener@${System.identityHashCode(proxy)}"
+                    "onRobotReady" -> {
+                        val isReady = args?.getOrNull(0) as? Boolean ?: false
+                        Log.d(TAG, "onRobotReady — isReady: $isReady")
+                        if (isReady) readInitialBattery(r, rClass)
+                        null
+                    }
+                    else -> null
                 }
-                null
             }
             rClass.getMethod("addOnRobotReadyListener", readyClass).invoke(r, readyListener)
             Log.d(TAG, "OnRobotReadyListener registrado")
@@ -58,13 +64,21 @@ class TemiBatteryObserver @Inject constructor(
             val bListener = java.lang.reflect.Proxy.newProxyInstance(
                 batteryClass.classLoader,
                 arrayOf(batteryClass)
-            ) { _, method, args ->
-                if (method.name == "onBatteryStatusChanged" && args != null && args.isNotEmpty()) {
-                    val data = args[0] ?: return@newProxyInstance null
-                    Log.d(TAG, "onBatteryStatusChanged: $data")
-                    parseBatteryData(data)
+            ) { proxy, method, args ->
+                when (method.name) {
+                    "equals" -> proxy === args?.getOrNull(0)
+                    "hashCode" -> System.identityHashCode(proxy)
+                    "toString" -> "OnBatteryStatusChangedListener@${System.identityHashCode(proxy)}"
+                    "onBatteryStatusChanged" -> {
+                        if (args != null && args.isNotEmpty()) {
+                            val data = args[0] ?: return@newProxyInstance null
+                            Log.d(TAG, "onBatteryStatusChanged: $data")
+                            parseBatteryData(data)
+                        }
+                        null
+                    }
+                    else -> null
                 }
-                null
             }
             rClass.getMethod("addOnBatteryStatusChangedListener", batteryClass).invoke(r, bListener)
             Log.d(TAG, "OnBatteryStatusChangedListener registrado")

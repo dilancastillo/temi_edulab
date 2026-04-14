@@ -6,6 +6,7 @@ import com.esbot.edulab.core.network.NetworkStatusProvider
 import com.esbot.edulab.core.robot.BatteryStatusProvider
 import com.esbot.edulab.core.robot.ImageOverlayController
 import com.esbot.edulab.core.robot.LocationServer
+import com.esbot.edulab.core.robot.VideoOverlayController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,13 +31,19 @@ class HomeViewModel @Inject constructor(
     private val networkStatusProvider: NetworkStatusProvider,
     private val batteryStatusProvider: BatteryStatusProvider,
     private val locationServer: LocationServer,
-    private val imageOverlayController: ImageOverlayController
+    private val imageOverlayController: ImageOverlayController,
+    private val videoOverlayController: VideoOverlayController
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(currentTime = getCurrentTime()))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     val imageBase64: StateFlow<String?> = imageOverlayController.imageBase64
+    val videoUrl: StateFlow<String?> = videoOverlayController.videoUrl
+
+    fun onVideoCompleted() {
+        videoOverlayController.onVideoCompleted()
+    }
 
     init {
         locationServer.start()
