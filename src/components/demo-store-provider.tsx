@@ -74,6 +74,8 @@ type DemoStore = {
   submitStudentWork: (input: SubmitStudentWorkInput) => void;
   updateProfile: (input: ProfileInput) => void;
   resetDemoData: () => void;
+  robotIp: string;
+  setRobotIp: (ip: string) => void;
 };
 
 const DemoStoreContext = createContext<DemoStore | null>(null);
@@ -83,7 +85,8 @@ const storageKeys = {
   students: "esbot.students.v1",
   assignments: "esbot.assignments.v1",
   studentWorks: "esbot.studentWorks.v1",
-  profile: "esbot.profile.v1"
+  profile: "esbot.profile.v1",
+  robotIp: "esbot.robotIp.v1"
 };
 
 const demoPassword = "demo2026";
@@ -170,6 +173,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
   const [assignments, setAssignments] = useState<Assignment[]>(demoAssignments);
   const [studentWorks, setStudentWorks] = useState<StudentWork[]>(demoStudentWorks);
   const [profile, setProfile] = useState<TeacherProfile>(demoTeacherProfile);
+  const [robotIp, setRobotIpState] = useState<string>("");
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -181,6 +185,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       setAssignments(readStoredValue(storageKeys.assignments, demoAssignments));
       setStudentWorks(readStoredValue(storageKeys.studentWorks, demoStudentWorks));
       setProfile(readStoredValue(storageKeys.profile, demoTeacherProfile));
+      setRobotIpState(readStoredValue(storageKeys.robotIp, process.env.NEXT_PUBLIC_ROBOT_API_URL ?? "http://192.168.10.64:8765"));
       setIsReady(true);
     });
 
@@ -215,6 +220,11 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
     if (!isReady) return;
     writeStoredValue(storageKeys.profile, profile);
   }, [isReady, profile]);
+
+  const setRobotIp = useCallback((ip: string) => {
+    setRobotIpState(ip);
+    writeStoredValue(storageKeys.robotIp, ip);
+  }, []);
 
   const loginWithPassword = useCallback((email: string, password: string) => {
     const normalisedEmail = email.trim().toLowerCase();
@@ -572,7 +582,9 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       saveStudentWork,
       submitStudentWork,
       updateProfile,
-      resetDemoData
+      resetDemoData,
+      robotIp,
+      setRobotIp
     }),
     [
       addStudent,
@@ -591,8 +603,10 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       logout,
       profile,
       resetDemoData,
+      robotIp,
       saveStudentWork,
       session,
+      setRobotIp,
       studentWorks,
       students,
       submitStudentWork,

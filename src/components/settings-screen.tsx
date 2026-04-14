@@ -9,8 +9,22 @@ import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
 import type { ProfileInput } from "@/lib/types";
 
 export function SettingsScreen() {
-  const { profile, resetDemoData, updateProfile } = useDemoStore();
+  const { profile, resetDemoData, updateProfile, robotIp, setRobotIp } = useDemoStore();
   const [isEditing, setIsEditing] = useState(false);
+  const [ipInput, setIpInput] = useState(robotIp);
+  const [ipSaved, setIpSaved] = useState(false);
+
+  function handleSaveIp(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = ipInput.trim();
+    // Normalize: if user types just the IP, add http:// and port
+    let url = trimmed;
+    if (!url.startsWith("http")) url = `http://${url}`;
+    if (!url.match(/:\d+$/)) url = `${url}:8765`;
+    setRobotIp(url);
+    setIpSaved(true);
+    setTimeout(() => setIpSaved(false), 2000);
+  }
 
   return (
     <div className="page-stack">
@@ -55,6 +69,36 @@ export function SettingsScreen() {
             Restablecer demo local
           </button>
         </div>
+      </section>
+
+      <section aria-labelledby="robot-ip-title" className="profile-card">
+        <div className="section-heading">
+          <h2 id="robot-ip-title">Conexión al robot Temi</h2>
+        </div>
+        <p style={{ color: "var(--color-text-muted)", marginBottom: "1rem", fontSize: "0.875rem" }}>
+          Ingresa la dirección IP del robot en la red WiFi actual. El puerto 8765 se añade automáticamente.
+        </p>
+        <form className="form-stack" onSubmit={handleSaveIp} style={{ maxWidth: 400 }}>
+          <label className="field" htmlFor="robot-ip">
+            IP del robot
+            <input
+              id="robot-ip"
+              onChange={(e) => { setIpInput(e.target.value); setIpSaved(false); }}
+              placeholder="192.168.x.x"
+              type="text"
+              value={ipInput}
+            />
+          </label>
+          <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
+            URL actual: <strong>{robotIp}</strong>
+          </p>
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+            <button className="button button-primary" type="submit">
+              Guardar IP
+            </button>
+            {ipSaved && <span className="success-message" style={{ margin: 0 }}>✅ Guardado</span>}
+          </div>
+        </form>
       </section>
 
       {isEditing ? (

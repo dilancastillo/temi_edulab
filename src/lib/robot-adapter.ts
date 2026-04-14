@@ -1,11 +1,24 @@
-export const ROBOT_API_URL = process.env.NEXT_PUBLIC_ROBOT_API_URL ?? "http://localhost:8765";
+export const ROBOT_API_URL = process.env.NEXT_PUBLIC_ROBOT_API_URL ?? "http://192.168.10.64:8765";
+
+export function getRobotApiUrl(): string {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("esbot.robotIp.v1");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as string;
+        if (parsed && parsed.length > 0) return parsed;
+      } catch { /* ignore */ }
+    }
+  }
+  return ROBOT_API_URL;
+}
 export const FALLBACK_LOCATIONS = ["Sala Principal"];
 
 export async function fetchRobotLocations(): Promise<string[]> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 3000);
   try {
-    const response = await fetch(`${ROBOT_API_URL}/locations`, { signal: controller.signal });
+    const response = await fetch(`${getRobotApiUrl()}/locations`, { signal: controller.signal });
     const data = (await response.json()) as { locations?: string[] };
     const locations = data.locations;
     if (!Array.isArray(locations) || locations.length === 0) return FALLBACK_LOCATIONS;
@@ -70,7 +83,7 @@ export async function executeRobotCommands(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min para secuencias con imágenes
   try {
-    const response = await fetch(`${ROBOT_API_URL}/execute`, {
+    const response = await fetch(`${getRobotApiUrl()}/execute`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ commands }),

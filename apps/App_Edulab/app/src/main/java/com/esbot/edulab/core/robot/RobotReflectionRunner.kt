@@ -8,7 +8,7 @@ import javax.inject.Singleton
 
 private const val TAG = "RobotReflectionRunner"
 private const val NAVIGATE_TIMEOUT_S = 60L
-private const val SPEAK_TIMEOUT_S = 30L
+private const val SPEAK_TIMEOUT_S = 120L
 
 @Singleton
 class RobotReflectionRunner @Inject constructor(
@@ -104,6 +104,8 @@ class RobotReflectionRunner @Inject constructor(
     // -------------------------------------------------------------------------
 
     private fun speakAndWait(text: String): Result<Unit> {
+        // Estimate timeout: ~10 chars/second + 10s buffer, minimum 30s
+        val timeoutS = maxOf(30L, (text.length / 10L) + 10L)
         return try {
             val rClass = Class.forName("com.robotemi.sdk.Robot")
             val robot = rClass.getMethod("getInstance").invoke(null)
@@ -157,10 +159,12 @@ class RobotReflectionRunner @Inject constructor(
             rClass.getMethod("addTtsListener", ttsListenerClass).invoke(robot, ttsListener)
             rClass.getMethod("speak", ttsRequestClass).invoke(robot, ttsRequest)
 
-            val completed = latch.await(SPEAK_TIMEOUT_S, TimeUnit.SECONDS)
+            val completed = latch.await(timeoutS, TimeUnit.SECONDS)
             rClass.getMethod("removeTtsListener", ttsListenerClass).invoke(robot, ttsListener)
 
-            if (!completed) return Result.failure(RuntimeException("Speak timeout after ${SPEAK_TIMEOUT_S}s"))
+            if (!completed) {
+                Log.w(TAG, "Speak timeout after ${timeoutS}s — continuando secuencia")
+            }
 
             Log.d(TAG, "speak('$text') completado")
             Result.success(Unit)
