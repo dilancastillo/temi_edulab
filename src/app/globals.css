@@ -458,10 +458,36 @@ small {
 
 .metric-icon,
 .mission-symbol {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 3rem;
   height: 3rem;
   border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.mission-symbol img {
+  width: 1.6rem;
+  height: 1.6rem;
+  object-fit: contain;
+}
+
+/* Tinte oscuro por categoría usando filter */
+.mission-symbol-category-fundamentos img {
+  filter: invert(22%) sepia(60%) saturate(800%) hue-rotate(200deg) brightness(80%);
+}
+
+.mission-symbol-category-logica img {
+  filter: invert(30%) sepia(60%) saturate(600%) hue-rotate(110deg) brightness(75%);
+}
+
+.mission-symbol-category-control img {
+  filter: invert(35%) sepia(80%) saturate(700%) hue-rotate(20deg) brightness(70%);
+}
+
+.mission-symbol-category-robotica img {
+  filter: invert(20%) sepia(50%) saturate(700%) hue-rotate(260deg) brightness(75%);
 }
 
 .metric-icon-yellow,
@@ -489,6 +515,22 @@ small {
 
 .mission-symbol-slate {
   background: #e8edf3;
+}
+
+.mission-symbol-category-fundamentos {
+  background: var(--color-primary-soft);
+}
+
+.mission-symbol-category-logica {
+  background: #d4f5e9;
+}
+
+.mission-symbol-category-control {
+  background: var(--color-warning-soft);
+}
+
+.mission-symbol-category-robotica {
+  background: #ede9fc;
 }
 
 .section-heading {

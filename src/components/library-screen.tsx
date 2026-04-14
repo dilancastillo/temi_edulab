@@ -74,7 +74,9 @@ export function LibraryScreen() {
         {filteredMissions.map((mission) => (
           <article className="mission-card" key={mission.id}>
             <div className="mission-card-top">
-              <span className={`mission-symbol mission-symbol-${mission.coverTone}`} aria-hidden="true" />
+              <span className={`mission-symbol mission-symbol-category-${mission.category.toLowerCase()}`} aria-hidden="true">
+                <img src={`/icon_${mission.category.toLowerCase()}.png`} alt="" />
+              </span>
               <span className="age-pill">{mission.ageBand} años</span>
             </div>
             <h2>{mission.title}</h2>
