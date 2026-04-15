@@ -10,6 +10,18 @@ import {
   demoStudents,
   demoTeacherProfile
 } from "@/lib/demo-data";
+import {
+  fetchStudents,
+  fetchAssignments,
+  fetchStudentWorks,
+  fetchProfile,
+  upsertStudent,
+  upsertAssignment,
+  upsertStudentWork,
+  upsertProfile,
+  deleteStudentById,
+  deleteAssignmentById,
+} from "@/lib/supabase-store";
 import type {
   Assignment,
   AuthProvider,
@@ -178,17 +190,28 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
   useEffect(() => {
     const abortController = new AbortController();
 
-    queueMicrotask(() => {
+    async function loadFromSupabase() {
       if (abortController.signal.aborted) return;
+
+      const [remoteStudents, remoteAssignments, remoteWorks, remoteProfile] = await Promise.all([
+        fetchStudents(),
+        fetchAssignments(),
+        fetchStudentWorks(),
+        fetchProfile(demoTeacherProfile.id),
+      ]);
+
+      if (abortController.signal.aborted) return;
+
+      setStudents(remoteStudents.length > 0 ? remoteStudents : demoStudents);
+      setAssignments(remoteAssignments.length > 0 ? remoteAssignments : demoAssignments);
+      setStudentWorks(remoteWorks.length > 0 ? remoteWorks : demoStudentWorks);
+      setProfile(remoteProfile ?? demoTeacherProfile);
       setSession(readStoredValue<Session | null>(storageKeys.session, null));
-      setStudents(readStoredValue(storageKeys.students, demoStudents));
-      setAssignments(readStoredValue(storageKeys.assignments, demoAssignments));
-      setStudentWorks(readStoredValue(storageKeys.studentWorks, demoStudentWorks));
-      setProfile(readStoredValue(storageKeys.profile, demoTeacherProfile));
       setRobotIpState(readStoredValue(storageKeys.robotIp, process.env.NEXT_PUBLIC_ROBOT_API_URL ?? "http://192.168.10.64:8765"));
       setIsReady(true);
-    });
+    }
 
+    void loadFromSupabase();
     return () => abortController.abort();
   }, []);
 
@@ -201,25 +224,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
     }
   }, [isReady, session]);
 
-  useEffect(() => {
-    if (!isReady) return;
-    writeStoredValue(storageKeys.students, students);
-  }, [isReady, students]);
-
-  useEffect(() => {
-    if (!isReady) return;
-    writeStoredValue(storageKeys.assignments, assignments);
-  }, [assignments, isReady]);
-
-  useEffect(() => {
-    if (!isReady) return;
-    writeStoredValue(storageKeys.studentWorks, studentWorks);
-  }, [isReady, studentWorks]);
-
-  useEffect(() => {
-    if (!isReady) return;
-    writeStoredValue(storageKeys.profile, profile);
-  }, [isReady, profile]);
+  // Students, assignments, studentWorks, profile are synced to Supabase directly in each action
 
   const setRobotIp = useCallback((ip: string) => {
     setRobotIpState(ip);
@@ -320,39 +325,36 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
   }, []);
 
   const addStudent = useCallback((input: StudentInput) => {
-    setStudents((current) => [
-      {
-        id: createId("student"),
-        institutionId: demoInstitution.id,
-        courseId: input.courseId,
-        fullName: input.fullName.trim(),
-        email: input.email.trim().toLowerCase(),
-        progress: "En curso",
-        avatarUrl: input.avatarUrl,
-        createdAt: new Date().toISOString()
-      },
-      ...current
-    ]);
+    const newStudent: Student = {
+      id: createId("student"),
+      institutionId: demoInstitution.id,
+      courseId: input.courseId,
+      fullName: input.fullName.trim(),
+      email: input.email.trim().toLowerCase(),
+      progress: "En curso",
+      avatarUrl: input.avatarUrl,
+      createdAt: new Date().toISOString()
+    };
+    setStudents((current) => [newStudent, ...current]);
+    void upsertStudent(newStudent);
   }, []);
 
   const updateStudent = useCallback((studentId: string, input: StudentInput) => {
-    setStudents((current) =>
-      current.map((student) =>
+    setStudents((current) => {
+      const updated = current.map((student) =>
         student.id === studentId
-          ? {
-              ...student,
-              courseId: input.courseId,
-              fullName: input.fullName.trim(),
-              email: input.email.trim().toLowerCase(),
-              avatarUrl: input.avatarUrl
-            }
+          ? { ...student, courseId: input.courseId, fullName: input.fullName.trim(), email: input.email.trim().toLowerCase(), avatarUrl: input.avatarUrl }
           : student
-      )
-    );
+      );
+      const s = updated.find((s) => s.id === studentId);
+      if (s) void upsertStudent(s);
+      return updated;
+    });
   }, []);
 
   const deleteStudent = useCallback((studentId: string) => {
     setStudents((current) => current.filter((student) => student.id !== studentId));
+    void deleteStudentById(studentId);
   }, []);
 
   const importStudents = useCallback((importedStudents: ImportedStudent[]) => {
@@ -388,87 +390,68 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
     }
 
     setStudents((current) => [...nextStudents, ...current]);
+    nextStudents.forEach((s) => void upsertStudent(s));
     return { added: nextStudents.length, skipped };
   }, [students]);
 
   const assignMission = useCallback(
     (input: AssignMissionInput) => {
-      setAssignments((current) => [
-        {
-          id: createId("assignment"),
-          institutionId: demoInstitution.id,
-          courseId: input.courseId,
-          missionId: input.missionId,
-          missionCode: createMissionCode(),
-          instructions: input.instructions?.trim(),
-          status: "active",
-          assignedAt: new Date().toISOString(),
-          assignedBy: profile.id,
-          completedCount: 0,
-          reviewCount: 0
-        },
-        ...current
-      ]);
+      const newAssignment: Assignment = {
+        id: createId("assignment"),
+        institutionId: demoInstitution.id,
+        courseId: input.courseId,
+        missionId: input.missionId,
+        missionCode: createMissionCode(),
+        instructions: input.instructions?.trim(),
+        status: "active",
+        assignedAt: new Date().toISOString(),
+        assignedBy: profile.id,
+        completedCount: 0,
+        reviewCount: 0
+      };
+      setAssignments((current) => [newAssignment, ...current]);
+      void upsertAssignment(newAssignment);
 
       setStudents((current) =>
-        current.map((student) =>
-          student.courseId === input.courseId
-            ? {
-                ...student,
-                currentMissionId: student.currentMissionId ?? input.missionId,
-                progress: "En curso"
-              }
-            : student
-        )
+        current.map((student) => {
+          if (student.courseId !== input.courseId) return student;
+          const updated = { ...student, currentMissionId: student.currentMissionId ?? input.missionId, progress: "En curso" as const };
+          void upsertStudent(updated);
+          return updated;
+        })
       );
     },
     [profile.id]
   );
 
   const archiveAssignment = useCallback((assignmentId: string) => {
-    setAssignments((current) =>
-      current.map((assignment) => (assignment.id === assignmentId ? { ...assignment, status: "archived" } : assignment))
-    );
+    setAssignments((current) => {
+      const updated = current.map((a) => a.id === assignmentId ? { ...a, status: "archived" as const } : a);
+      const a = updated.find((a) => a.id === assignmentId);
+      if (a) void upsertAssignment(a);
+      return updated;
+    });
   }, []);
 
   const deleteAssignment = useCallback((assignmentId: string) => {
-    setAssignments((current) => current.filter((assignment) => assignment.id !== assignmentId));
+    setAssignments((current) => current.filter((a) => a.id !== assignmentId));
+    void deleteAssignmentById(assignmentId);
   }, []);
 
   const saveStudentWork = useCallback((input: SaveStudentWorkInput) => {
     setStudentWorks((current) => {
-      const existing = current.find(
-        (work) => work.studentId === input.studentId && work.assignmentId === input.assignmentId
-      );
-
+      const existing = current.find((w) => w.studentId === input.studentId && w.assignmentId === input.assignmentId);
+      let updated: StudentWork[];
       if (existing) {
-        return current.map((work) =>
-          work.id === existing.id
-            ? {
-                ...work,
-                workspaceState: input.workspaceState,
-                stepIndex: input.stepIndex,
-                status: work.status === "submitted" ? "submitted" : "draft",
-                updatedAt: new Date().toISOString()
-              }
-            : work
-        );
+        const work = { ...existing, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: existing.status === "submitted" ? "submitted" as const : "draft" as const, updatedAt: new Date().toISOString() };
+        updated = current.map((w) => w.id === existing.id ? work : w);
+        void upsertStudentWork(work);
+      } else {
+        const work: StudentWork = { id: createId("work"), institutionId: demoInstitution.id, studentId: input.studentId, assignmentId: input.assignmentId, missionId: input.missionId, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "draft", updatedAt: new Date().toISOString() };
+        updated = [work, ...current];
+        void upsertStudentWork(work);
       }
-
-      return [
-        {
-          id: createId("work"),
-          institutionId: demoInstitution.id,
-          studentId: input.studentId,
-          assignmentId: input.assignmentId,
-          missionId: input.missionId,
-          workspaceState: input.workspaceState,
-          stepIndex: input.stepIndex,
-          status: "draft",
-          updatedAt: new Date().toISOString()
-        },
-        ...current
-      ];
+      return updated;
     });
   }, []);
 
@@ -477,59 +460,36 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       const submittedAt = new Date().toISOString();
 
       setStudentWorks((current) => {
-        const existing = current.find(
-          (work) => work.studentId === input.studentId && work.assignmentId === input.assignmentId
-        );
-
+        const existing = current.find((w) => w.studentId === input.studentId && w.assignmentId === input.assignmentId);
+        let updated: StudentWork[];
         if (existing) {
-          return current.map((work) =>
-            work.id === existing.id
-              ? {
-                  ...work,
-                  workspaceState: input.workspaceState,
-                  stepIndex: input.stepIndex,
-                  status: "submitted",
-                  submittedAt,
-                  updatedAt: submittedAt
-                }
-              : work
-          );
+          const work = { ...existing, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "submitted" as const, submittedAt, updatedAt: submittedAt };
+          updated = current.map((w) => w.id === existing.id ? work : w);
+          void upsertStudentWork(work);
+        } else {
+          const work: StudentWork = { id: createId("work"), institutionId: demoInstitution.id, studentId: input.studentId, assignmentId: input.assignmentId, missionId: input.missionId, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "submitted", submittedAt, updatedAt: submittedAt };
+          updated = [work, ...current];
+          void upsertStudentWork(work);
         }
-
-        return [
-          {
-            id: createId("work"),
-            institutionId: demoInstitution.id,
-            studentId: input.studentId,
-            assignmentId: input.assignmentId,
-            missionId: input.missionId,
-            workspaceState: input.workspaceState,
-            stepIndex: input.stepIndex,
-            status: "submitted",
-            submittedAt,
-            updatedAt: submittedAt
-          },
-          ...current
-        ];
+        return updated;
       });
 
       setStudents((current) =>
-        current.map((student) =>
-          student.id === input.studentId ? { ...student, progress: "Revisar", currentMissionId: input.missionId } : student
-        )
+        current.map((student) => {
+          if (student.id !== input.studentId) return student;
+          const updated = { ...student, progress: "Revisar" as const, currentMissionId: input.missionId };
+          void upsertStudent(updated);
+          return updated;
+        })
       );
 
       setAssignments((current) =>
         current.map((assignment) => {
           if (assignment.id !== input.assignmentId) return assignment;
-          const alreadySubmitted = studentWorks.some(
-            (work) => work.studentId === input.studentId && work.assignmentId === input.assignmentId && work.status === "submitted"
-          );
-
-          return {
-            ...assignment,
-            reviewCount: alreadySubmitted ? assignment.reviewCount : assignment.reviewCount + 1
-          };
+          const alreadySubmitted = studentWorks.some((w) => w.studentId === input.studentId && w.assignmentId === input.assignmentId && w.status === "submitted");
+          const updated = { ...assignment, reviewCount: alreadySubmitted ? assignment.reviewCount : assignment.reviewCount + 1 };
+          void upsertAssignment(updated);
+          return updated;
         })
       );
     },
@@ -537,13 +497,11 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
   );
 
   const updateProfile = useCallback((input: ProfileInput) => {
-    setProfile((current) => ({
-      ...current,
-      fullName: input.fullName.trim(),
-      email: input.email.trim().toLowerCase(),
-      biography: input.biography.trim(),
-      avatarUrl: input.avatarUrl
-    }));
+    setProfile((current) => {
+      const updated = { ...current, fullName: input.fullName.trim(), email: input.email.trim().toLowerCase(), biography: input.biography.trim(), avatarUrl: input.avatarUrl };
+      void upsertProfile(updated);
+      return updated;
+    });
   }, []);
 
   const resetDemoData = useCallback(() => {
