@@ -114,6 +114,7 @@ export async function executeRobotCommands(
     return { ok: false, message: data.message ?? `Error ${response.status}` };
   } catch {
     return { ok: false, message: "Robot no disponible o tiempo de espera agotado" };
+
   } finally {
     clearTimeout(timeoutId);
   }
