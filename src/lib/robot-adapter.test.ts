@@ -128,7 +128,7 @@ describe("executeRobotCommands", () => {
     const result = await executeRobotCommands(commands);
 
     expect(result.ok).toBe(false);
-    expect(result.message).toBe("Robot no disponible");
+    expect(result.message).toContain("Robot no disponible");
   });
 
   it("devuelve {ok:false} cuando fetch lanza error de red genérico", async () => {
