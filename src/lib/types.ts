@@ -1,3 +1,5 @@
+
+export type StudentProgress = "En curso" | "Revisar" | "Calificado";
 export type UserRole = "teacher" | "student" | "institution_admin" | "admin";
 
 export type AuthProvider = "password" | "google" | "microsoft" | "mission_code";
@@ -34,7 +36,6 @@ export type Session = {
   studentId?: string;
 };
 
-export type StudentProgress = "En curso" | "Revisar" | "Calificado";
 
 export type Student = {
   id: string;
@@ -50,8 +51,10 @@ export type Student = {
 
 export type MissionCategory = "Fundamentos" | "Logica" | "Control" | "Robotica";
 
+import type { ProgramBlockType } from "@/lib/mission-program";
+
 export type MissionStep = {
-  type: string;
+  type: ProgramBlockType;
   label: string;
   helper: string;
 };

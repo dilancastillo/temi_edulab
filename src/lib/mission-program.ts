@@ -1,4 +1,4 @@
-export type ProgramBlockType = "temi_start" | "temi_move" | "temi_say" | "temi_show" | "temi_audio";
+export type ProgramBlockType = "temi_start" | "temi_move" | "temi_say" | "temi_show" | "temi_audio" | "temi_show_image" | "temi_show_video";
 
 export type ProgramStep = {
   type: ProgramBlockType;

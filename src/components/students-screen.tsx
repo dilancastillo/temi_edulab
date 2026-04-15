@@ -214,7 +214,7 @@ export function StudentsScreen() {
                         <button className="button button-danger-outline" onClick={() => setStudentToDelete(student)} type="button">
                           Eliminar
                         </button>
-                        {studentWork?.workspaceState && (
+                        {studentWork?.workspaceState != null && (
                           <button
                             className="button button-ghost"
                             onClick={() => setStudentToPreview({ student, workspaceState: studentWork.workspaceState })}
@@ -223,7 +223,7 @@ export function StudentsScreen() {
                             Ver
                           </button>
                         )}
-                        {studentWork?.workspaceState && (
+                        {studentWork?.workspaceState != null && (
                           <ExecuteButton
                             inline
                             label="Ejecutar"
