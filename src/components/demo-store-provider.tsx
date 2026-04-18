@@ -194,10 +194,10 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       if (abortController.signal.aborted) return;
 
       const [remoteStudents, remoteAssignments, remoteWorks, remoteProfile] = await Promise.all([
-        fetchStudents(),
-        fetchAssignments(),
-        fetchStudentWorks(),
-        fetchProfile(demoTeacherProfile.id),
+        fetchStudents(demoTeacherProfile.teacherId),
+        fetchAssignments(demoTeacherProfile.teacherId),
+        fetchStudentWorks(demoTeacherProfile.teacherId),
+        fetchProfile(demoTeacherProfile.teacherId),
       ]);
 
       if (abortController.signal.aborted) return;
@@ -327,6 +327,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
   const addStudent = useCallback((input: StudentInput) => {
     const newStudent: Student = {
       id: createId("student"),
+      teacherId: "teacher-demo",
       institutionId: demoInstitution.id,
       courseId: input.courseId,
       fullName: input.fullName.trim(),
@@ -380,6 +381,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       existingEmails.add(importedStudent.email);
       nextStudents.push({
         id: createId("student"),
+        teacherId: "teacher-demo",
         institutionId: demoInstitution.id,
         courseId: course.id,
         fullName: importedStudent.fullName,
@@ -396,8 +398,15 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
 
   const assignMission = useCallback(
     (input: AssignMissionInput) => {
+      // Evitar asignar la misma misión dos veces al mismo curso
+      const alreadyAssigned = assignments.some(
+        (a) => a.missionId === input.missionId && a.courseId === input.courseId && a.status === "active"
+      );
+      if (alreadyAssigned) return;
+
       const newAssignment: Assignment = {
         id: createId("assignment"),
+        teacherId: "teacher-demo",
         institutionId: demoInstitution.id,
         courseId: input.courseId,
         missionId: input.missionId,
@@ -421,7 +430,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
         })
       );
     },
-    [profile.id]
+    [assignments, profile.id]
   );
 
   const archiveAssignment = useCallback((assignmentId: string) => {
@@ -447,7 +456,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
         updated = current.map((w) => w.id === existing.id ? work : w);
         void upsertStudentWork(work);
       } else {
-        const work: StudentWork = { id: createId("work"), institutionId: demoInstitution.id, studentId: input.studentId, assignmentId: input.assignmentId, missionId: input.missionId, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "draft", updatedAt: new Date().toISOString() };
+        const work: StudentWork = { id: createId("work"), teacherId: "teacher-demo", institutionId: demoInstitution.id, studentId: input.studentId, assignmentId: input.assignmentId, missionId: input.missionId, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "draft", updatedAt: new Date().toISOString() };
         updated = [work, ...current];
         void upsertStudentWork(work);
       }
@@ -467,7 +476,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
           updated = current.map((w) => w.id === existing.id ? work : w);
           void upsertStudentWork(work);
         } else {
-          const work: StudentWork = { id: createId("work"), institutionId: demoInstitution.id, studentId: input.studentId, assignmentId: input.assignmentId, missionId: input.missionId, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "submitted", submittedAt, updatedAt: submittedAt };
+          const work: StudentWork = { id: createId("work"), teacherId: "teacher-demo", institutionId: demoInstitution.id, studentId: input.studentId, assignmentId: input.assignmentId, missionId: input.missionId, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "submitted", submittedAt, updatedAt: submittedAt };
           updated = [work, ...current];
           void upsertStudentWork(work);
         }

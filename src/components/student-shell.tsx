@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LogoMark } from "@/components/logo";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useDemoStore } from "@/components/auth-store-provider";
 import { UnsavedChangesProvider, useUnsavedChanges } from "@/components/unsaved-changes-provider";
 
 const studentNavItems = [
@@ -23,27 +23,23 @@ export function StudentShell({ children }: Readonly<{ children: React.ReactNode 
 function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isReady, logout, session } = useDemoStore();
+  const { isReady, logout, studentSession } = useDemoStore();
   const { requestNavigation } = useUnsavedChanges();
   const isLoginRoute = pathname === "/estudiante/login";
 
   useEffect(() => {
     if (isLoginRoute) return;
     if (!isReady) return;
-    if (!session) {
+    if (!studentSession) {
       router.replace("/estudiante/login");
-      return;
     }
-    if (session.role !== "student") {
-      router.replace("/profesor");
-    }
-  }, [isLoginRoute, isReady, router, session]);
+  }, [isLoginRoute, isReady, router, studentSession]);
 
   if (isLoginRoute) {
     return <>{children}</>;
   }
 
-  if (!isReady || !session || session.role !== "student") {
+  if (!isReady || !studentSession) {
     return (
       <main className="loading-screen" aria-live="polite">
         <LogoMark />
@@ -83,7 +79,7 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
         </nav>
         <button
           className="button button-secondary topbar-action"
-          onClick={() => requestNavigation(() => { logout(); router.replace("/estudiante/login"); })}
+          onClick={() => requestNavigation(() => { void logout(); router.replace("/estudiante/login"); })}
           type="button"
         >
           Salir

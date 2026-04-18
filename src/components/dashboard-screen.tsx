@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useDemoStore } from "@/components/auth-store-provider";
+
+const ITEMS_PER_PAGE = 3;
 
 export function DashboardScreen() {
   const { assignments, courses, missions, students } = useDemoStore();
@@ -10,6 +13,12 @@ export function DashboardScreen() {
   const studentsToReview = students.filter((student) => student.progress === "Revisar").length;
   const gradedStudents = students.filter((student) => student.progress === "Calificado").length;
   const robotReadiness = Math.round((activeAssignments.length / Math.max(missions.length, 1)) * 100);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(activeAssignments.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedAssignments = activeAssignments.slice(startIndex, endIndex);
 
   return (
     <div className="page-stack">
@@ -45,7 +54,7 @@ export function DashboardScreen() {
           </Link>
         </div>
         <div className="assignment-list">
-          {activeAssignments.slice(0, 3).map((assignment) => {
+          {paginatedAssignments.map((assignment) => {
             const mission = missions.find((candidate) => candidate.id === assignment.missionId);
             const course = courses.find((candidate) => candidate.id === assignment.courseId);
 
@@ -72,6 +81,34 @@ export function DashboardScreen() {
             );
           })}
         </div>
+        {totalPages > 1 && (
+          <div className="pagination-footer">
+            <span className="pagination-info">
+              Mostrando {Math.min(endIndex, activeAssignments.length)} de {activeAssignments.length} misiones
+            </span>
+            <div className="pagination-controls">
+              <button
+                className="button button-ghost"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+                type="button"
+              >
+                Anterior
+              </button>
+              <span className="pagination-current">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                className="button button-ghost"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+                type="button"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

@@ -212,6 +212,10 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
       const { fetchRobotLocations } = await import("@/lib/robot-adapter");
       const locations = await fetchRobotLocations();
 
+      if (!isMounted || !containerRef.current) return;
+      // Verificar que el contenedor sigue en el documento
+      if (!document.contains(containerRef.current)) return;
+
       defineTemiBlocks(Blockly, locations);
       blocklyRef.current = Blockly;
 

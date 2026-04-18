@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useDemoStore } from "@/components/auth-store-provider";
 import type { Assignment } from "@/lib/types";
 
 export function MissionsScreen() {

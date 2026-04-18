@@ -5,39 +5,34 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { LogoMark } from "@/components/logo";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useAuthStore } from "@/components/auth-store-provider";
 
 export function LoginScreen() {
   const router = useRouter();
-  const { isReady, loginWithPassword, loginWithGoogle, session } = useDemoStore();
-  const [email, setEmail] = useState("profesor@esbot.test");
-  const [password, setPassword] = useState("demo2026");
+  const { isReady, loginWithPassword, loginWithGoogle, session, teacherId } = useAuthStore();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (isReady && session?.role === "teacher") {
+    if (isReady && teacherId) {
       router.replace("/profesor");
-    } else if (isReady && session?.role === "student") {
-      router.replace("/estudiante");
     }
-  }, [isReady, router, session]);
+  }, [isReady, router, teacherId]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = loginWithPassword(email, password);
+    event.stopPropagation();
+    const result = await loginWithPassword(email, password);
 
     if (!result.ok) {
       setError(result.message ?? "No se pudo iniciar sesión.");
-      return;
     }
-
-    router.push("/profesor");
   }
 
-  function handleGoogleSuccess(credentialResponse: CredentialResponse) {
+  async function handleGoogleSuccess(credentialResponse: CredentialResponse) {
     if (credentialResponse.credential) {
-      loginWithGoogle(credentialResponse.credential);
-      router.push("/profesor");
+      await loginWithGoogle(credentialResponse.credential);
     }
   }
 
@@ -61,7 +56,7 @@ export function LoginScreen() {
           <h2 id="login-title">Iniciar sesión</h2>
           <p className="muted">Usa la cuenta demo o entra en modo local con Google/Microsoft.</p>
         </div>
-        <form className="form-stack" onSubmit={handleSubmit}>
+        <form className="form-stack" onSubmit={handleSubmit} method="post" action="#">
           <div className="field">
             <label htmlFor="email">Correo institucional</label>
             <input

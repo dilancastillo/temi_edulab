@@ -1,12 +1,12 @@
 "use client";
 
-import { DemoStoreProvider } from "@/components/demo-store-provider";
+import { AuthStoreProvider } from "@/components/auth-store-provider";
 import { GoogleAuthProvider } from "@/components/google-auth-provider";
 
 export function AppProviders({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <GoogleAuthProvider>
-      <DemoStoreProvider>{children}</DemoStoreProvider>
+      <AuthStoreProvider>{children}</AuthStoreProvider>
     </GoogleAuthProvider>
   );
 }

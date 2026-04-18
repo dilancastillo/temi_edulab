@@ -3,7 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Modal } from "@/components/modal";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useDemoStore } from "@/components/auth-store-provider";
 import type { Mission } from "@/lib/types";
 
 const categoryFilters = [
@@ -17,7 +17,7 @@ const ageFilters = ["Todas", "7-10", "11-14", "15-18"] as const;
 type CategoryFilter = (typeof categoryFilters)[number]["value"];
 
 export function LibraryScreen() {
-  const { assignMission, courses, missions } = useDemoStore();
+  const { assignMission, assignments, courses, missions } = useDemoStore();
   const [category, setCategory] = useState<CategoryFilter>("Todas");
   const [ageBand, setAgeBand] = useState<(typeof ageFilters)[number]>("Todas");
   const [previewMission, setPreviewMission] = useState<Mission | null>(null);
@@ -98,6 +98,9 @@ export function LibraryScreen() {
         <AssignMissionModal
           courses={courses}
           mission={assignmentMission}
+          assignedCourseIds={assignments
+            .filter((a) => a.missionId === assignmentMission.id && a.status === "active")
+            .map((a) => a.courseId)}
           onClose={() => setAssignmentMission(null)}
           onSubmit={(courseId, instructions) => {
             assignMission({ courseId, missionId: assignmentMission.id, instructions });
@@ -154,20 +157,37 @@ function MissionPreview({
 function AssignMissionModal({
   courses,
   mission,
+  assignedCourseIds,
   onClose,
   onSubmit
 }: Readonly<{
   courses: { id: string; name: string }[];
   mission: Mission;
+  assignedCourseIds: string[];
   onClose: () => void;
   onSubmit: (courseId: string, instructions: string) => void;
 }>) {
-  const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
+  const availableCourses = courses.filter((c) => !assignedCourseIds.includes(c.id));
+  const [courseId, setCourseId] = useState(availableCourses[0]?.id ?? "");
   const [instructions, setInstructions] = useState("");
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onSubmit(courseId, instructions);
+  }
+
+  if (availableCourses.length === 0) {
+    return (
+      <Modal onClose={onClose} title="Asignar misión">
+        <p className="muted">{mission.title}</p>
+        <p className="hint-card">Esta misión ya está asignada a todos los cursos disponibles.</p>
+        <div className="modal-actions">
+          <button className="button button-ghost" onClick={onClose} type="button">
+            Cerrar
+          </button>
+        </div>
+      </Modal>
+    );
   }
 
   return (
@@ -177,11 +197,14 @@ function AssignMissionModal({
         <label className="field" htmlFor="assignment-course">
           Curso
           <select id="assignment-course" onChange={(event) => setCourseId(event.target.value)} required value={courseId}>
-            {courses.map((course) => (
-              <option key={course.id} value={course.id}>
-                {course.name}
-              </option>
-            ))}
+            {courses.map((course) => {
+              const alreadyAssigned = assignedCourseIds.includes(course.id);
+              return (
+                <option key={course.id} value={course.id} disabled={alreadyAssigned}>
+                  {course.name}{alreadyAssigned ? " (ya asignada)" : ""}
+                </option>
+              );
+            })}
           </select>
         </label>
         <label className="field" htmlFor="assignment-instructions">

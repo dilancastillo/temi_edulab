@@ -1,4 +1,4 @@
-
+import type { ProgramBlockType } from "@/lib/mission-program";
 export type StudentProgress = "En curso" | "Revisar" | "Calificado";
 export type UserRole = "teacher" | "student" | "institution_admin" | "admin";
 
@@ -19,6 +19,7 @@ export type Course = {
 
 export type TeacherProfile = {
   id: string;
+  teacherId: string;
   institutionId: string;
   fullName: string;
   email: string;
@@ -39,10 +40,12 @@ export type Session = {
 
 export type Student = {
   id: string;
+  teacherId: string;
   institutionId: string;
   courseId: string;
   fullName: string;
   email: string;
+  password: string;
   progress: StudentProgress;
   currentMissionId?: string;
   avatarUrl?: string;
@@ -51,7 +54,6 @@ export type Student = {
 
 export type MissionCategory = "Fundamentos" | "Logica" | "Control" | "Robotica";
 
-import type { ProgramBlockType } from "@/lib/mission-program";
 
 export type MissionStep = {
   type: ProgramBlockType;
@@ -79,6 +81,7 @@ export type AssignmentStatus = "active" | "archived";
 
 export type Assignment = {
   id: string;
+  teacherId: string;
   institutionId: string;
   courseId: string;
   missionId: string;
@@ -95,6 +98,7 @@ export type StudentWorkStatus = "draft" | "submitted";
 
 export type StudentWork = {
   id: string;
+  teacherId: string;
   institutionId: string;
   studentId: string;
   assignmentId: string;
@@ -109,6 +113,7 @@ export type StudentWork = {
 export type StudentInput = {
   fullName: string;
   email: string;
+  password: string;
   courseId: string;
   avatarUrl?: string;
 };
@@ -135,3 +140,5 @@ export type StudentLoginResult = {
   ok: boolean;
   message?: string;
 };
+
+export type AuthResult = { ok: boolean; message?: string };

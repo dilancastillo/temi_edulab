@@ -15,6 +15,7 @@ export const demoCourses: Course[] = [
 
 export const demoTeacherProfile: TeacherProfile = {
   id: "teacher-demo",
+  teacherId: "teacher-demo",
   institutionId: demoInstitution.id,
   fullName: "Elena Martinez",
   email: "profesor@esbot.test",
@@ -140,78 +141,14 @@ export const demoMissions: Mission[] = [
 ];
 
 export const demoStudents: Student[] = [
-  {
-    id: "student-ana",
-    institutionId: demoInstitution.id,
-    courseId: "course-10a",
-    fullName: "Ana Garcia",
-    email: "ana.garcia@esbot.test",
-    progress: "En curso",
-    createdAt: "2026-04-01T13:00:00.000Z"
-  },
-  {
-    id: "student-camilo",
-    institutionId: demoInstitution.id,
-    courseId: "course-10a",
-    fullName: "Camilo Lopez",
-    email: "camilo.lopez@esbot.test",
-    progress: "En curso",
-    createdAt: "2026-04-01T13:10:00.000Z"
-  },
-  {
-    id: "student-andres",
-    institutionId: demoInstitution.id,
-    courseId: "course-10a",
-    fullName: "Andres Lara",
-    email: "andres.lara@esbot.test",
-    progress: "En curso",
-    createdAt: "2026-04-01T13:20:00.000Z"
-  },
-  {
-    id: "student-mateo",
-    institutionId: demoInstitution.id,
-    courseId: "course-10a",
-    fullName: "Mateo Salazar",
-    email: "mateo.salazar@esbot.test",
-    progress: "En curso",
-    createdAt: "2026-04-01T13:30:00.000Z"
-  },
-  {
-    id: "student-laura",
-    institutionId: demoInstitution.id,
-    courseId: "course-10b",
-    fullName: "Laura Mendez",
-    email: "laura.mendez@esbot.test",
-    progress: "En curso",
-    createdAt: "2026-04-02T13:00:00.000Z"
-  },
-  {
-    id: "student-sofia",
-    institutionId: demoInstitution.id,
-    courseId: "course-10b",
-    fullName: "Sofia Rojas",
-    email: "sofia.rojas@esbot.test",
-    progress: "En curso",
-    createdAt: "2026-04-02T13:20:00.000Z"
-  },
-  {
-    id: "student-valentina",
-    institutionId: demoInstitution.id,
-    courseId: "course-11a",
-    fullName: "Valentina Ruiz",
-    email: "valentina.ruiz@esbot.test",
-    progress: "En curso",
-    createdAt: "2026-04-03T13:20:00.000Z"
-  },
-  {
-    id: "student-daniel",
-    institutionId: demoInstitution.id,
-    courseId: "course-robotica",
-    fullName: "Daniel Torres",
-    email: "daniel.torres@esbot.test",
-    progress: "En curso",
-    createdAt: "2026-04-03T13:30:00.000Z"
-  }
+  { id: "student-ana", teacherId: "teacher-demo", institutionId: demoInstitution.id, courseId: "course-10a", fullName: "Ana Garcia", email: "ana.garcia@esbot.test", password: "demo2026", progress: "En curso", createdAt: "2026-04-01T13:00:00.000Z" },
+  { id: "student-camilo", teacherId: "teacher-demo", institutionId: demoInstitution.id, courseId: "course-10a", fullName: "Camilo Lopez", email: "camilo.lopez@esbot.test", password: "demo2026", progress: "En curso", createdAt: "2026-04-01T13:10:00.000Z" },
+  { id: "student-andres", teacherId: "teacher-demo", institutionId: demoInstitution.id, courseId: "course-10a", fullName: "Andres Lara", email: "andres.lara@esbot.test", password: "demo2026", progress: "En curso", createdAt: "2026-04-01T13:20:00.000Z" },
+  { id: "student-mateo", teacherId: "teacher-demo", institutionId: demoInstitution.id, courseId: "course-10a", fullName: "Mateo Salazar", email: "mateo.salazar@esbot.test", password: "demo2026", progress: "En curso", createdAt: "2026-04-01T13:30:00.000Z" },
+  { id: "student-laura", teacherId: "teacher-demo", institutionId: demoInstitution.id, courseId: "course-10b", fullName: "Laura Mendez", email: "laura.mendez@esbot.test", password: "demo2026", progress: "En curso", createdAt: "2026-04-02T13:00:00.000Z" },
+  { id: "student-sofia", teacherId: "teacher-demo", institutionId: demoInstitution.id, courseId: "course-10b", fullName: "Sofia Rojas", email: "sofia.rojas@esbot.test", password: "demo2026", progress: "En curso", createdAt: "2026-04-02T13:20:00.000Z" },
+  { id: "student-valentina", teacherId: "teacher-demo", institutionId: demoInstitution.id, courseId: "course-11a", fullName: "Valentina Ruiz", email: "valentina.ruiz@esbot.test", password: "demo2026", progress: "En curso", createdAt: "2026-04-03T13:20:00.000Z" },
+  { id: "student-daniel", teacherId: "teacher-demo", institutionId: demoInstitution.id, courseId: "course-robotica", fullName: "Daniel Torres", email: "daniel.torres@esbot.test", password: "demo2026", progress: "En curso", createdAt: "2026-04-03T13:30:00.000Z" },
 ];
 
 export const demoAssignments: Assignment[] = [];

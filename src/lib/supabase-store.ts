@@ -3,8 +3,8 @@ import type { Assignment, Student, StudentWork, TeacherProfile } from "@/lib/typ
 
 // ─── Students ────────────────────────────────────────────────────────────────
 
-export async function fetchStudents(): Promise<Student[]> {
-  const { data, error } = await supabase.from("students").select("*").order("created_at", { ascending: false });
+export async function fetchStudents(teacherId: string): Promise<Student[]> {
+  const { data, error } = await supabase.from("students").select("*").eq("teacher_id", teacherId).order("created_at", { ascending: false });
   if (error) { console.error("fetchStudents:", error); return []; }
   return (data ?? []).map(rowToStudent);
 }
@@ -21,8 +21,8 @@ export async function deleteStudentById(id: string): Promise<void> {
 
 // ─── Assignments ─────────────────────────────────────────────────────────────
 
-export async function fetchAssignments(): Promise<Assignment[]> {
-  const { data, error } = await supabase.from("assignments").select("*").order("assigned_at", { ascending: false });
+export async function fetchAssignments(teacherId: string): Promise<Assignment[]> {
+  const { data, error } = await supabase.from("assignments").select("*").eq("teacher_id", teacherId).order("assigned_at", { ascending: false });
   if (error) { console.error("fetchAssignments:", error); return []; }
   return (data ?? []).map(rowToAssignment);
 }
@@ -39,8 +39,8 @@ export async function deleteAssignmentById(id: string): Promise<void> {
 
 // ─── Student Works ────────────────────────────────────────────────────────────
 
-export async function fetchStudentWorks(): Promise<StudentWork[]> {
-  const { data, error } = await supabase.from("student_works").select("*").order("updated_at", { ascending: false });
+export async function fetchStudentWorks(teacherId: string): Promise<StudentWork[]> {
+  const { data, error } = await supabase.from("student_works").select("*").eq("teacher_id", teacherId).order("updated_at", { ascending: false });
   if (error) { console.error("fetchStudentWorks:", error); return []; }
   return (data ?? []).map(rowToStudentWork);
 }
@@ -52,8 +52,8 @@ export async function upsertStudentWork(work: StudentWork): Promise<void> {
 
 // ─── Teacher Profile ──────────────────────────────────────────────────────────
 
-export async function fetchProfile(id: string): Promise<TeacherProfile | null> {
-  const { data, error } = await supabase.from("teacher_profiles").select("*").eq("id", id).single();
+export async function fetchProfile(teacherId: string): Promise<TeacherProfile | null> {
+  const { data, error } = await supabase.from("teacher_profiles").select("*").eq("teacher_id", teacherId).single();
   if (error) { return null; }
   return rowToProfile(data);
 }
@@ -68,10 +68,12 @@ export async function upsertProfile(profile: TeacherProfile): Promise<void> {
 function rowToStudent(row: Record<string, unknown>): Student {
   return {
     id: row.id as string,
+    teacherId: row.teacher_id as string,
     institutionId: row.institution_id as string,
     courseId: row.course_id as string,
     fullName: row.full_name as string,
     email: row.email as string,
+    password: row.password as string ?? "",
     progress: row.progress as Student["progress"],
     currentMissionId: row.current_mission_id as string | undefined,
     avatarUrl: row.avatar_url as string | undefined,
@@ -82,10 +84,12 @@ function rowToStudent(row: Record<string, unknown>): Student {
 function studentToRow(s: Student) {
   return {
     id: s.id,
+    teacher_id: s.teacherId,
     institution_id: s.institutionId,
     course_id: s.courseId,
     full_name: s.fullName,
     email: s.email,
+    password: s.password,
     progress: s.progress,
     current_mission_id: s.currentMissionId ?? null,
     avatar_url: s.avatarUrl ?? null,
@@ -96,6 +100,7 @@ function studentToRow(s: Student) {
 function rowToAssignment(row: Record<string, unknown>): Assignment {
   return {
     id: row.id as string,
+    teacherId: row.teacher_id as string,
     institutionId: row.institution_id as string,
     courseId: row.course_id as string,
     missionId: row.mission_id as string,
@@ -112,6 +117,7 @@ function rowToAssignment(row: Record<string, unknown>): Assignment {
 function assignmentToRow(a: Assignment) {
   return {
     id: a.id,
+    teacher_id: a.teacherId,
     institution_id: a.institutionId,
     course_id: a.courseId,
     mission_id: a.missionId,
@@ -128,6 +134,7 @@ function assignmentToRow(a: Assignment) {
 function rowToStudentWork(row: Record<string, unknown>): StudentWork {
   return {
     id: row.id as string,
+    teacherId: row.teacher_id as string,
     institutionId: row.institution_id as string,
     studentId: row.student_id as string,
     assignmentId: row.assignment_id as string,
@@ -143,6 +150,7 @@ function rowToStudentWork(row: Record<string, unknown>): StudentWork {
 function studentWorkToRow(w: StudentWork) {
   return {
     id: w.id,
+    teacher_id: w.teacherId,
     institution_id: w.institutionId,
     student_id: w.studentId,
     assignment_id: w.assignmentId,
@@ -158,6 +166,7 @@ function studentWorkToRow(w: StudentWork) {
 function rowToProfile(row: Record<string, unknown>): TeacherProfile {
   return {
     id: row.id as string,
+    teacherId: row.teacher_id as string,
     institutionId: row.institution_id as string,
     fullName: row.full_name as string,
     email: row.email as string,
@@ -169,6 +178,7 @@ function rowToProfile(row: Record<string, unknown>): TeacherProfile {
 function profileToRow(p: TeacherProfile) {
   return {
     id: p.id,
+    teacher_id: p.teacherId,
     institution_id: p.institutionId,
     full_name: p.fullName,
     email: p.email,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LogoMark } from "@/components/logo";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useDemoStore } from "@/components/auth-store-provider";
 
 const navItems = [
   { href: "/profesor", label: "Inicio" },
@@ -17,19 +17,15 @@ const navItems = [
 export function ProfessorShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isReady, logout, profile, session } = useDemoStore();
+  const { isReady, logout, profile, teacherId } = useDemoStore();
 
   useEffect(() => {
-    if (isReady && !session) {
+    if (isReady && !teacherId) {
       router.replace("/login");
-      return;
     }
-    if (isReady && session?.role !== "teacher") {
-      router.replace("/estudiante");
-    }
-  }, [isReady, router, session]);
+  }, [isReady, router, teacherId]);
 
-  if (!isReady || !session || session.role !== "teacher") {
+  if (!isReady || !teacherId) {
     return (
       <main className="loading-screen" aria-live="polite">
         <LogoMark />
@@ -43,9 +39,9 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
       <aside className="sidebar" aria-label="Navegacion principal">
         <LogoMark />
         <div className="sidebar-user">
-          <span className="avatar avatar-small">{profile.fullName.slice(0, 2).toUpperCase()}</span>
+          <span className="avatar avatar-small">{(profile?.fullName ?? "??").slice(0, 2).toUpperCase()}</span>
           <span>
-            <strong>{profile.fullName}</strong>
+            <strong>{profile?.fullName ?? "Docente"}</strong>
             <small>Profesor</small>
           </span>
         </div>
@@ -66,8 +62,8 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
         </nav>
         <button
           className="nav-link nav-link-button"
-          onClick={() => {
-            logout();
+          onClick={async () => {
+            await logout();
             router.replace("/login");
           }}
           type="button"

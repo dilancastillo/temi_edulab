@@ -379,8 +379,11 @@ small {
 }
 
 .content-shell {
-  width: min(100%, 1120px);
-  padding: 2rem clamp(1rem, 4vw, 4rem) 4rem;
+  width: min(100%, 1180px);
+  padding-top: 2rem;
+  padding-bottom: 4rem;
+  padding-left: clamp(1rem, 4vw, 4rem);
+  padding-right: clamp(0.5rem, 2vw, 2rem); /* más pequeño */
 }
 
 .page-stack {
@@ -553,6 +556,36 @@ small {
 .assignment-list {
   display: grid;
   gap: 1rem;
+}
+
+.pagination-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  margin-top: 0.25rem;
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-current {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 2.5rem;
+  text-align: center;
 }
 
 .assignment-card {

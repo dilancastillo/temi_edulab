@@ -5,7 +5,7 @@ import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ConfirmDialog, Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useDemoStore } from "@/components/auth-store-provider";
 import { getInitials, parseStudentsCsv } from "@/lib/csv";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
 import type { Course, Student, StudentInput } from "@/lib/types";
@@ -168,21 +168,29 @@ export function StudentsScreen() {
             <tbody>
               {pageStudents.map((student) => {
                 const course = courses.find((candidate) => candidate.id === student.courseId);
-                const displayMissionId = missionId !== "all" ? missionId : student.currentMissionId;
+                
+                // Buscar si hay una asignación activa para el curso del estudiante
+                const activeAssignment = assignments.find(
+                  (a) => a.status === "active" && a.courseId === student.courseId
+                );
+                
+                const displayMissionId = missionId !== "all" ? missionId : activeAssignment?.missionId;
                 const mission = missions.find((candidate) => candidate.id === displayMissionId);
 
                 // Calcular progreso por misión usando studentWorks
                 const missionAssignment = missionId !== "all"
                   ? assignments.find((a) => a.missionId === missionId && a.courseId === student.courseId && a.status === "active")
-                  : null;
+                  : activeAssignment;
                 const studentWork = missionAssignment
                   ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === missionAssignment.id)
                   : null;
                 const missionProgress: typeof student.progress = studentWork?.status === "submitted"
                   ? "Revisar"
-                  : missionId !== "all"
+                  : missionId !== "all" && missionAssignment
                     ? "En curso"
-                    : student.progress;
+                    : activeAssignment
+                      ? "En curso"
+                      : "En curso"; // Fallback si no hay misión activa pero el estudiante tiene progreso
 
                 return (
                   <tr key={student.id}>
@@ -201,11 +209,15 @@ export function StudentsScreen() {
                     </td>
                     <td>{course?.name ?? "Sin curso"}</td>
                     <td>
-                      <span className={`status-pill status-${missionProgress.toLowerCase().replace(" ", "-")}`}>
-                        {missionProgress}
-                      </span>
+                      {activeAssignment || missionAssignment ? (
+                        <span className={`status-pill status-${missionProgress.toLowerCase().replace(" ", "-")}`}>
+                          {missionProgress}
+                        </span>
+                      ) : (
+                        "Ninguno"
+                      )}
                     </td>
-                    <td>{mission?.title ?? "Sin misión"}</td>
+                    <td>{mission?.title ?? "Ninguno"}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <div className="table-actions" style={{ flexWrap: "nowrap" }}>
                         <button className="button button-secondary" onClick={() => setStudentToEdit(student)} type="button">
@@ -342,27 +354,24 @@ function StudentFormModal({
 }>) {
   const [fullName, setFullName] = useState(initialStudent?.fullName ?? "");
   const [email, setEmail] = useState(initialStudent?.email ?? "");
+  const [password, setPassword] = useState("");
   const [courseId, setCourseId] = useState(initialStudent?.courseId ?? courses[0]?.id ?? "");
   const [avatarUrl, setAvatarUrl] = useState(initialStudent?.avatarUrl);
   const [fileError, setFileError] = useState("");
+  const isEditing = !!initialStudent;
 
   async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const error = validateImageFile(file);
-    if (error) {
-      setFileError(error);
-      return;
-    }
-
+    if (error) { setFileError(error); return; }
     setFileError("");
     setAvatarUrl(await readFileAsDataUrl(file));
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit({ avatarUrl, courseId, email, fullName });
+    onSubmit({ avatarUrl, courseId, email, fullName, password: password || initialStudent?.password || "" });
   }
 
   return (
@@ -379,44 +388,37 @@ function StudentFormModal({
         </div>
         <label className="field" htmlFor="student-name">
           Nombre completo
-          <input
-            autoComplete="name"
-            id="student-name"
-            maxLength={120}
-            onChange={(event) => setFullName(event.target.value)}
-            required
-            value={fullName}
-          />
+          <input autoComplete="name" id="student-name" maxLength={120} onChange={(event) => setFullName(event.target.value)} required value={fullName} />
         </label>
         <label className="field" htmlFor="student-email">
           Correo electrónico
+          <input autoComplete="email" id="student-email" maxLength={160} onChange={(event) => setEmail(event.target.value)} required type="email" value={email} />
+        </label>
+        <label className="field" htmlFor="student-password">
+          Contraseña
           <input
-            autoComplete="email"
-            id="student-email"
-            maxLength={160}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            type="email"
-            value={email}
+            autoComplete="new-password"
+            id="student-password"
+            minLength={6}
+            maxLength={60}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={isEditing ? "Dejar vacío para no cambiar" : ""}
+            required={!isEditing}
+            type="password"
+            value={password}
           />
         </label>
         <label className="field" htmlFor="student-course">
           Curso
           <select id="student-course" onChange={(event) => setCourseId(event.target.value)} required value={courseId}>
             {courses.map((course) => (
-              <option key={course.id} value={course.id}>
-                {course.name}
-              </option>
+              <option key={course.id} value={course.id}>{course.name}</option>
             ))}
           </select>
         </label>
         <div className="modal-actions">
-          <button className="button button-ghost" onClick={onClose} type="button">
-            Cancelar
-          </button>
-          <button className="button button-primary" type="submit">
-            Guardar estudiante
-          </button>
+          <button className="button button-ghost" onClick={onClose} type="button">Cancelar</button>
+          <button className="button button-primary" type="submit">Guardar estudiante</button>
         </div>
       </form>
     </Modal>
@@ -428,7 +430,7 @@ function ImportStudentsModal({
   onImport
 }: Readonly<{
   onClose: () => void;
-  onImport: (rows: ReturnType<typeof parseStudentsCsv>["students"]) => { added: number; skipped: string[] };
+  onImport: (rows: ReturnType<typeof parseStudentsCsv>["students"]) => Promise<{ added: number; skipped: string[] }>;
 }>) {
   const [csvName, setCsvName] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
@@ -458,7 +460,7 @@ function ImportStudentsModal({
       return;
     }
 
-    const result = onImport(parsed.students);
+    const result = await onImport(parsed.students);
     setErrors(result.skipped);
     setSummary(`${result.added} estudiantes importados desde ${file.name}.`);
   }
@@ -530,7 +532,7 @@ function SequencePreviewModal({
   let imgCounter = 0;
   const steps = allSteps.map((block, i) => {
     if (block.type === "temi_start") {
-      return { iconSrc: null, icon: "🚀", label: "Cuando inicia", base64: null, key: i };
+      return { iconSrc: null, icon: "🏁", label: "Cuando inicia", base64: null, key: i };
     }
     if (block.type === "temi_move") {
       return { iconSrc: "/ubicacion.png", icon: null, label: `Ir a: ${block.fields["LOCATION"] ?? ""}`, base64: null, key: i };
@@ -544,7 +546,7 @@ function SequencePreviewModal({
       const imgBlock = imageBlocks[imgNum - 1];
       return { iconSrc: "/imagen.png", icon: null, label: `Mostrar imagen ${imgNum}`, base64: imgBlock?.base64 ?? null, key: i };
     }
-    return { iconSrc: null, icon: "❓", label: block.type, base64: null, key: i };
+    return { iconSrc: null, icon: "📹", label: block.type, base64: null, key: i };
   });
 
   return (

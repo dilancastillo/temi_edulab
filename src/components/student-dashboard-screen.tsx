@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useDemoStore } from "@/components/auth-store-provider";
 
 export function StudentDashboardScreen() {
-  const { assignments, courses, missions, session, studentWorks, students } = useDemoStore();
-  const student = students.find((candidate) => candidate.id === session?.studentId);
+  const { assignments, courses, missions, studentSession, studentWorks, students } = useDemoStore();
+  const student = students.find((candidate) => candidate.id === studentSession?.studentId);
   const course = courses.find((candidate) => candidate.id === student?.courseId);
   const availableAssignments = assignments.filter(
     (assignment) => assignment.status === "active" && assignment.courseId === student?.courseId

@@ -1,54 +1,44 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogoMark } from "@/components/logo";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useDemoStore } from "@/components/auth-store-provider";
 
 export function StudentLoginScreen() {
   const router = useRouter();
-  const { assignments, isReady, loginStudentWithMissionCode, loginStudentWithPassword, session, students } = useDemoStore();
+  const { assignments, isReady, loginStudentWithMissionCode, loginStudentWithPassword, studentSession, students } = useDemoStore();
   const [mode, setMode] = useState<"email" | "code">("email");
-  const [email, setEmail] = useState("ana.garcia@esbot.test");
-  const [password, setPassword] = useState("estudiante2026");
-  const [missionCode, setMissionCode] = useState(assignments[0]?.missionCode ?? "SGKRBY");
-  const [studentId, setStudentId] = useState(students[0]?.id ?? "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [missionCode, setMissionCode] = useState("");
+  const [studentName, setStudentName] = useState("");
   const [error, setError] = useState("");
 
-  const activeStudents = useMemo(
-    () => students.filter((student) => assignments.some((assignment) => assignment.status === "active" && assignment.courseId === student.courseId)),
-    [assignments, students]
-  );
-  const selectedStudentId = studentId || activeStudents[0]?.id || "";
-
   useEffect(() => {
-    if (isReady && session?.role === "student") {
+    if (isReady && studentSession) {
       router.replace("/estudiante");
     }
-  }, [isReady, router, session]);
+  }, [isReady, router, studentSession]);
 
-  function handleEmailLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleEmailLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = loginStudentWithPassword(email, password);
-
+    const result = await loginStudentWithPassword(email, password);
     if (!result.ok) {
       setError(result.message ?? "No se pudo iniciar sesión.");
       return;
     }
-
     router.push("/estudiante");
   }
 
-  function handleCodeLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleCodeLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = loginStudentWithMissionCode(missionCode, selectedStudentId);
-
+    const result = await loginStudentWithMissionCode(missionCode, studentName);
     if (!result.ok) {
       setError(result.message ?? "No se pudo entrar con ese código.");
       return;
     }
-
     router.push("/estudiante");
   }
 
@@ -109,19 +99,21 @@ export function StudentLoginScreen() {
                 id="mission-code"
                 maxLength={12}
                 onChange={(event) => setMissionCode(event.target.value.toUpperCase())}
+                placeholder="Ej: AB12CD"
                 required
                 value={missionCode}
               />
             </label>
-            <label className="field" htmlFor="student-selector">
-              Soy
-              <select id="student-selector" onChange={(event) => setStudentId(event.target.value)} required value={selectedStudentId}>
-                {activeStudents.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.fullName}
-                  </option>
-                ))}
-              </select>
+            <label className="field" htmlFor="student-name">
+              Tu nombre completo
+              <input
+                id="student-name"
+                maxLength={120}
+                onChange={(event) => setStudentName(event.target.value)}
+                placeholder="Escribe tu nombre tal como te registró el profesor"
+                required
+                value={studentName}
+              />
             </label>
             {error ? <p className="form-error">{error}</p> : null}
             <button className="button button-primary button-full" type="submit">

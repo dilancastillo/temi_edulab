@@ -4,7 +4,7 @@
 import { ChangeEvent, FormEvent, useState } from "react";
 import { Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
-import { useDemoStore } from "@/components/demo-store-provider";
+import { useDemoStore } from "@/components/auth-store-provider";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
 import type { ProfileInput } from "@/lib/types";
 
