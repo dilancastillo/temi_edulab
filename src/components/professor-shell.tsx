@@ -17,15 +17,18 @@ const navItems = [
 export function ProfessorShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isReady, logout, profile, teacherId } = useDemoStore();
+  const { isReady, logout, profile, session, teacherId } = useDemoStore();
 
   useEffect(() => {
-    if (isReady && !teacherId) {
+    // Redirigir solo si ya está listo Y no hay sesión de docente
+    // No redirigir si isReady es true pero teacherId aún no se ha cargado
+    if (isReady && !session && !teacherId) {
       router.replace("/login");
     }
-  }, [isReady, router, teacherId]);
+  }, [isReady, router, session, teacherId]);
 
-  if (!isReady || !teacherId) {
+  // Mostrar loading solo si NO está listo, O si está listo pero no hay sesión ni teacherId
+  if (!isReady || (isReady && !session && !teacherId)) {
     return (
       <main className="loading-screen" aria-live="polite">
         <LogoMark />
@@ -62,10 +65,7 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
         </nav>
         <button
           className="nav-link nav-link-button"
-          onClick={async () => {
-            await logout();
-            router.replace("/login");
-          }}
+          onClick={() => { void logout(); }}
           type="button"
         >
           Cerrar sesión

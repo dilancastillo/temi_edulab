@@ -79,7 +79,25 @@ export type ShowVideoCommand = {
   videoUrl: string;
 };
 
-export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand;
+// ─── Condition command types ──────────────────────────────────────────────────
+
+export type ConditionAction =
+  | { type: "Navigate"; location: string }
+  | { type: "Say"; text: string }
+  | { type: "ShowImage"; imageBase64: string };
+
+export type ConditionOption = {
+  keyword: string;
+  action: ConditionAction;
+};
+
+export type AskConditionCommand = {
+  type: "AskCondition";
+  question: string;
+  options: ConditionOption[];
+};
+
+export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand;
 
 export async function uploadVideo(file: File): Promise<{ ok: boolean; videoUrl?: string; message?: string }> {
   try {
@@ -130,6 +148,17 @@ export function extractTextFromWorkspace(workspaceState: unknown): string | null
   return extractFieldFromBlock(workspaceState, "temi_say", "TEXT");
 }
 
+// ─── Condition helpers ────────────────────────────────────────────────────────
+
+function buildConditionAction(type: ConditionAction["type"], value: string): ConditionAction | null {
+  switch (type) {
+    case "Navigate":  return { type: "Navigate", location: value };
+    case "Say":       return { type: "Say", text: value };
+    case "ShowImage": return { type: "ShowImage", imageBase64: value };
+    default:          return null;
+  }
+}
+
 // Extraer todos los comandos ejecutables del workspace en orden de secuencia
 export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExecuteCommand[] {
   try {
@@ -157,6 +186,24 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
       } else if (b["type"] === "temi_show_video") {
         const videoUrl = fields?.["VIDEO_URL"];
         if (videoUrl) commands.push({ type: "ShowVideo", videoUrl });
+      } else if (b["type"] === "temi_condition") {
+        const question = fields?.["QUESTION"];
+        const optionCount = parseInt(fields?.["OPTION_COUNT"] ?? "2", 10);
+        if (question && optionCount >= 2) {
+          const options: ConditionOption[] = [];
+          for (let i = 1; i <= optionCount; i++) {
+            const keyword = fields?.[`KEYWORD_${i}`];
+            const actionType = fields?.[`ACTION_TYPE_${i}`] as ConditionAction["type"] | undefined;
+            const actionValue = fields?.[`ACTION_VALUE_${i}`];
+            if (keyword && actionType && actionValue) {
+              const action = buildConditionAction(actionType, actionValue);
+              if (action) options.push({ keyword, action });
+            }
+          }
+          if (options.length >= 2) {
+            commands.push({ type: "AskCondition", question, options });
+          }
+        }
       }
 
       const next = (b["next"] as Record<string, unknown>)?.["block"];

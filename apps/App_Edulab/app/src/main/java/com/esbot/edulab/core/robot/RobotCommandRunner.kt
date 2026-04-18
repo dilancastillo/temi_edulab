@@ -5,7 +5,16 @@ sealed class RobotCommand {
     data class Say(val text: String) : RobotCommand()
     data class ShowImage(val imageBase64: String, val durationMs: Long = 7000L) : RobotCommand()
     data class ShowVideo(val videoUrl: String) : RobotCommand()
+    data class AskCondition(
+        val question: String,
+        val options: List<ConditionOption>
+    ) : RobotCommand()
 }
+
+data class ConditionOption(
+    val keyword: String,
+    val action: RobotCommand
+)
 
 interface RobotCommandRunner {
     fun run(command: RobotCommand): Result<Unit>

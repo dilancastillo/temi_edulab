@@ -34,7 +34,7 @@ export const demoMissions: Mission[] = [
     outcomes: ["Resolución de problemas", "Comunicación creativa", "Pensamiento computacional"],
     status: "published",
     coverTone: "blue",
-    allowedCategories: ["Movimiento", "Hablar", "Mostrar"],
+    allowedCategories: ["Movimiento", "Hablar", "Mostrar", "Condición"],
     steps: [
       {
         type: "temi_start",
@@ -80,6 +80,11 @@ export const demoMissions: Mission[] = [
         type: "temi_move",
         label: "¡Última parada!",
         helper: "Llévalo al punto final."
+      },
+      {
+        type: "temi_condition",
+        label: "¡Pregunta al visitante!",
+        helper: "Haz que Temi pregunte y reaccione según la respuesta."
       }
     ]
   },

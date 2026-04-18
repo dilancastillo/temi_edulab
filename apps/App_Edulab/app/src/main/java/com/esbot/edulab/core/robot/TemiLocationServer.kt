@@ -166,10 +166,18 @@ class TemiLocationServer @Inject constructor(
             return 400 to """{"ok":false,"message":"Bad request"}"""
         }
 
+        Log.d(TAG, "handleExecuteRequest recibió body: $body")
+
         // Parsear comandos manualmente
         val commands = parseCommandsFromJson(body)
         if (commands == null) {
+            Log.e(TAG, "parseCommandsFromJson devolvió null")
             return 400 to """{"ok":false,"message":"Bad request"}"""
+        }
+
+        Log.d(TAG, "Comandos parseados: ${commands.size} comandos")
+        commands.forEachIndexed { idx, cmd ->
+            Log.d(TAG, "  Comando $idx: ${cmd.javaClass.simpleName}")
         }
 
         // Ejecutar comandos secuencialmente
@@ -194,57 +202,119 @@ class TemiLocationServer @Inject constructor(
      *
      * Devuelve null si el body es inválido o no contiene comandos Navigate.
      * Comandos de tipo desconocido se ignoran (forward-compatibility).
+     * 
+     * IMPORTANTE: Los comandos dentro de "options" de AskCondition NO se incluyen
+     * en la lista de comandos principales, solo se ejecutan si el usuario selecciona esa opción.
      */
     private fun parseCommandsFromJson(body: String): List<RobotCommand>? {
         return try {
             val commands = mutableListOf<RobotCommand>()
 
+            // Find the "commands" array
             val commandsArrayMatch = Regex(""""commands"\s*:\s*\[(.*)]\s*\}""", RegexOption.DOT_MATCHES_ALL)
                 .find(body) ?: return null
             val arrayContent = commandsArrayMatch.groupValues[1].trim()
 
             if (arrayContent.isEmpty()) return null
 
-            // Split objects by finding each {"type":...} entry
-            // Use a state-machine approach to handle large base64 values
+            // Split by finding each top-level command object in the commands array
+            // We need to parse only top-level commands, not nested ones inside "options"
             val typeRegex = Regex(""""type"\s*:\s*"([^"]+)"""")
-            val locationRegex = Regex(""""location"\s*:\s*"([^"]+)"""")
-            val textRegex = Regex(""""text"\s*:\s*"([^"]+)"""")
-            // base64 only uses A-Za-z0-9+/= so safe to match greedily
-            val imageBase64Regex = Regex(""""imageBase64"\s*:\s*"([A-Za-z0-9+/=\r\n]+)"""")
-
-            // Find all type occurrences and extract surrounding context
+            
+            // Find all type occurrences
             var searchStart = 0
             while (searchStart < arrayContent.length) {
                 val typeMatch = typeRegex.find(arrayContent, searchStart) ?: break
                 val type = typeMatch.groupValues[1]
-                val contextStart = typeMatch.range.first
-                // Context window: from object start to next object or end
-                val nextTypeMatch = typeRegex.find(arrayContent, typeMatch.range.last + 1)
-                val contextEnd = nextTypeMatch?.range?.first ?: arrayContent.length
-                val context = arrayContent.substring(contextStart, contextEnd)
+                
+                // Find the context for this command (from current { to next { or end)
+                val contextStart = arrayContent.lastIndexOf('{', typeMatch.range.first)
+                if (contextStart < 0) {
+                    searchStart = typeMatch.range.last + 1
+                    continue
+                }
+
+                // Find the closing } for this command object
+                var braceDepth = 0
+                var contextEnd = -1
+                for (i in contextStart until arrayContent.length) {
+                    when (arrayContent[i]) {
+                        '{' -> braceDepth++
+                        '}' -> {
+                            braceDepth--
+                            if (braceDepth == 0) {
+                                contextEnd = i
+                                break
+                            }
+                        }
+                    }
+                }
+
+                if (contextEnd < 0) {
+                    searchStart = typeMatch.range.last + 1
+                    continue
+                }
+
+                val context = arrayContent.substring(contextStart, contextEnd + 1)
+
+                Log.d(TAG, "Parsing type='$type' context: ${context.take(100)}...")
+
+                // Skip commands that are nested inside other commands (e.g., inside "options" or "action")
+                // Check if this command is at the top level of the commands array
+                val isTopLevel = isTopLevelCommand(arrayContent, contextStart)
+                if (!isTopLevel) {
+                    Log.d(TAG, "  ⊘ Comando anidado (dentro de options/action), ignorado")
+                    searchStart = typeMatch.range.last + 1
+                    continue
+                }
 
                 when (type) {
                     "Navigate" -> {
-                        val location = locationRegex.find(context)?.groupValues?.getOrNull(1)
-                        if (!location.isNullOrEmpty()) commands.add(RobotCommand.Navigate(location))
+                        val locationMatch = Regex(""""location"\s*:\s*"([^"]+)"""").find(context)
+                        val location = locationMatch?.groupValues?.getOrNull(1)
+                        if (!location.isNullOrEmpty()) {
+                            commands.add(RobotCommand.Navigate(location))
+                            Log.d(TAG, "  ✓ Navigate: $location")
+                        }
                     }
                     "Say" -> {
-                        val text = textRegex.find(context)?.groupValues?.getOrNull(1)
-                        if (!text.isNullOrEmpty()) commands.add(RobotCommand.Say(text))
+                        val textMatch = Regex(""""text"\s*:\s*"([^"]+)"""").find(context)
+                        val text = textMatch?.groupValues?.getOrNull(1)
+                        if (!text.isNullOrEmpty()) {
+                            commands.add(RobotCommand.Say(text))
+                            Log.d(TAG, "  ✓ Say: $text")
+                        }
                     }
                     "ShowImage" -> {
-                        // Search in full body for base64 (may be very long)
-                        val imgMatch = imageBase64Regex.find(body, typeMatch.range.first)
-                        val imageBase64 = imgMatch?.groupValues?.getOrNull(1)?.replace("\r", "")?.replace("\n", "")
-                        if (!imageBase64.isNullOrEmpty()) commands.add(RobotCommand.ShowImage(imageBase64))
+                        val base64Match = Regex(""""imageBase64"\s*:\s*"([A-Za-z0-9+/=\r\n]+)"""").find(body, typeMatch.range.first)
+                        val imageBase64 = base64Match?.groupValues?.getOrNull(1)?.replace("\r", "")?.replace("\n", "")
+                        if (!imageBase64.isNullOrEmpty()) {
+                            commands.add(RobotCommand.ShowImage(imageBase64))
+                            Log.d(TAG, "  ✓ ShowImage")
+                        }
                     }
                     "ShowVideo" -> {
                         val urlMatch = Regex(""""videoUrl"\s*:\s*"([^"]+)"""").find(context)
                         val videoUrl = urlMatch?.groupValues?.getOrNull(1)
-                        if (!videoUrl.isNullOrEmpty()) commands.add(RobotCommand.ShowVideo(videoUrl))
+                        if (!videoUrl.isNullOrEmpty()) {
+                            commands.add(RobotCommand.ShowVideo(videoUrl))
+                            Log.d(TAG, "  ✓ ShowVideo: $videoUrl")
+                        }
                     }
-                    else -> Log.d(TAG, "Tipo desconocido ignorado: $type")
+                    "AskCondition" -> {
+                        val questionMatch = Regex(""""question"\s*:\s*"([^"]+)"""").find(context)
+                        val question = questionMatch?.groupValues?.getOrNull(1)
+                        if (!question.isNullOrEmpty()) {
+                            val condOptions = parseConditionOptions(context)
+                            if (condOptions.size >= 2) {
+                                commands.add(RobotCommand.AskCondition(question, condOptions))
+                                Log.d(TAG, "  ✓ AskCondition: '$question' con ${condOptions.size} opciones")
+                            } else {
+                                Log.w(TAG, "  ✗ AskCondition: insuficientes opciones (${condOptions.size})")
+                            }
+                        }
+                    }
+                    else -> Log.d(TAG, "  ⊘ Tipo desconocido ignorado: $type")
                 }
                 searchStart = typeMatch.range.last + 1
             }
@@ -256,9 +326,186 @@ class TemiLocationServer @Inject constructor(
         }
     }
 
+    /**
+     * Verifica si un comando está al nivel superior del array "commands"
+     * Un comando es top-level si no está dentro de ningún otro objeto (como "options" o "action")
+     */
+    private fun isTopLevelCommand(arrayContent: String, commandStart: Int): Boolean {
+        // Go backwards from commandStart and count brackets
+        // We need to find if we're inside a nested array (like "options": [...])
+        // 
+        // Strategy: count opening and closing brackets going backwards
+        // If we find a ] before finding the [ that matches our position,
+        // then we're inside a nested array
+        
+        var bracketDepth = 0  // Track [ and ]
+        var braceDepth = 0    // Track { and }
+        
+        for (i in commandStart - 1 downTo 0) {
+            when (arrayContent[i]) {
+                ']' -> bracketDepth++  // Found closing bracket
+                '[' -> {
+                    bracketDepth--
+                    if (bracketDepth < 0) {
+                        // We found the opening bracket of an array
+                        // Check if it's preceded by "options" or "action"
+                        val beforeBracket = arrayContent.substring(maxOf(0, i - 30), i).lowercase()
+                        if (beforeBracket.contains("\"options\"") || beforeBracket.contains("\"action\"")) {
+                            // This is a nested array, not top-level
+                            return false
+                        }
+                        // If it's "commands", we're at top level
+                        if (beforeBracket.contains("\"commands\"")) {
+                            return true
+                        }
+                    }
+                }
+                '}' -> braceDepth++
+                '{' -> braceDepth--
+            }
+        }
+        
+        // If we didn't find any array bracket, assume it's top-level
+        return true
+    }
+
+
+
+
+
+    private fun parseConditionOptions(context: String): List<ConditionOption> {
+        val options = mutableListOf<ConditionOption>()
+        
+        Log.d(TAG, "parseConditionOptions input context: ${context.take(300)}...")
+
+        // Find the "options" array - look for "options":[{...},{...}]
+        val optionsKeyStart = context.indexOf("\"options\"")
+        if (optionsKeyStart < 0) {
+            Log.w(TAG, "  No se encontró 'options' key")
+            return options
+        }
+
+        // Find the opening bracket after "options":
+        val bracketStart = context.indexOf('[', optionsKeyStart)
+        if (bracketStart < 0) return options
+
+        // Find matching closing bracket by counting braces
+        var braceCount = 0
+        var bracketCount = 1
+        var pos = bracketStart + 1
+        var bracketEnd = -1
+
+        while (pos < context.length && bracketCount > 0) {
+            when (context[pos]) {
+                '{' -> braceCount++
+                '}' -> braceCount--
+                '[' -> bracketCount++
+                ']' -> {
+                    if (braceCount == 0) {
+                        bracketEnd = pos
+                        break
+                    }
+                }
+            }
+            pos++
+        }
+
+        if (bracketEnd < 0) {
+            Log.w(TAG, "  No se encontró closing bracket para options array")
+            return options
+        }
+
+        val arrayContent = context.substring(bracketStart + 1, bracketEnd)
+        Log.d(TAG, "  Options array content: ${arrayContent.take(200)}...")
+
+        // Now find each option object
+        val keywordRegex = Regex(""""keyword"\s*:\s*"([^"]+)"""")
+        var searchPos = 0
+
+        while (searchPos < arrayContent.length) {
+            val kwMatch = keywordRegex.find(arrayContent, searchPos) ?: break
+            val keyword = kwMatch.groupValues[1]
+
+            // Find the option object containing this keyword
+            // Go backwards to find the opening {
+            val optionObjStart = arrayContent.lastIndexOf('{', kwMatch.range.first)
+            if (optionObjStart < 0) {
+                searchPos = kwMatch.range.last + 1
+                continue
+            }
+
+            // Find the closing } for this object
+            var braceDepth = 0
+            var optionObjEnd = -1
+            for (i in optionObjStart until arrayContent.length) {
+                when (arrayContent[i]) {
+                    '{' -> braceDepth++
+                    '}' -> {
+                        braceDepth--
+                        if (braceDepth == 0) {
+                            optionObjEnd = i
+                            break
+                        }
+                    }
+                }
+            }
+
+            if (optionObjEnd < 0) {
+                searchPos = kwMatch.range.last + 1
+                continue
+            }
+
+            val optionContext = arrayContent.substring(optionObjStart, optionObjEnd + 1)
+            Log.d(TAG, "  Option object: ${optionContext.take(150)}...")
+
+            // Find the action within this option
+            val actionMatch = Regex(""""action"\s*:\s*\{(.+?)\}""", RegexOption.DOT_MATCHES_ALL).find(optionContext)
+            if (actionMatch == null) {
+                Log.w(TAG, "    No se encontró 'action' en option")
+                searchPos = kwMatch.range.last + 1
+                continue
+            }
+
+            val actionContent = actionMatch.groupValues[1]
+            val actionTypeMatch = Regex(""""type"\s*:\s*"([^"]+)"""").find(actionContent)
+            val actionType = actionTypeMatch?.groupValues?.getOrNull(1)
+
+            Log.d(TAG, "    Action type: $actionType")
+
+            val action: RobotCommand? = when (actionType) {
+                "Navigate" -> {
+                    val locMatch = Regex(""""location"\s*:\s*"([^"]+)"""").find(actionContent)
+                    locMatch?.groupValues?.getOrNull(1)?.let { RobotCommand.Navigate(it) }
+                }
+                "Say" -> {
+                    val textMatch = Regex(""""text"\s*:\s*"([^"]+)"""").find(actionContent)
+                    textMatch?.groupValues?.getOrNull(1)?.let { RobotCommand.Say(it) }
+                }
+                "ShowImage" -> {
+                    val base64Match = Regex(""""imageBase64"\s*:\s*"([A-Za-z0-9+/=\r\n]+)"""").find(actionContent)
+                    base64Match?.groupValues?.getOrNull(1)
+                        ?.replace("\r", "")?.replace("\n", "")
+                        ?.let { RobotCommand.ShowImage(it) }
+                }
+                else -> null
+            }
+
+            if (action != null) {
+                options.add(ConditionOption(keyword, action))
+                Log.d(TAG, "    ✓ Option: keyword='$keyword' action=$actionType")
+            } else {
+                Log.w(TAG, "    ✗ Option: keyword='$keyword' action=$actionType (no se pudo parsear)")
+            }
+
+            searchPos = kwMatch.range.last + 1
+        }
+
+        Log.d(TAG, "  Total opciones parseadas: ${options.size}")
+        return options
+    }
+
     @Suppress("UNCHECKED_CAST")
-    private fun fetchLocationsViaReflection(): List<String> {
-        return try {
+    private fun fetchLocationsViaReflection(): List<String> {        return try {
             val rClass = Class.forName("com.robotemi.sdk.Robot")
             val r = rClass.getMethod("getInstance").invoke(null) ?: run {
                 Log.w(TAG, "Robot.getInstance() = null")

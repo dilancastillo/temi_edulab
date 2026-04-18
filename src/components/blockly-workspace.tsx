@@ -49,6 +49,12 @@ const toolbox = {
       name: "Audio",
       colour: "#1f8f4d",
       contents: [{ kind: "block", type: "temi_audio" }]
+    },
+    {
+      kind: "category",
+      name: "Condición",
+      colour: "#c84b1f",
+      contents: [{ kind: "block", type: "temi_condition" }]
     }
   ]
 };
@@ -174,6 +180,64 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     this.setNextStatement(true);
     this.setColour(40);
     this.setTooltip("Reproduce un video en pantalla completa");
+  };
+
+  // temi_condition: pregunta + N opciones dinámicas (2..5)
+  // Registrar el tipo vacío primero para que Blockly lo reconozca
+  if (!Blockly.Blocks["temi_condition"]) {
+    Blockly.Blocks["temi_condition"] = { init: function () {} };
+  }
+  Blockly.Blocks["temi_condition"].init = function (this: BlocklyType.Block) {
+    this.appendDummyInput()
+      .appendField("si pregunta")
+      .appendField(new Blockly.FieldTextInput("¿A dónde quieres ir?"), "QUESTION");
+    this.appendDummyInput()
+      .appendField("número de opciones")
+      .appendField(new Blockly.FieldNumber(2, 2, 5, 1), "OPTION_COUNT");
+
+    // Render 5 option rows; rows beyond OPTION_COUNT are hidden
+    for (let i = 1; i <= 5; i++) {
+      this.appendDummyInput(`OPTION_ROW_${i}`)
+        .appendField(`Opción ${i} — si dice`)
+        .appendField(new Blockly.FieldTextInput(`opcion${i}`), `KEYWORD_${i}`)
+        .appendField("→ acción")
+        .appendField(
+          new Blockly.FieldDropdown([
+            ["Ir a ubicación", "Navigate"],
+            ["Decir texto", "Say"],
+            ["Mostrar imagen", "ShowImage"]
+          ]),
+          `ACTION_TYPE_${i}`
+        )
+        .appendField(new Blockly.FieldTextInput(""), `ACTION_VALUE_${i}`);
+    }
+
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(20);
+    this.setTooltip("El robot pregunta y reacciona según la respuesta del usuario");
+
+    // Hide rows beyond initial OPTION_COUNT
+    const updateVisibility = () => {
+      const count = Math.min(5, Math.max(2, this.getFieldValue("OPTION_COUNT") as unknown as number));
+      for (let i = 1; i <= 5; i++) {
+        const row = this.getInput(`OPTION_ROW_${i}`);
+        if (row) row.setVisible(i <= count);
+      }
+      if (this.rendered) this.render();
+    };
+
+    // Listen for changes to OPTION_COUNT
+    const optCountField = this.getField("OPTION_COUNT");
+    if (optCountField) {
+      optCountField.setValidator((value: string) => {
+        // Schedule update after field value is committed
+        setTimeout(() => updateVisibility(), 0);
+        return value;
+      });
+    }
+
+    updateVisibility();
   };
 }
 
