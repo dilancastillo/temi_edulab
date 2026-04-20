@@ -27,4 +27,10 @@ class VideoOverlayController @Inject constructor() {
         completionLatch?.countDown()
         completionLatch = null
     }
+
+    fun clearVideo() {
+        _videoUrl.value = null
+        completionLatch?.countDown()
+        completionLatch = null
+    }
 }

@@ -26,4 +26,8 @@ class ImageOverlayController @Inject constructor() {
     fun hide() {
         _imageBase64.value = null
     }
+
+    fun clearImage() {
+        _imageBase64.value = null
+    }
 }

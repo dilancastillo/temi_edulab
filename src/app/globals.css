@@ -330,6 +330,7 @@ small {
   padding: 2rem 1.5rem;
   border-right: 1px solid var(--color-border);
   background: #f8fbfe;
+  z-index: 100;
 }
 
 .sidebar-user,
@@ -1308,6 +1309,7 @@ td {
   position: relative;
   min-height: 650px;
   overflow: hidden;
+  z-index: 1;
 }
 
 .image-upload-panel {
@@ -1338,6 +1340,7 @@ td {
 .blockly-canvas {
   position: absolute;
   inset: 0;
+  pointer-events: auto;
 }
 
 .blockly-loading {

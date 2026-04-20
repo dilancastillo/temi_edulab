@@ -45,6 +45,14 @@ class HomeViewModel @Inject constructor(
         videoOverlayController.onVideoCompleted()
     }
 
+    fun pauseAllOperations() {
+        // Stop the location server (which handles robot commands)
+        locationServer.stop()
+        // Clear any overlays
+        imageOverlayController.clearImage()
+        videoOverlayController.clearVideo()
+    }
+
     init {
         locationServer.start()
         viewModelScope.launch {

@@ -3,13 +3,12 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 import { LogoMark } from "@/components/logo";
 import { useAuthStore } from "@/components/auth-store-provider";
 
 export function LoginScreen() {
   const router = useRouter();
-  const { isReady, loginWithPassword, loginWithGoogle, session, teacherId } = useAuthStore();
+  const { isReady, loginWithPassword, session, teacherId } = useAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -30,16 +29,6 @@ export function LoginScreen() {
     }
   }
 
-  async function handleGoogleSuccess(credentialResponse: CredentialResponse) {
-    if (credentialResponse.credential) {
-      await loginWithGoogle(credentialResponse.credential);
-    }
-  }
-
-  function handleGoogleError() {
-    setError("No se pudo iniciar sesión con Google. Intenta de nuevo.");
-  }
-
   return (
     <main className="login-page">
       <section className="login-hero" aria-label="Presentacion">
@@ -54,7 +43,7 @@ export function LoginScreen() {
         <div>
           <p className="eyebrow">Acceso local</p>
           <h2 id="login-title">Iniciar sesión</h2>
-          <p className="muted">Usa la cuenta demo o entra en modo local con Google/Microsoft.</p>
+          <p className="muted">Usa la cuenta demo o entra en modo local.</p>
         </div>
         <form className="form-stack" onSubmit={handleSubmit} method="post" action="#">
           <div className="field">
@@ -91,7 +80,8 @@ export function LoginScreen() {
             Iniciar sesión
           </button>
         </form>
-        <div className="provider-grid" aria-label="Opciones de acceso">
+        {/* TODO: Implementar login con Google en el futuro */}
+        {/* <div className="provider-grid" aria-label="Opciones de acceso">
           <div className="google-button-container">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
@@ -104,7 +94,7 @@ export function LoginScreen() {
               width="100%"
             />
           </div>
-        </div>
+        </div> */}
         <Link className="text-link" href="/estudiante/login">
           Entrar como estudiante
         </Link>
