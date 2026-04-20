@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -47,8 +48,23 @@ fun HomeScreen(
             currentLanguageCode = if (isSpanish) "ES" else "EN",
             onLanguageClick = {
                 onLanguageClick(if (isSpanish) "en" else "es")
-            }
+            },
+            viewModel = viewModel
         )
+
+        // Loading indicator
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = Color(0xFF1A237E)
+                )
+            }
+        }
 
         // Full-screen image overlay
         if (imageBase64 != null) {

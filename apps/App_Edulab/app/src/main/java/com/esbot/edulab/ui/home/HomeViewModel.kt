@@ -23,7 +23,8 @@ data class HomeUiState(
     val isConnected: Boolean = false,
     val currentTime: String = "",
     val batteryPercentage: Int? = null,
-    val isCharging: Boolean = false
+    val isCharging: Boolean = false,
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
@@ -55,6 +56,11 @@ class HomeViewModel @Inject constructor(
 
     init {
         locationServer.start()
+        // Mark as loaded after a short delay to show loading indicator
+        viewModelScope.launch {
+            delay(500)
+            _uiState.update { it.copy(isLoading = false) }
+        }
         viewModelScope.launch {
             networkStatusProvider.isConnected.collect { connected ->
                 _uiState.update { it.copy(isConnected = connected) }
