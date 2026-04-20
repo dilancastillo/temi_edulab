@@ -194,7 +194,17 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
           for (let i = 1; i <= optionCount; i++) {
             const keyword = fields?.[`KEYWORD_${i}`];
             const actionType = fields?.[`ACTION_TYPE_${i}`] as ConditionAction["type"] | undefined;
-            const actionValue = fields?.[`ACTION_VALUE_${i}`];
+            
+            // Get value based on action type
+            let actionValue: string | undefined;
+            if (actionType === "Navigate") {
+              actionValue = fields?.[`ACTION_VALUE_NAVIGATE_${i}`];
+            } else if (actionType === "Say") {
+              actionValue = fields?.[`ACTION_VALUE_SAY_${i}`];
+            } else if (actionType === "ShowImage") {
+              actionValue = fields?.[`ACTION_VALUE_HIDDEN_${i}`];
+            }
+            
             if (keyword && actionType && actionValue) {
               const action = buildConditionAction(actionType, actionValue);
               if (action) options.push({ keyword, action });

@@ -482,10 +482,38 @@ class TemiLocationServer @Inject constructor(
                     textMatch?.groupValues?.getOrNull(1)?.let { RobotCommand.Say(it) }
                 }
                 "ShowImage" -> {
-                    val base64Match = Regex(""""imageBase64"\s*:\s*"([A-Za-z0-9+/=\r\n]+)"""").find(actionContent)
-                    base64Match?.groupValues?.getOrNull(1)
-                        ?.replace("\r", "")?.replace("\n", "")
-                        ?.let { RobotCommand.ShowImage(it) }
+                    // Extract imageBase64 - it can be very long, so we need to find the closing quote carefully
+                    val base64Start = actionContent.indexOf("\"imageBase64\"")
+                    if (base64Start >= 0) {
+                        val colonPos = actionContent.indexOf(":", base64Start)
+                        val firstQuote = actionContent.indexOf("\"", colonPos)
+                        if (firstQuote >= 0) {
+                            // Find the closing quote - need to handle escaped quotes
+                            var lastQuote = firstQuote + 1
+                            while (lastQuote < actionContent.length) {
+                                if (actionContent[lastQuote] == '"' && (lastQuote == 0 || actionContent[lastQuote - 1] != '\\')) {
+                                    break
+                                }
+                                lastQuote++
+                            }
+                            if (lastQuote < actionContent.length) {
+                                var base64 = actionContent.substring(firstQuote + 1, lastQuote)
+                                    .replace("\r", "").replace("\n", "")
+                                
+                                // Remove data URI prefix if present (e.g., "data:image/jpeg;base64,")
+                                if (base64.startsWith("data:")) {
+                                    val commaIndex = base64.indexOf(",")
+                                    if (commaIndex >= 0) {
+                                        base64 = base64.substring(commaIndex + 1)
+                                    }
+                                }
+                                
+                                if (base64.isNotEmpty()) {
+                                    RobotCommand.ShowImage(base64)
+                                } else null
+                            } else null
+                        } else null
+                    } else null
                 }
                 else -> null
             }

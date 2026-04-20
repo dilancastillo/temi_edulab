@@ -197,7 +197,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
 
     // Render 5 option rows; rows beyond OPTION_COUNT are hidden
     for (let i = 1; i <= 5; i++) {
-      this.appendDummyInput(`OPTION_ROW_${i}`)
+      const row = this.appendDummyInput(`OPTION_ROW_${i}`)
         .appendField(`Opción ${i} — si dice`)
         .appendField(new Blockly.FieldTextInput(`opcion${i}`), `KEYWORD_${i}`)
         .appendField("→ acción")
@@ -208,8 +208,40 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
             ["Mostrar imagen", "ShowImage"]
           ]),
           `ACTION_TYPE_${i}`
-        )
-        .appendField(new Blockly.FieldTextInput(""), `ACTION_VALUE_${i}`);
+        );
+
+      // Add all three possible field types, but only one will be visible at a time
+      // Navigate: dropdown with locations
+      const locationOptions: [string, string][] = locations.length > 0 
+        ? locations.map((l) => [l, l]) 
+        : [["Sala Principal", "Sala Principal"]];
+      row.appendField(
+        new Blockly.FieldDropdown(locationOptions),
+        `ACTION_VALUE_NAVIGATE_${i}`
+      );
+      
+      // Say: text input
+      row.appendField(
+        new Blockly.FieldTextInput(""),
+        `ACTION_VALUE_SAY_${i}`
+      );
+      
+      // ShowImage: label + hidden field
+      row.appendField(new Blockly.FieldLabel("📷 Cargar imagen"), `ACTION_VALUE_SHOWIMAGE_${i}`);
+      row.appendField(
+        new Blockly.FieldTextInput(""),
+        `ACTION_VALUE_HIDDEN_${i}`
+      );
+      
+      // Hide all value fields initially
+      const navField = this.getField(`ACTION_VALUE_NAVIGATE_${i}`);
+      const sayField = this.getField(`ACTION_VALUE_SAY_${i}`);
+      const imgField = this.getField(`ACTION_VALUE_SHOWIMAGE_${i}`);
+      const hiddenField = this.getField(`ACTION_VALUE_HIDDEN_${i}`);
+      if (navField) navField.setVisible(false);
+      if (sayField) sayField.setVisible(false);
+      if (imgField) imgField.setVisible(false);
+      if (hiddenField) hiddenField.setVisible(false);
     }
 
     this.setPreviousStatement(true);
@@ -217,12 +249,18 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     this.setColour(20);
     this.setTooltip("El robot pregunta y reacciona según la respuesta del usuario");
 
-    // Hide rows beyond initial OPTION_COUNT
+    // Hide rows beyond initial OPTION_COUNT and update ACTION_VALUE fields
     const updateVisibility = () => {
       const count = Math.min(5, Math.max(2, this.getFieldValue("OPTION_COUNT") as unknown as number));
       for (let i = 1; i <= 5; i++) {
         const row = this.getInput(`OPTION_ROW_${i}`);
-        if (row) row.setVisible(i <= count);
+        if (row) {
+          row.setVisible(i <= count);
+          // Update ACTION_VALUE field visibility for this row if visible
+          if (i <= count) {
+            updateActionValueVisibility(this, i);
+          }
+        }
       }
       if (this.rendered) this.render();
     };
@@ -231,13 +269,108 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     const optCountField = this.getField("OPTION_COUNT");
     if (optCountField) {
       optCountField.setValidator((value: string) => {
-        // Schedule update after field value is committed
         setTimeout(() => updateVisibility(), 0);
         return value;
       });
     }
 
+    // Listen for changes to ACTION_TYPE fields
+    for (let i = 1; i <= 5; i++) {
+      const actionTypeField = this.getField(`ACTION_TYPE_${i}`);
+      if (actionTypeField) {
+        actionTypeField.setValidator((value: string) => {
+          setTimeout(() => updateActionValueVisibility(this, i), 0);
+          return value;
+        });
+      }
+    }
+
     updateVisibility();
+  };
+
+  // Helper function to show/hide ACTION_VALUE fields based on ACTION_TYPE
+  const updateActionValueVisibility = (block: BlocklyType.Block, optionIndex: number) => {
+    const actionType = block.getFieldValue(`ACTION_TYPE_${optionIndex}`);
+    
+    const navField = block.getField(`ACTION_VALUE_NAVIGATE_${optionIndex}`) as any;
+    const sayField = block.getField(`ACTION_VALUE_SAY_${optionIndex}`);
+    const imgField = block.getField(`ACTION_VALUE_SHOWIMAGE_${optionIndex}`) as any;
+    const hiddenField = block.getField(`ACTION_VALUE_HIDDEN_${optionIndex}`);
+    
+    // Hide all
+    if (navField) navField.setVisible(false);
+    if (sayField) sayField.setVisible(false);
+    if (imgField) imgField.setVisible(false);
+    if (hiddenField) hiddenField.setVisible(false);
+    
+    // Show the appropriate one
+    if (actionType === "Navigate") {
+      if (navField) {
+        navField.setVisible(true);
+        // Update dropdown options with actual locations
+        const locationOptions: [string, string][] = locations.length > 0 
+          ? locations.map((l) => [l, l]) 
+          : [["Sala Principal", "Sala Principal"]];
+        
+        // Update the dropdown's options
+        navField.menuGenerator_ = locationOptions;
+        
+        // Set default value if not set
+        const currentValue = block.getFieldValue(`ACTION_VALUE_NAVIGATE_${optionIndex}`) || locationOptions[0][1];
+        block.setFieldValue(currentValue, `ACTION_VALUE_NAVIGATE_${optionIndex}`);
+      }
+    } else if (actionType === "Say") {
+      if (sayField) sayField.setVisible(true);
+    } else if (actionType === "ShowImage") {
+      if (imgField) imgField.setVisible(true);
+      if (hiddenField) hiddenField.setVisible(false); // Keep hidden but present
+      
+      // Setup click handler for image field - use a direct approach
+      const setupImageClick = () => {
+        const labelElement = (imgField).getTextElement?.();
+        if (labelElement && !labelElement.dataset.imageClickSetup) {
+          labelElement.dataset.imageClickSetup = "true";
+          labelElement.style.cursor = "pointer";
+          labelElement.style.textDecoration = "underline";
+          labelElement.style.fontWeight = "bold";
+          labelElement.style.color = "#FF9800";
+          labelElement.style.paddingLeft = "8px";
+          labelElement.style.paddingRight = "8px";
+          labelElement.style.userSelect = "none";
+          
+          labelElement.onclick = (e: any) => {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const fileInput = document.createElement("input");
+            fileInput.type = "file";
+            fileInput.accept = "image/*";
+            
+            fileInput.onchange = () => {
+              const file = fileInput.files?.[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (event: any) => {
+                  const base64 = event.target.result;
+                  block.setFieldValue(base64, `ACTION_VALUE_HIDDEN_${optionIndex}`);
+                  labelElement.textContent = "✅ Imagen seleccionada";
+                  labelElement.style.color = "#4CAF50";
+                };
+                reader.readAsDataURL(file);
+              }
+            };
+            
+            fileInput.click();
+          };
+        }
+      };
+      
+      // Try immediately and also after a small delay
+      setupImageClick();
+      setTimeout(setupImageClick, 50);
+    }
+    
+    if (block.rendered) block.render();
   };
 }
 
@@ -341,15 +474,52 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
           }
         });
 
+      // Restore LABEL for temi_condition blocks with ShowImage actions
+      workspace.getAllBlocks(false)
+        .filter((b) => b.type === "temi_condition")
+        .forEach((block) => {
+          const optionCount = parseInt(block.getFieldValue("OPTION_COUNT") as string, 10);
+          for (let i = 1; i <= optionCount; i++) {
+            const actionType = block.getFieldValue(`ACTION_TYPE_${i}`);
+            if (actionType === "ShowImage") {
+              const base64 = block.getFieldValue(`ACTION_VALUE_HIDDEN_${i}`);
+              if (base64 && base64.length > 0) {
+                const imgField = block.getField(`ACTION_VALUE_SHOWIMAGE_${i}`);
+                if (imgField) {
+                  (imgField as any).setValue("✅ Imagen seleccionada");
+                  (imgField as any).getTextElement().style.color = "#4CAF50";
+                }
+              }
+            }
+          }
+        });
+
       // Expose functions to update IMAGE_BASE64 and VIDEO_URL fields by block ID
       if (onWorkspaceReady) {
         const updateImageBase64ById = (blockId: string, base64: string) => {
           const block = workspace.getBlockById(blockId);
           if (block) {
-            block.setFieldValue(base64, "IMAGE_BASE64");
-            const allShowImageBlocks = workspace.getAllBlocks(false).filter((b) => b.type === "temi_show_image");
-            const imgNumber = allShowImageBlocks.indexOf(block) + 1;
-            block.setFieldValue(`(imagen ${imgNumber} ✅)`, "LABEL");
+            if (block.type === "temi_show_image") {
+              block.setFieldValue(base64, "IMAGE_BASE64");
+              const allShowImageBlocks = workspace.getAllBlocks(false).filter((b) => b.type === "temi_show_image");
+              const imgNumber = allShowImageBlocks.indexOf(block) + 1;
+              block.setFieldValue(`(imagen ${imgNumber} ✅)`, "LABEL");
+            } else if (block.type === "temi_condition") {
+              // Find which option this is for (we need to search by block ID and field)
+              // This is a bit tricky since we're updating from outside
+              // For now, just update the first ACTION_VALUE field that's empty
+              for (let i = 1; i <= 5; i++) {
+                const field = block.getField(`ACTION_VALUE_${i}`);
+                if (field && !field.getValue?.()) {
+                  block.setFieldValue(base64, `ACTION_VALUE_${i}`);
+                  const labelField = block.getField(`ACTION_VALUE_LABEL_${i}`);
+                  if (labelField) {
+                    (labelField as any).setValue("(imagen ✅)");
+                  }
+                  break;
+                }
+              }
+            }
             emitChange();
           }
         };
