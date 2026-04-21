@@ -71,7 +71,7 @@ export type SayCommand = {
 
 export type ShowImageCommand = {
   type: "ShowImage";
-  imageBase64: string;
+  imageUrl: string;
 };
 
 export type ShowVideoCommand = {
@@ -84,7 +84,7 @@ export type ShowVideoCommand = {
 export type ConditionAction =
   | { type: "Navigate"; location: string }
   | { type: "Say"; text: string }
-  | { type: "ShowImage"; imageBase64: string };
+  | { type: "ShowImage"; imageUrl: string };
 
 export type ConditionOption = {
   keyword: string;
@@ -109,6 +109,19 @@ export async function uploadVideo(file: File): Promise<{ ok: boolean; videoUrl?:
     return { ok: true, videoUrl: data.videoUrl };
   } catch {
     return { ok: false, message: "Error subiendo video" };
+  }
+}
+
+export async function uploadImage(file: File): Promise<{ ok: boolean; imageUrl?: string; message?: string }> {
+  try {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await fetch("/api/image/upload", { method: "POST", body: formData });
+    const data = (await res.json()) as { ok: boolean; id?: string; imageUrl?: string; message?: string };
+    if (!data.ok || !data.imageUrl) return { ok: false, message: data.message ?? "Error subiendo imagen" };
+    return { ok: true, imageUrl: data.imageUrl };
+  } catch {
+    return { ok: false, message: "Error subiendo imagen" };
   }
 }
 
@@ -154,7 +167,7 @@ function buildConditionAction(type: ConditionAction["type"], value: string): Con
   switch (type) {
     case "Navigate":  return { type: "Navigate", location: value };
     case "Say":       return { type: "Say", text: value };
-    case "ShowImage": return { type: "ShowImage", imageBase64: value };
+    case "ShowImage": return { type: "ShowImage", imageUrl: value };
     default:          return null;
   }
 }
@@ -181,8 +194,8 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         const text = fields?.["TEXT"];
         if (text) commands.push({ type: "Say", text });
       } else if (b["type"] === "temi_show_image") {
-        const imageBase64 = fields?.["IMAGE_BASE64"];
-        if (imageBase64) commands.push({ type: "ShowImage", imageBase64 });
+        const imageUrl = fields?.["IMAGE_URL"];
+        if (imageUrl) commands.push({ type: "ShowImage", imageUrl });
       } else if (b["type"] === "temi_show_video") {
         const videoUrl = fields?.["VIDEO_URL"];
         if (videoUrl) commands.push({ type: "ShowVideo", videoUrl });
@@ -227,15 +240,15 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
   }
 }
 
-// Extract all temi_show_image blocks with their IDs and current base64 values
-export function extractShowImageBlocks(workspaceState: unknown): Array<{ id: string; base64: string | null; index: number }> {
+// Extract all temi_show_image blocks with their IDs and current image URLs
+export function extractShowImageBlocks(workspaceState: unknown): Array<{ id: string; imageUrl: string | null; index: number }> {
   try {
     if (!workspaceState || typeof workspaceState !== "object") return [];
     const ws = workspaceState as Record<string, unknown>;
     const topBlocks = (ws["blocks"] as Record<string, unknown>)?.["blocks"];
     if (!Array.isArray(topBlocks)) return [];
 
-    const result: Array<{ id: string; base64: string | null; index: number }> = [];
+    const result: Array<{ id: string; imageUrl: string | null; index: number }> = [];
     let showImageIndex = 0;
 
     function walk(block: unknown): void {
@@ -244,8 +257,8 @@ export function extractShowImageBlocks(workspaceState: unknown): Array<{ id: str
       if (b["type"] === "temi_show_image") {
         const id = b["id"] as string;
         const fields = b["fields"] as Record<string, string> | undefined;
-        const base64 = fields?.["IMAGE_BASE64"] ?? null;
-        result.push({ id, base64: base64 && base64.length > 0 ? base64 : null, index: showImageIndex++ });
+        const imageUrl = fields?.["IMAGE_URL"] ?? null;
+        result.push({ id, imageUrl: imageUrl && imageUrl.length > 0 ? imageUrl : null, index: showImageIndex++ });
       }
       const next = (b["next"] as Record<string, unknown>)?.["block"];
       if (next) walk(next);

@@ -16,9 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.esbot.edulab.R
 
 @Composable
 fun SideMenu(
@@ -54,7 +56,7 @@ fun SideMenu(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Menú",
+                        text = stringResource(R.string.menu_title),
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp,
                         color = Color(0xFF1A237E)
@@ -62,7 +64,7 @@ fun SideMenu(
                     IconButton(onClick = onClose) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "Cerrar menú",
+                            contentDescription = stringResource(R.string.menu_description),
                             modifier = Modifier.size(28.dp),
                             tint = Color(0xFF1A237E)
                         )
@@ -80,7 +82,7 @@ fun SideMenu(
                         .height(48.dp)
                 ) {
                     Text(
-                        text = "Cerrar",
+                        text = stringResource(R.string.close_button),
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 16.sp
                     )

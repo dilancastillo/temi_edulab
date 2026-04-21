@@ -19,7 +19,7 @@ class RobotReflectionRunner @Inject constructor(
     override fun run(command: RobotCommand): Result<Unit> = when (command) {
         is RobotCommand.Navigate -> navigateAndWait(command.location)
         is RobotCommand.Say -> speakAndWait(command.text)
-        is RobotCommand.ShowImage -> showImageAndWait(command.imageBase64, command.durationMs)
+        is RobotCommand.ShowImage -> showImageAndWait(command.imageUrl, command.durationMs)
         is RobotCommand.ShowVideo -> showVideoAndWait(command.videoUrl)
         is RobotCommand.AskCondition -> askConditionAndWait(command.question, command.options)
     }
@@ -233,8 +233,15 @@ class RobotReflectionRunner @Inject constructor(
     // ShowImage — shows overlay via Compose StateFlow, waits durationMs
     // -------------------------------------------------------------------------
 
-    private fun showImageAndWait(imageBase64: String, durationMs: Long): Result<Unit> {
+    private fun showImageAndWait(imageUrl: String, durationMs: Long): Result<Unit> {
         return try {
+            // Download image from URL and convert to base64
+            val imageBase64 = downloadImageAsBase64(imageUrl)
+            if (imageBase64.isNullOrEmpty()) {
+                Log.e(TAG, "showImageAndWait: No se pudo descargar la imagen desde $imageUrl")
+                return Result.failure(Exception("Failed to download image"))
+            }
+            
             imageOverlayController.show(imageBase64)
             Thread.sleep(durationMs)
             imageOverlayController.hide()
@@ -244,6 +251,31 @@ class RobotReflectionRunner @Inject constructor(
             imageOverlayController.hide()
             Log.e(TAG, "showImageAndWait falló: ${e.message}", e)
             Result.failure(e)
+        }
+    }
+
+    private fun downloadImageAsBase64(imageUrl: String): String? {
+        return try {
+            val url = java.net.URL(imageUrl)
+            val connection = url.openConnection() as java.net.HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 10000
+            connection.readTimeout = 10000
+            
+            if (connection.responseCode != 200) {
+                Log.e(TAG, "downloadImageAsBase64: HTTP ${connection.responseCode}")
+                return null
+            }
+            
+            val inputStream = connection.inputStream
+            val bytes = inputStream.readBytes()
+            inputStream.close()
+            connection.disconnect()
+            
+            android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+        } catch (e: Exception) {
+            Log.e(TAG, "downloadImageAsBase64 falló: ${e.message}", e)
+            null
         }
     }
 

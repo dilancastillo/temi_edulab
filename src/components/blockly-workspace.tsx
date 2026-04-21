@@ -154,13 +154,13 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     }
   ]);
 
-  // Add hidden IMAGE_BASE64 field and visible LABEL field to temi_show_image block
+  // Add hidden IMAGE_URL field and visible LABEL field to temi_show_image block
   Blockly.Blocks["temi_show_image"].init = function (this: BlocklyType.Block) {
     this.appendDummyInput()
       .appendField("mostrar imagen")
-      .appendField(new Blockly.FieldLabel("(sin imagen)"), "LABEL");
+      .appendField(new Blockly.FieldLabel("📷 Cargar imagen"), "LABEL");
     this.appendDummyInput("IMAGE_FIELD")
-      .appendField(new Blockly.FieldTextInput(""), "IMAGE_BASE64")
+      .appendField(new Blockly.FieldTextInput(""), "IMAGE_URL")
       .setVisible(false);
     this.setPreviousStatement(true);
     this.setNextStatement(true);
@@ -346,17 +346,31 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
             fileInput.type = "file";
             fileInput.accept = "image/*";
             
-            fileInput.onchange = () => {
+            fileInput.onchange = async () => {
               const file = fileInput.files?.[0];
               if (file) {
-                const reader = new FileReader();
-                reader.onload = (event: any) => {
-                  const base64 = event.target.result;
-                  block.setFieldValue(base64, `ACTION_VALUE_HIDDEN_${optionIndex}`);
-                  labelElement.textContent = "✅ Imagen seleccionada";
-                  labelElement.style.color = "#4CAF50";
-                };
-                reader.readAsDataURL(file);
+                labelElement.textContent = "⏳ Subiendo...";
+                labelElement.style.color = "#FF9800";
+                
+                try {
+                  const formData = new FormData();
+                  formData.append("image", file);
+                  const res = await fetch("/api/image/upload", { method: "POST", body: formData });
+                  const data = (await res.json()) as { ok: boolean; imageUrl?: string; message?: string };
+                  
+                  if (data.ok && data.imageUrl) {
+                    block.setFieldValue(data.imageUrl, `ACTION_VALUE_HIDDEN_${optionIndex}`);
+                    labelElement.textContent = "✅ Imagen seleccionada";
+                    labelElement.style.color = "#4CAF50";
+                  } else {
+                    labelElement.textContent = "❌ Error al subir";
+                    labelElement.style.color = "#F44336";
+                  }
+                } catch (error) {
+                  console.error("Image upload error:", error);
+                  labelElement.textContent = "❌ Error al subir";
+                  labelElement.style.color = "#F44336";
+                }
               }
             };
             
@@ -454,15 +468,98 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
       emitChange();
       setIsLoading(false);
 
-      // Restore LABEL for temi_show_image blocks that already have IMAGE_BASE64
+      // Restore LABEL for temi_show_image blocks that already have IMAGE_URL
       workspace.getAllBlocks(false)
         .filter((b) => b.type === "temi_show_image")
-        .forEach((block, idx) => {
-          const base64 = block.getFieldValue("IMAGE_BASE64");
-          if (base64 && base64.length > 0) {
-            block.setFieldValue(`(imagen ${idx + 1} ✅)`, "LABEL");
+        .forEach((block) => {
+          const imageUrl = block.getFieldValue("IMAGE_URL");
+          if (imageUrl && imageUrl.length > 0) {
+            block.setFieldValue("✅ Imagen seleccionada", "LABEL");
           }
         });
+
+      // Setup click handler for temi_show_image LABEL field
+      const setupImageBlockClick = () => {
+        workspace.getAllBlocks(false)
+          .filter((b) => b.type === "temi_show_image")
+          .forEach((block) => {
+            const labelField = block.getField("LABEL") as any;
+            if (!labelField) return;
+            
+            const labelElement = labelField.getTextElement?.();
+            if (!labelElement) return;
+            
+            if (labelElement.dataset.imageClickSetup) return;
+            labelElement.dataset.imageClickSetup = "true";
+            
+            labelElement.style.cursor = "pointer";
+            labelElement.style.textDecoration = "underline";
+            labelElement.style.fontWeight = "bold";
+            labelElement.style.color = "#FF9800";
+            labelElement.style.paddingLeft = "8px";
+            labelElement.style.paddingRight = "8px";
+            labelElement.style.userSelect = "none";
+            labelElement.style.display = "inline-block";
+            
+            const handleClick = async (e: any) => {
+              e.stopPropagation();
+              e.preventDefault();
+              
+              const fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = "image/*";
+              
+              fileInput.onchange = async () => {
+                const file = fileInput.files?.[0];
+                if (file) {
+                  const originalText = labelElement.textContent;
+                  labelElement.textContent = "⏳ Subiendo...";
+                  labelElement.style.color = "#FF9800";
+                  
+                  try {
+                    const formData = new FormData();
+                    formData.append("image", file);
+                    const res = await fetch("/api/image/upload", { method: "POST", body: formData });
+                    const data = (await res.json()) as { ok: boolean; imageUrl?: string; message?: string };
+                    
+                    if (data.ok && data.imageUrl) {
+                      block.setFieldValue(data.imageUrl, "IMAGE_URL");
+                      block.setFieldValue("✅ Imagen seleccionada", "LABEL");
+                      labelElement.textContent = "✅ Imagen seleccionada";
+                      labelElement.style.color = "#4CAF50";
+                      emitChange();
+                    } else {
+                      labelElement.textContent = "❌ Error al subir";
+                      labelElement.style.color = "#F44336";
+                      setTimeout(() => {
+                        labelElement.textContent = originalText;
+                        labelElement.style.color = "#FF9800";
+                      }, 2000);
+                    }
+                  } catch (error) {
+                    console.error("Image upload error:", error);
+                    labelElement.textContent = "❌ Error al subir";
+                    labelElement.style.color = "#F44336";
+                    setTimeout(() => {
+                      labelElement.textContent = originalText;
+                      labelElement.style.color = "#FF9800";
+                    }, 2000);
+                  }
+                }
+              };
+              
+              fileInput.click();
+            };
+            
+            labelElement.removeEventListener("click", handleClick);
+            labelElement.addEventListener("click", handleClick);
+          });
+      };
+      
+      setupImageBlockClick();
+      workspace.addChangeListener(() => {
+        setTimeout(setupImageBlockClick, 100);
+      });
 
       // Restore LABEL for temi_show_video blocks that already have VIDEO_URL
       workspace.getAllBlocks(false)
@@ -494,13 +591,13 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
           }
         });
 
-      // Expose functions to update IMAGE_BASE64 and VIDEO_URL fields by block ID
+      // Expose functions to update IMAGE_URL and VIDEO_URL fields by block ID
       if (onWorkspaceReady) {
-        const updateImageBase64ById = (blockId: string, base64: string) => {
+        const updateImageBase64ById = (blockId: string, imageUrl: string) => {
           const block = workspace.getBlockById(blockId);
           if (block) {
             if (block.type === "temi_show_image") {
-              block.setFieldValue(base64, "IMAGE_BASE64");
+              block.setFieldValue(imageUrl, "IMAGE_URL");
               const allShowImageBlocks = workspace.getAllBlocks(false).filter((b) => b.type === "temi_show_image");
               const imgNumber = allShowImageBlocks.indexOf(block) + 1;
               block.setFieldValue(`(imagen ${imgNumber} ✅)`, "LABEL");
@@ -511,7 +608,7 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
               for (let i = 1; i <= 5; i++) {
                 const field = block.getField(`ACTION_VALUE_${i}`);
                 if (field && !field.getValue?.()) {
-                  block.setFieldValue(base64, `ACTION_VALUE_${i}`);
+                  block.setFieldValue(imageUrl, `ACTION_VALUE_${i}`);
                   const labelField = block.getField(`ACTION_VALUE_LABEL_${i}`);
                   if (labelField) {
                     (labelField as any).setValue("(imagen ✅)");

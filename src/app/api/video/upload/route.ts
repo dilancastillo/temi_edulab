@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { videoStore } from "@/lib/video-store";
+import { supabase } from "@/lib/supabase";
 import { networkInterfaces } from "os";
 
 const MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB
+const BUCKET_NAME = "videos";
 
 function generateId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -32,19 +33,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Video exceeds 200 MB limit" }, { status: 413 });
   }
 
-  const buffer = await file.arrayBuffer();
-  const id = generateId();
+  try {
+    const id = generateId();
+    const fileName = `${id}-${file.name}`;
+    const buffer = await file.arrayBuffer();
 
-  videoStore.set(id, {
-    buffer,
-    mimeType: file.type || "video/mp4",
-    filename: file.name,
-  });
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(fileName, new Uint8Array(buffer), {
+        contentType: file.type || "video/mp4",
+        upsert: false,
+      });
 
-  // Build the video URL using the real network IP of the PC
-  const localIP = getLocalIP();
-  const port = req.headers.get("host")?.split(":")[1] ?? "3000";
-  const videoUrl = `http://${localIP}:${port}/api/video/${id}`;
+    if (error) {
+      console.error("Supabase upload error:", error);
+      return NextResponse.json({ ok: false, message: "Error uploading video to storage" }, { status: 500 });
+    }
 
-  return NextResponse.json({ ok: true, id, videoUrl });
+    // Get the public URL
+    const { data: publicUrlData } = supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(fileName);
+
+    const videoUrl = publicUrlData.publicUrl;
+
+    return NextResponse.json({ ok: true, id, videoUrl });
+  } catch (error) {
+    console.error("Upload error:", error);
+    return NextResponse.json({ ok: false, message: "Error processing video upload" }, { status: 500 });
+  }
 }

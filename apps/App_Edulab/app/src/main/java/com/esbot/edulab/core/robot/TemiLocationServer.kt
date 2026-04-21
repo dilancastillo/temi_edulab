@@ -286,11 +286,11 @@ class TemiLocationServer @Inject constructor(
                         }
                     }
                     "ShowImage" -> {
-                        val base64Match = Regex(""""imageBase64"\s*:\s*"([A-Za-z0-9+/=\r\n]+)"""").find(body, typeMatch.range.first)
-                        val imageBase64 = base64Match?.groupValues?.getOrNull(1)?.replace("\r", "")?.replace("\n", "")
-                        if (!imageBase64.isNullOrEmpty()) {
-                            commands.add(RobotCommand.ShowImage(imageBase64))
-                            Log.d(TAG, "  ✓ ShowImage")
+                        val urlMatch = Regex(""""imageUrl"\s*:\s*"([^"]+)"""").find(context)
+                        val imageUrl = urlMatch?.groupValues?.getOrNull(1)
+                        if (!imageUrl.isNullOrEmpty()) {
+                            commands.add(RobotCommand.ShowImage(imageUrl))
+                            Log.d(TAG, "  ✓ ShowImage: $imageUrl")
                         }
                     }
                     "ShowVideo" -> {

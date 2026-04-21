@@ -5,4 +5,6 @@
     <string name="language_label">ES</string>
     <string name="menu_description">Menú</string>
     <string name="language_description">Cambiar idioma</string>
+    <string name="menu_title">Menú</string>
+    <string name="close_button">Cerrar</string>
 </resources>
