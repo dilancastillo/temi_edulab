@@ -58,7 +58,16 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
           type="button"
           style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
         >
-          <LogoMark />
+          <div className="brand-lockup" aria-label="Esbot EduLab">
+            <span className="brand-mark" aria-hidden="true" style={{ background: "none", border: "none", boxShadow: "none", padding: 0 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/ic_logo.png" alt="Logo" style={{ width: "2.8rem", height: "2.8rem", objectFit: "contain", display: "block" }} />
+            </span>
+            <span className="brand-copy" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "0", lineHeight: "1.2" }}>
+              <strong style={{ fontSize: "1.1rem", lineHeight: "1.2", textAlign: "left" }}>Esbot EduLab</strong>
+              <small style={{ fontSize: "0.8rem", lineHeight: "1.2", opacity: 0.85, textAlign: "left" }}>{studentSession.displayName}</small>
+            </span>
+          </div>
         </button>
         <nav aria-label="Navegación estudiante">
           <ul className="student-nav-list">

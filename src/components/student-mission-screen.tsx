@@ -74,6 +74,7 @@ export function StudentMissionScreen() {
       workspaceState,
       stepIndex: evaluation.completedSteps
     });
+    setUnsavedState(null);
     setIsConfirmingSubmit(false);
     setNotice("Entrega enviada. Tu profesor la verá como pendiente de revisión.");
     router.refresh();

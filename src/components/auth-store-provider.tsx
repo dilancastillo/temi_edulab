@@ -232,10 +232,10 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
               assignmentId: r.assignment_id as string,
               missionId: r.mission_id as string,
               workspaceState: r.workspace_state,
-              stepIndex: r.step_index as number,
+              stepIndex: Number(r.step_index),
               status: r.status as "draft" | "submitted",
-              updatedAt: r.updated_at as string,
-              submittedAt: r.submitted_at as string | undefined,
+              updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : new Date().toISOString(),
+              submittedAt: r.submitted_at ? new Date(r.submitted_at as string).toISOString() : undefined,
             };
           }));
         }
@@ -489,13 +489,23 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
 
   const deleteAssignment = useCallback(async (assignmentId: string): Promise<void> => {
     if (!teacherId) return;
+    // Find the course of this assignment to reset student progress in memory
+    const assignment = assignments.find((a) => a.id === assignmentId);
     setAssignments((current) => current.filter((a) => a.id !== assignmentId));
+    // Reset progress of students in that course
+    if (assignment) {
+      setStudents((current) => current.map((s) =>
+        s.courseId === assignment.courseId && s.progress === "Revisar"
+          ? { ...s, progress: "En curso" as const, currentMissionId: undefined }
+          : s
+      ));
+    }
     await fetch("/api/teacher/delete-assignment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: assignmentId }),
     });
-  }, [teacherId]);
+  }, [teacherId, assignments]);
 
   // ── 5.11: Student work operations ────────────────────────────────────────────
 
@@ -574,16 +584,19 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     if (!effectiveTeacherId) return;
 
     const submittedAt = new Date().toISOString();
+    let workId: string | null = null;
 
     setStudentWorks((current) => {
       const existing = current.find((w) => w.studentId === input.studentId && w.assignmentId === input.assignmentId);
       let work: StudentWork;
       if (existing) {
+        workId = existing.id;
         work = { ...existing, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "submitted", submittedAt, updatedAt: submittedAt };
         return current.map((w) => w.id === existing.id ? work : w);
       } else {
+        workId = createId("work");
         work = {
-          id: createId("work"),
+          id: workId,
           teacherId: effectiveTeacherId,
           institutionId: demoInstitution.id,
           studentId: input.studentId,
@@ -602,7 +615,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     void fetch("/api/student/save-work", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...input, teacherId: effectiveTeacherId, institutionId: demoInstitution.id, updatedAt: submittedAt, submittedAt, status: "submitted" }),
+      body: JSON.stringify({ ...input, id: workId, teacherId: effectiveTeacherId, institutionId: demoInstitution.id, updatedAt: submittedAt, submittedAt, status: "submitted" }),
     });
 
     setStudents((current) =>
