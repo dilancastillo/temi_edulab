@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import pool from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,32 +17,26 @@ export async function POST(req: NextRequest) {
       submittedAt?: string;
     };
 
-    const row: Record<string, unknown> = {
-      teacher_id: body.teacherId,
-      institution_id: body.institutionId,
-      student_id: body.studentId,
-      assignment_id: body.assignmentId,
-      mission_id: body.missionId,
-      workspace_state: body.workspaceState ?? null,
-      step_index: body.stepIndex,
-      status: body.status,
-      updated_at: body.updatedAt,
-      submitted_at: body.submittedAt ?? null,
-    };
-
-    // Include id when provided so Supabase can match the existing row by PK
-    if (body.id) row.id = body.id;
-
-    const { error } = await supabase.from("student_works").upsert(row, { onConflict: "student_id,assignment_id" });
-
-    if (error) {
-      console.error("save-work error:", error);
-      return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
-    }
+    await pool.query(
+      `INSERT INTO student_works (id, teacher_id, institution_id, student_id, assignment_id, mission_id, workspace_state, step_index, status, updated_at, submitted_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       ON CONFLICT (student_id, assignment_id) DO UPDATE SET
+         workspace_state = EXCLUDED.workspace_state,
+         step_index = EXCLUDED.step_index,
+         status = EXCLUDED.status,
+         updated_at = EXCLUDED.updated_at,
+         submitted_at = EXCLUDED.submitted_at`,
+      [
+        body.id, body.teacherId, body.institutionId, body.studentId,
+        body.assignmentId, body.missionId,
+        body.workspaceState ? JSON.stringify(body.workspaceState) : null,
+        body.stepIndex, body.status, body.updatedAt, body.submittedAt ?? null
+      ]
+    );
 
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error("save-work exception:", e);
+    console.error("save-work error:", e);
     return NextResponse.json({ ok: false, message: "Error interno." }, { status: 500 });
   }
 }

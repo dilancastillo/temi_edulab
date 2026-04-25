@@ -396,13 +396,18 @@ function StudentFormModal({
         </label>
         <label className="field" htmlFor="student-password">
           Contraseña
+          {isEditing && (
+            <small style={{ color: "var(--color-text-muted)", marginBottom: "4px", display: "block" }}>
+              El estudiante ya tiene contraseña. Escribe una nueva para cambiarla o deja vacío para mantenerla.
+            </small>
+          )}
           <input
             autoComplete="new-password"
             id="student-password"
             minLength={6}
             maxLength={60}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder={isEditing ? "Dejar vacío para no cambiar" : ""}
+            placeholder={isEditing ? "••••••••" : "Mínimo 6 caracteres"}
             required={!isEditing}
             type="password"
             value={password}

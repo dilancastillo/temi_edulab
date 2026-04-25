@@ -8,18 +8,6 @@ import {
   demoInstitution,
   demoMissions,
 } from "@/lib/demo-data";
-import {
-  fetchStudents,
-  fetchAssignments,
-  fetchStudentWorks,
-  fetchProfile,
-  upsertStudent,
-  upsertAssignment,
-  upsertStudentWork,
-  upsertProfile,
-  deleteStudentById,
-  deleteAssignmentById,
-} from "@/lib/supabase-store";
 import type {
   Assignment,
   AuthResult,
@@ -163,17 +151,24 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   // ── 5.1: Auth state subscription + session restore ──────────────────────────
 
   const loadTeacherData = useCallback(async (uid: string, userEmail: string) => {
-    const [remoteStudents, remoteAssignments, remoteWorks, remoteProfile] = await Promise.all([
-      fetchStudents(uid),
-      fetchAssignments(uid),
-      fetchStudentWorks(uid),
-      fetchProfile(uid),
-    ]);
-    setStudents(remoteStudents);
-    setAssignments(remoteAssignments);
-    setStudentWorks(remoteWorks);
-    setProfile(remoteProfile ?? buildDefaultProfile(uid, userEmail));
+    try {
+      const res = await fetch(`/api/teacher/data?teacherId=${uid}`);
+      const data = await res.json() as {
+        ok: boolean;
+        students?: Student[];
+        assignments?: Assignment[];
+        studentWorks?: StudentWork[];
+        profile?: TeacherProfile | null;
+      };
+      if (data.ok) {
+        setStudents(data.students ?? []);
+        setAssignments(data.assignments ?? []);
+        setStudentWorks(data.studentWorks ?? []);
+        setProfile(data.profile ?? buildDefaultProfile(uid, userEmail));
+      }
+    } catch { /* ignore */ }
     setTeacherId(uid);
+    setIsReady(true);
   }, []);
 
   const clearTeacherData = useCallback(() => {
@@ -252,15 +247,19 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     let cancelled = false;
 
     void (async () => {
-      // Restaurar sesión del docente
-      const { data: { session: existingSession } } = await supabase.auth.getSession();
-      if (!cancelled && existingSession) {
-        setSession(existingSession);
-        await loadTeacherData(existingSession.user.id, existingSession.user.email ?? "");
-      }
+      // Restaurar sesión del docente desde localStorage
+      try {
+        const stored = window.localStorage.getItem("esbot.teacherSession.v1");
+        if (stored && !cancelled) {
+          const parsed = JSON.parse(stored) as { teacherId: string; email: string };
+          if (parsed.teacherId) {
+            await loadTeacherData(parsed.teacherId, parsed.email);
+          }
+        }
+      } catch { /* ignore */ }
 
       // Restaurar sesión del estudiante desde localStorage
-      if (!cancelled && !existingSession) {
+      if (!cancelled) {
         try {
           const stored = window.localStorage.getItem("esbot.studentSession.v1");
           if (stored) {
@@ -276,34 +275,36 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       if (!cancelled) setIsReady(true);
     })();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      if (cancelled) return;
-      if (event === "SIGNED_IN" && newSession) {
-        setSession(newSession);
-        await loadTeacherData(newSession.user.id, newSession.user.email ?? "");
-        if (!isReady) setIsReady(true);
-      }
-      if (event === "SIGNED_OUT") {
-        clearTeacherData();
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      subscription.unsubscribe();
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── 5.2: loginWithPassword ───────────────────────────────────────────────────
 
   const loginWithPassword = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      return { ok: false, message: mapSupabaseError(error.message) };
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json() as { ok: boolean; message?: string; teacherId?: string; email?: string; fullName?: string; institutionId?: string };
+      if (!data.ok) return { ok: false, message: data.message ?? "No se pudo iniciar sesión." };
+
+      // Store session in localStorage
+      window.localStorage.setItem("esbot.teacherSession.v1", JSON.stringify({
+        teacherId: data.teacherId,
+        email: data.email,
+        fullName: data.fullName,
+        institutionId: data.institutionId,
+      }));
+
+      await loadTeacherData(data.teacherId!, data.email!);
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "No se pudo conectar al servidor." };
     }
-    return { ok: true };
-  }, []);
+  }, [loadTeacherData]);
 
   // ── 5.4: loginWithGoogle ─────────────────────────────────────────────────────
 
@@ -318,7 +319,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   // ── 5.6: logout ──────────────────────────────────────────────────────────────
 
   const logout = useCallback(async (): Promise<void> => {
-    await supabase.auth.signOut();
+    window.localStorage.removeItem("esbot.teacherSession.v1");
     window.localStorage.removeItem("esbot.studentSession.v1");
     clearTeacherData();
     setStudentSession(null);
@@ -341,7 +342,12 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       createdAt: new Date().toISOString(),
     };
     setStudents((current) => [newStudent, ...current]);
-    await upsertStudent(newStudent);
+    // Use server endpoint to hash password before storing
+    await fetch("/api/student/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newStudent),
+    });
   }, [teacherId]);
 
   const updateStudent = useCallback(async (studentId: string, input: StudentInput): Promise<void> => {
@@ -360,7 +366,14 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
           : s
       );
       const s = updated.find((s) => s.id === studentId);
-      if (s) void upsertStudent(s);
+      if (s) {
+        // Use server endpoint to hash password before storing
+        void fetch("/api/student/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(s),
+        });
+      }
       return updated;
     });
   }, [teacherId]);
@@ -368,7 +381,11 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   const deleteStudent = useCallback(async (studentId: string): Promise<void> => {
     if (!teacherId) return;
     setStudents((current) => current.filter((s) => s.id !== studentId));
-    await deleteStudentById(studentId);
+    await fetch("/api/teacher/delete-student", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: studentId }),
+    });
   }, [teacherId]);
 
   const importStudents = useCallback(async (importedStudents: ImportedStudent[]): Promise<{ added: number; skipped: string[] }> => {
@@ -404,7 +421,11 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     }
 
     setStudents((current) => [...nextStudents, ...current]);
-    await Promise.all(nextStudents.map((s) => upsertStudent(s)));
+    await Promise.all(nextStudents.map((s) => fetch("/api/student/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(s),
+    })));
     return { added: nextStudents.length, skipped };
   }, [teacherId, students]);
 
@@ -432,13 +453,21 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       reviewCount: 0,
     };
     setAssignments((current) => [newAssignment, ...current]);
-    await upsertAssignment(newAssignment);
+    await fetch("/api/teacher/upsert-assignment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newAssignment),
+    });
 
     setStudents((current) =>
       current.map((student) => {
         if (student.courseId !== input.courseId) return student;
         const updated = { ...student, currentMissionId: student.currentMissionId ?? input.missionId, progress: "En curso" as const };
-        void upsertStudent(updated);
+        void fetch("/api/student/update-progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: updated.id, progress: updated.progress, currentMissionId: updated.currentMissionId }),
+        });
         return updated;
       })
     );
@@ -449,7 +478,11 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     setAssignments((current) => {
       const updated = current.map((a) => a.id === assignmentId ? { ...a, status: "archived" as const } : a);
       const a = updated.find((a) => a.id === assignmentId);
-      if (a) void upsertAssignment(a);
+      if (a) void fetch("/api/teacher/upsert-assignment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(a),
+      });
       return updated;
     });
   }, [teacherId]);
@@ -457,7 +490,11 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   const deleteAssignment = useCallback(async (assignmentId: string): Promise<void> => {
     if (!teacherId) return;
     setAssignments((current) => current.filter((a) => a.id !== assignmentId));
-    await deleteAssignmentById(assignmentId);
+    await fetch("/api/teacher/delete-assignment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: assignmentId }),
+    });
   }, [teacherId]);
 
   // ── 5.11: Student work operations ────────────────────────────────────────────
@@ -572,7 +609,11 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       current.map((student) => {
         if (student.id !== input.studentId) return student;
         const updated = { ...student, progress: "Revisar" as const, currentMissionId: input.missionId };
-        void upsertStudent(updated);
+        void fetch("/api/student/update-progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: updated.id, progress: updated.progress, currentMissionId: updated.currentMissionId }),
+        });
         return updated;
       })
     );
@@ -584,7 +625,11 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
           (w) => w.studentId === input.studentId && w.assignmentId === input.assignmentId && w.status === "submitted"
         );
         const updated = { ...assignment, reviewCount: alreadySubmitted ? assignment.reviewCount : assignment.reviewCount + 1 };
-        void upsertAssignment(updated);
+        void fetch("/api/teacher/upsert-assignment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        });
         return updated;
       })
     );
@@ -603,7 +648,11 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         biography: input.biography.trim(),
         avatarUrl: input.avatarUrl,
       };
-      void upsertProfile(updated);
+      void fetch("/api/teacher/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
       return updated;
     });
   }, [teacherId]);

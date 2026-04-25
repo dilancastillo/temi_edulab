@@ -30,12 +30,16 @@ export function DashboardScreen() {
 
       <section aria-label="Indicadores principales" className="metric-grid">
         <article className="metric-card">
-          <span className="metric-icon metric-icon-yellow" aria-hidden="true" />
+          <span className="metric-icon metric-icon-yellow" aria-hidden="true">
+            <img src="/ic_revisar.png" alt="" />
+          </span>
           <p>Estudiantes por revisar</p>
           <strong>{studentsToReview}</strong>
         </article>
         <article className="metric-card">
-          <span className="metric-icon metric-icon-green" aria-hidden="true" />
+          <span className="metric-icon metric-icon-green" aria-hidden="true">
+            <img src="/ic_revisados.png" alt="" />
+          </span>
           <p>Estudiantes calificados</p>
           <strong>{gradedStudents}</strong>
         </article>
@@ -62,7 +66,9 @@ export function DashboardScreen() {
 
             return (
               <article className="assignment-card" key={assignment.id}>
-                <div className={`mission-symbol mission-symbol-${mission.coverTone}`} aria-hidden="true" />
+                <span className={`mission-symbol mission-symbol-${mission.coverTone}`} aria-hidden="true">
+                  <img src={`/icon_${mission.category.toLowerCase()}.png`} alt="" />
+                </span>
                 <div>
                   <h3>{mission.title}</h3>
                   <p>

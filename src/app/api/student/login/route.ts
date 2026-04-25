@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import pool from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,26 +11,23 @@ export async function POST(req: NextRequest) {
       const code = body.missionCode.trim().toUpperCase();
       const name = body.studentName.trim().toLowerCase();
 
-      // 1. Buscar la asignación activa con ese código
-      const { data: assignment, error: assignError } = await supabase
-        .from("assignments")
-        .select("id, course_id, mission_id, teacher_id")
-        .eq("mission_code", code)
-        .eq("status", "active")
-        .single();
+      const { rows: assignments } = await pool.query(
+        "SELECT id, course_id, mission_id, teacher_id FROM assignments WHERE mission_code = $1 AND status = 'active'",
+        [code]
+      );
 
-      if (assignError || !assignment) {
+      if (assignments.length === 0) {
         return NextResponse.json({ ok: false, message: "Código de misión no válido o inactivo." }, { status: 401 });
       }
 
-      // 2. Buscar el estudiante por nombre (case-insensitive) en ese curso
-      const { data: students, error: studentError } = await supabase
-        .from("students")
-        .select("id, full_name, course_id, teacher_id")
-        .eq("course_id", assignment.course_id)
-        .ilike("full_name", name);
+      const assignment = assignments[0] as { id: string; course_id: string; mission_id: string; teacher_id: string };
 
-      if (studentError || !students || students.length === 0) {
+      const { rows: students } = await pool.query(
+        "SELECT id, full_name, course_id, teacher_id FROM students WHERE course_id = $1 AND LOWER(full_name) = $2",
+        [assignment.course_id, name]
+      );
+
+      if (students.length === 0) {
         return NextResponse.json({ ok: false, message: "No encontramos un estudiante con ese nombre en este curso." }, { status: 401 });
       }
 
@@ -49,19 +47,19 @@ export async function POST(req: NextRequest) {
     if (body.email && body.password) {
       const email = body.email.trim().toLowerCase();
 
-      const { data: students, error } = await supabase
-        .from("students")
-        .select("id, full_name, email, password, teacher_id, course_id")
-        .eq("email", email)
-        .single();
+      const { rows } = await pool.query(
+        "SELECT id, full_name, email, password, teacher_id, course_id FROM students WHERE email = $1",
+        [email]
+      );
 
-      if (error || !students) {
+      if (rows.length === 0) {
         return NextResponse.json({ ok: false, message: "Correo o contraseña incorrectos." }, { status: 401 });
       }
 
-      const student = students as { id: string; full_name: string; email: string; password: string; teacher_id: string; course_id: string };
+      const student = rows[0] as { id: string; full_name: string; email: string; password: string; teacher_id: string; course_id: string };
+      const valid = await bcrypt.compare(body.password, student.password);
 
-      if (student.password !== body.password) {
+      if (!valid) {
         return NextResponse.json({ ok: false, message: "Correo o contraseña incorrectos." }, { status: 401 });
       }
 
@@ -74,7 +72,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: false, message: "Datos incompletos." }, { status: 400 });
-  } catch {
+  } catch (e) {
+    console.error("student/login error:", e);
     return NextResponse.json({ ok: false, message: "Error interno del servidor." }, { status: 500 });
   }
 }

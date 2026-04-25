@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import pool from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -11,26 +11,15 @@ export async function GET(req: NextRequest) {
   }
 
   const [studentRes, assignmentsRes, worksRes] = await Promise.all([
-    supabase
-      .from("students")
-      .select("*")
-      .eq("id", studentId)
-      .single(),
-    supabase
-      .from("assignments")
-      .select("*")
-      .eq("teacher_id", teacherId)
-      .eq("status", "active"),
-    supabase
-      .from("student_works")
-      .select("*")
-      .eq("student_id", studentId),
+    pool.query("SELECT * FROM students WHERE id = $1", [studentId]),
+    pool.query("SELECT * FROM assignments WHERE teacher_id = $1 AND status = 'active'", [teacherId]),
+    pool.query("SELECT * FROM student_works WHERE student_id = $1", [studentId]),
   ]);
 
   return NextResponse.json({
     ok: true,
-    student: studentRes.data ?? null,
-    assignments: assignmentsRes.data ?? [],
-    studentWorks: worksRes.data ?? [],
+    student: studentRes.rows[0] ?? null,
+    assignments: assignmentsRes.rows,
+    studentWorks: worksRes.rows,
   });
 }

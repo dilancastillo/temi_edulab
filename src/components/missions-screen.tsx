@@ -51,7 +51,9 @@ export function MissionsScreen() {
 
           return (
             <article className="assignment-card assignment-card-wide" key={assignment.id}>
-              <div className={`mission-symbol mission-symbol-${mission.coverTone}`} aria-hidden="true" />
+              <span className={`mission-symbol mission-symbol-${mission.coverTone}`} aria-hidden="true">
+                <img src={`/icon_${mission.category.toLowerCase()}.png`} alt="" />
+              </span>
               <div>
                 <h2>{mission.title}</h2>
                 <p>
