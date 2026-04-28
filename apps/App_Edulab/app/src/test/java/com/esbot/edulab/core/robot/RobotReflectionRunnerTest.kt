@@ -15,7 +15,9 @@ import org.junit.Test
  */
 class RobotReflectionRunnerTest {
 
-    private val runner = RobotReflectionRunner()
+    private val imageController = ImageOverlayController()
+    private val videoController = VideoOverlayController()
+    private val runner = RobotReflectionRunner(imageController, videoController)
 
     /**
      * When the Temi SDK class is not on the classpath (ClassNotFoundException),
@@ -68,6 +70,14 @@ class RobotReflectionRunnerTest {
             override fun run(command: RobotCommand): Result<Unit> {
                 // Simulate what RobotReflectionRunner does when getInstance() == null
                 return Result.failure(IllegalStateException("Robot instance not available"))
+            }
+            
+            override fun runSequence(commands: List<RobotCommand>): Result<Unit> {
+                for (command in commands) {
+                    val result = run(command)
+                    if (result.isFailure) return result
+                }
+                return Result.success(Unit)
             }
         }
 

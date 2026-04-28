@@ -16,12 +16,22 @@ class RobotReflectionRunner @Inject constructor(
     private val videoOverlayController: VideoOverlayController
 ) : RobotCommandRunner {
 
-    override fun run(command: RobotCommand): Result<Unit> = when (command) {
-        is RobotCommand.Navigate -> navigateAndWait(command.location)
-        is RobotCommand.Say -> speakAndWait(command.text)
-        is RobotCommand.ShowImage -> showImageAndWait(command.imageUrl, command.durationMs)
-        is RobotCommand.ShowVideo -> showVideoAndWait(command.videoUrl)
-        is RobotCommand.AskCondition -> askConditionAndWait(command.question, command.options)
+    override fun run(command: RobotCommand): Result<Unit> {
+        return when (command) {
+            is RobotCommand.Navigate -> navigateAndWait(command.location)
+            is RobotCommand.Say -> speakAndWait(command.text)
+            is RobotCommand.ShowImage -> showImageAndWait(command.imageUrl, command.durationMs)
+            is RobotCommand.ShowVideo -> showVideoAndWait(command.videoUrl)
+            is RobotCommand.AskCondition -> askConditionAndWait(command.question, command.options)
+            is RobotCommand.Repeat -> {
+                if (command.times < 1) return Result.success(Unit)
+                repeat(command.times) {
+                    val result = runSequence(command.commands)
+                    if (result.isFailure) return result
+                }
+                Result.success(Unit)
+            }
+        }
     }
 
     override fun runSequence(commands: List<RobotCommand>): Result<Unit> {

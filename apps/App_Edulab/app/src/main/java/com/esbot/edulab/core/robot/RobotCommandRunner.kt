@@ -9,6 +9,7 @@ sealed class RobotCommand {
         val question: String,
         val options: List<ConditionOption>
     ) : RobotCommand()
+    data class Repeat(val times: Int, val commands: List<RobotCommand>) : RobotCommand()
 }
 
 data class ConditionOption(

@@ -102,6 +102,81 @@ class TemiLocationServerExecuteTest {
     }
 
     // -------------------------------------------------------------------------
+    // Repeat command parsing tests — Requirements 4.1, 4.2
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `valid Repeat command with inner Navigate returns 200 with ok true`() {
+        val body = """{"commands":[{"type":"Repeat","times":2,"commands":[{"type":"Navigate","location":"Sala Principal"}]}]}"""
+        val (code, json) = post("/execute", body)
+
+        assertEquals(200, code)
+        assertTrue("Expected ok:true in response: $json", json.contains("\"ok\":true"))
+        // Verify the fake runner received the Repeat command
+        assertEquals(1, fakeRunner.receivedCommands.size)
+        val cmd = fakeRunner.receivedCommands[0]
+        assertTrue("Expected Repeat command", cmd is RobotCommand.Repeat)
+        val repeatCmd = cmd as RobotCommand.Repeat
+        assertEquals(2, repeatCmd.times)
+        assertEquals(1, repeatCmd.commands.size)
+        assertTrue("Expected inner Navigate command", repeatCmd.commands[0] is RobotCommand.Navigate)
+    }
+
+    @Test
+    fun `Repeat command with empty commands array returns 200 with ok true`() {
+        val body = """{"commands":[{"type":"Repeat","times":3,"commands":[]}]}"""
+        val (code, json) = post("/execute", body)
+
+        assertEquals(200, code)
+        assertTrue("Expected ok:true in response: $json", json.contains("\"ok\":true"))
+        assertEquals(1, fakeRunner.receivedCommands.size)
+        val cmd = fakeRunner.receivedCommands[0]
+        assertTrue("Expected Repeat command", cmd is RobotCommand.Repeat)
+        val repeatCmd = cmd as RobotCommand.Repeat
+        assertEquals(3, repeatCmd.times)
+        assertEquals(0, repeatCmd.commands.size)
+    }
+
+    @Test
+    fun `Repeat command with multiple inner commands returns 200 with ok true`() {
+        val body = """{"commands":[{"type":"Repeat","times":2,"commands":[{"type":"Navigate","location":"Sala Principal"},{"type":"Say","text":"Hola"}]}]}"""
+        val (code, json) = post("/execute", body)
+
+        assertEquals(200, code)
+        assertTrue("Expected ok:true in response: $json", json.contains("\"ok\":true"))
+        assertEquals(1, fakeRunner.receivedCommands.size)
+        val cmd = fakeRunner.receivedCommands[0]
+        assertTrue("Expected Repeat command", cmd is RobotCommand.Repeat)
+        val repeatCmd = cmd as RobotCommand.Repeat
+        assertEquals(2, repeatCmd.times)
+        assertEquals(2, repeatCmd.commands.size)
+        assertTrue("Expected inner Navigate command", repeatCmd.commands[0] is RobotCommand.Navigate)
+        assertTrue("Expected inner Say command", repeatCmd.commands[1] is RobotCommand.Say)
+    }
+
+    @Test
+    fun `nested Repeat commands are parsed correctly`() {
+        val body = """{"commands":[{"type":"Repeat","times":2,"commands":[{"type":"Repeat","times":3,"commands":[{"type":"Navigate","location":"Sala Principal"}]}]}]}"""
+        val (code, json) = post("/execute", body)
+
+        assertEquals(200, code)
+        assertTrue("Expected ok:true in response: $json", json.contains("\"ok\":true"))
+        assertEquals(1, fakeRunner.receivedCommands.size)
+        val outerCmd = fakeRunner.receivedCommands[0]
+        assertTrue("Expected outer Repeat command", outerCmd is RobotCommand.Repeat)
+        val outerRepeat = outerCmd as RobotCommand.Repeat
+        assertEquals(2, outerRepeat.times)
+        assertEquals(1, outerRepeat.commands.size)
+        
+        val innerCmd = outerRepeat.commands[0]
+        assertTrue("Expected inner Repeat command", innerCmd is RobotCommand.Repeat)
+        val innerRepeat = innerCmd as RobotCommand.Repeat
+        assertEquals(3, innerRepeat.times)
+        assertEquals(1, innerRepeat.commands.size)
+        assertTrue("Expected innermost Navigate command", innerRepeat.commands[0] is RobotCommand.Navigate)
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -134,7 +209,19 @@ class TemiLocationServerExecuteTest {
     // -------------------------------------------------------------------------
 
     private class FakeCommandRunner(private val shouldFail: Boolean) : RobotCommandRunner {
+        val receivedCommands = mutableListOf<RobotCommand>()
+        
         override fun run(command: RobotCommand): Result<Unit> {
+            receivedCommands.add(command)
+            return if (shouldFail) {
+                Result.failure(RuntimeException("Simulated runner failure"))
+            } else {
+                Result.success(Unit)
+            }
+        }
+        
+        override fun runSequence(commands: List<RobotCommand>): Result<Unit> {
+            receivedCommands.addAll(commands)
             return if (shouldFail) {
                 Result.failure(RuntimeException("Simulated runner failure"))
             } else {

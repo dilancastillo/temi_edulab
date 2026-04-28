@@ -97,7 +97,13 @@ export type AskConditionCommand = {
   options: ConditionOption[];
 };
 
-export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand;
+export type RepeatCommand = {
+  type: "Repeat";
+  times: number;
+  commands: RobotExecuteCommand[];
+};
+
+export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | RepeatCommand;
 
 export async function uploadVideo(file: File): Promise<{ ok: boolean; videoUrl?: string; message?: string }> {
   try {
@@ -180,25 +186,23 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
     const topBlocks = (ws["blocks"] as Record<string, unknown>)?.["blocks"];
     if (!Array.isArray(topBlocks)) return [];
 
-    const commands: RobotExecuteCommand[] = [];
-
-    function walk(block: unknown): void {
+    function walk(block: unknown, acc: RobotExecuteCommand[]): void {
       if (!block || typeof block !== "object") return;
       const b = block as Record<string, unknown>;
       const fields = b["fields"] as Record<string, string> | undefined;
 
       if (b["type"] === "temi_move") {
         const location = fields?.["LOCATION"];
-        if (location) commands.push({ type: "Navigate", location });
+        if (location) acc.push({ type: "Navigate", location });
       } else if (b["type"] === "temi_say") {
         const text = fields?.["TEXT"];
-        if (text) commands.push({ type: "Say", text });
+        if (text) acc.push({ type: "Say", text });
       } else if (b["type"] === "temi_show_image") {
         const imageUrl = fields?.["IMAGE_URL"];
-        if (imageUrl) commands.push({ type: "ShowImage", imageUrl });
+        if (imageUrl) acc.push({ type: "ShowImage", imageUrl });
       } else if (b["type"] === "temi_show_video") {
         const videoUrl = fields?.["VIDEO_URL"];
-        if (videoUrl) commands.push({ type: "ShowVideo", videoUrl });
+        if (videoUrl) acc.push({ type: "ShowVideo", videoUrl });
       } else if (b["type"] === "temi_condition") {
         const question = fields?.["QUESTION"];
         const optionCount = parseInt(fields?.["OPTION_COUNT"] ?? "2", 10);
@@ -207,8 +211,6 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
           for (let i = 1; i <= optionCount; i++) {
             const keyword = fields?.[`KEYWORD_${i}`];
             const actionType = fields?.[`ACTION_TYPE_${i}`] as ConditionAction["type"] | undefined;
-            
-            // Get value based on action type
             let actionValue: string | undefined;
             if (actionType === "Navigate") {
               actionValue = fields?.[`ACTION_VALUE_NAVIGATE_${i}`];
@@ -217,23 +219,32 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
             } else if (actionType === "ShowImage") {
               actionValue = fields?.[`ACTION_VALUE_HIDDEN_${i}`];
             }
-            
             if (keyword && actionType && actionValue) {
               const action = buildConditionAction(actionType, actionValue);
               if (action) options.push({ keyword, action });
             }
           }
           if (options.length >= 2) {
-            commands.push({ type: "AskCondition", question, options });
+            acc.push({ type: "AskCondition", question, options });
           }
+        }
+      } else if (b["type"] === "temi_repeat") {
+        const times = Math.max(1, Math.min(10, parseInt(fields?.["TIMES"] ?? "2", 10)));
+        const doInput = (b["inputs"] as Record<string, unknown>)?.["DO"];
+        const innerBlock = (doInput as Record<string, unknown>)?.["block"];
+        const innerCommands: RobotExecuteCommand[] = [];
+        walk(innerBlock, innerCommands);
+        for (let i = 0; i < times; i++) {
+          acc.push(...innerCommands);
         }
       }
 
       const next = (b["next"] as Record<string, unknown>)?.["block"];
-      if (next) walk(next);
+      if (next) walk(next, acc);
     }
 
-    for (const block of topBlocks) walk(block);
+    const commands: RobotExecuteCommand[] = [];
+    for (const block of topBlocks) walk(block, commands);
     return commands;
   } catch {
     return [];

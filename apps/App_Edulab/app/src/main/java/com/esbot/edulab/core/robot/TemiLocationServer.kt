@@ -314,6 +314,17 @@ class TemiLocationServer @Inject constructor(
                             }
                         }
                     }
+                    "Repeat" -> {
+                        val timesMatch = Regex(""""times"\s*:\s*(\d+)""").find(context)
+                        val times = timesMatch?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+                        val innerCommands = parseInnerCommandsFromContext(context)
+                        if (innerCommands != null) {
+                            commands.add(RobotCommand.Repeat(times, innerCommands))
+                            Log.d(TAG, "  ✓ Repeat: times=$times innerCommands=${innerCommands.size}")
+                        } else {
+                            Log.w(TAG, "  ✗ Repeat: no se pudieron parsear comandos internos")
+                        }
+                    }
                     else -> Log.d(TAG, "  ⊘ Tipo desconocido ignorado: $type")
                 }
                 searchStart = typeMatch.range.last + 1
@@ -367,6 +378,77 @@ class TemiLocationServer @Inject constructor(
         
         // If we didn't find any array bracket, assume it's top-level
         return true
+    }
+
+    /**
+     * Parses the inner "commands" array from a Repeat command context.
+     * Reuses the brace-counting logic to find and parse the nested commands array.
+     * 
+     * @param context The JSON string containing the Repeat command object
+     * @return List of parsed RobotCommand objects, or null if parsing fails
+     */
+    private fun parseInnerCommandsFromContext(context: String): List<RobotCommand>? {
+        return try {
+            // Find the "commands" key within this context
+            val commandsKeyStart = context.indexOf("\"commands\"")
+            if (commandsKeyStart < 0) {
+                Log.w(TAG, "parseInnerCommandsFromContext: no 'commands' key found")
+                return null
+            }
+
+            // Find the opening bracket after "commands":
+            val bracketStart = context.indexOf('[', commandsKeyStart)
+            if (bracketStart < 0) {
+                Log.w(TAG, "parseInnerCommandsFromContext: no opening bracket found")
+                return null
+            }
+
+            // Find matching closing bracket by counting braces and brackets
+            var braceCount = 0
+            var bracketCount = 1
+            var pos = bracketStart + 1
+            var bracketEnd = -1
+
+            while (pos < context.length && bracketCount > 0) {
+                when (context[pos]) {
+                    '{' -> braceCount++
+                    '}' -> braceCount--
+                    '[' -> bracketCount++
+                    ']' -> {
+                        if (braceCount == 0) {
+                            bracketCount--
+                            if (bracketCount == 0) {
+                                bracketEnd = pos
+                                break
+                            }
+                        }
+                    }
+                }
+                pos++
+            }
+
+            if (bracketEnd < 0) {
+                Log.w(TAG, "parseInnerCommandsFromContext: no closing bracket found")
+                return null
+            }
+
+            val arrayContent = context.substring(bracketStart + 1, bracketEnd)
+            Log.d(TAG, "parseInnerCommandsFromContext: arrayContent=${arrayContent.take(200)}...")
+
+            if (arrayContent.trim().isEmpty()) {
+                // Empty commands array is valid (no-op)
+                return emptyList()
+            }
+
+            // Now parse the commands from this array content
+            // We can reuse the same parsing logic as the main parseCommandsFromJson
+            // by wrapping it in a synthetic JSON structure
+            val syntheticJson = """{"commands":[$arrayContent]}"""
+            return parseCommandsFromJson(syntheticJson)
+        } catch (e: Exception) {
+            Log.w(TAG, "parseInnerCommandsFromContext falló: ${e.message}", e)
+            null
+        }
     }
 
 

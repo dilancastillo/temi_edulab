@@ -55,6 +55,12 @@ const toolbox = {
       name: "Condición",
       colour: "#c84b1f",
       contents: [{ kind: "block", type: "temi_condition" }]
+    },
+    {
+      kind: "category",
+      name: "Control",
+      colour: "#4a7c59",
+      contents: [{ kind: "block", type: "temi_repeat" }]
     }
   ]
 };
@@ -150,6 +156,18 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       nextStatement: null,
       colour: 140,
       tooltip: "Reproduce una confirmación sonora",
+      helpUrl: ""
+    },
+    {
+      type: "temi_repeat",
+      message0: "repetir %1 veces",
+      args0: [{ type: "field_number", name: "TIMES", value: 2, min: 1, max: 10, precision: 1 }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 120,
+      tooltip: "Repite los bloques internos N veces",
       helpUrl: ""
     }
   ]);
