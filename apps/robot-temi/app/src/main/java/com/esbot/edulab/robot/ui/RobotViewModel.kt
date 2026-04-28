@@ -22,6 +22,7 @@ class RobotViewModel(
 
     init {
         container.runtimeEngine.boot()
+        container.syncCoordinator.start()
     }
 
     fun onStartClass() = container.runtimeEngine.startClassSession()
@@ -47,6 +48,12 @@ class RobotViewModel(
     fun onRunDiagnostics() = container.runtimeEngine.runDiagnostics()
 
     fun onResetStandby() = container.runtimeEngine.resetToStandby()
+
+    fun onUpdateApiBaseUrl(value: String) = container.syncCoordinator.updateApiBaseUrl(value)
+
+    fun onRequestPairing() = container.syncCoordinator.requestPairingNow()
+
+    fun onSyncNow() = container.syncCoordinator.syncNow()
 
     class Factory(
         private val container: AppContainer,

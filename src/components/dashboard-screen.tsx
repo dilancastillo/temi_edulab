@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/demo-store-provider";
+import { classroomGuideMissionId } from "@/lib/mission-constants";
+import type { PairingRequest } from "@/lib/types";
 
 function sessionLabel(status: string) {
   switch (status) {
@@ -27,12 +30,34 @@ function sessionLabel(status: string) {
 }
 
 export function DashboardScreen() {
-  const { approveClassSession, assignments, classSessions, courses, createClassSession, missions, robots, students } = useDemoStore();
+  const {
+    approveClassSession,
+    assignments,
+    classSessions,
+    confirmPairingRequest,
+    courses,
+    createClassSession,
+    missions,
+    pairingRequests,
+    refreshData,
+    robots,
+    students
+  } = useDemoStore();
   const [busyAssignmentId, setBusyAssignmentId] = useState("");
+  const [selectedPairingRequest, setSelectedPairingRequest] = useState<PairingRequest | null>(null);
   const activeAssignments = assignments.filter((assignment) => assignment.status === "active");
   const studentsToReview = students.filter((student) => student.progress === "Revisar").length;
   const gradedStudents = students.filter((student) => student.progress === "Calificado").length;
   const connectedRobots = robots.filter((robot) => robot.connectionState === "CONNECTED").length;
+  const visiblePairingRequests = pairingRequests.filter((request) => request.status === "pending" || request.status === "confirmed");
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void refreshData();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [refreshData]);
 
   const assignmentCards = useMemo(
     () =>
@@ -57,7 +82,8 @@ export function DashboardScreen() {
           course,
           mission,
           robot,
-          suggestedStudent
+          suggestedStudent,
+          isWorkshopMission: mission?.id === classroomGuideMissionId
         };
       }),
     [activeAssignments, classSessions, courses, missions, robots, students]
@@ -84,7 +110,7 @@ export function DashboardScreen() {
   return (
     <div className="page-stack">
       <PageHeader
-        description="Gestiona tu aula, prepara al robot y sigue el progreso de tus estudiantes con datos claros."
+        description="Gestiona tu aula, vincula el Temi y sigue el progreso del taller en tiempo real."
         eyebrow="Resumen del dia"
         title="Bienvenido, Profesor"
       />
@@ -112,12 +138,15 @@ export function DashboardScreen() {
       <section className="panel-section" aria-labelledby="robot-status-title">
         <div className="section-heading">
           <h2 id="robot-status-title">Robot del aula</h2>
+          <span className="muted">
+            {visiblePairingRequests.length > 0 ? `${visiblePairingRequests.length} solicitud(es) nuevas` : "Sin solicitudes pendientes"}
+          </span>
         </div>
         <div className="assignment-list">
           {robots.length === 0 ? (
             <div className="empty-state">
               <h3>No hay robots vinculados</h3>
-              <p>Cuando confirmemos el pairing del Temi desde la web, aparecera aqui junto con su estado.</p>
+              <p>Cuando Temi cree un codigo de vinculacion, podras confirmarlo desde este panel.</p>
             </div>
           ) : null}
           {robots.map((robot) => (
@@ -128,9 +157,50 @@ export function DashboardScreen() {
                 <p>
                   {robot.classroomName ?? "Sin aula"} · {robot.connectionState}
                 </p>
-                <p className="muted">
-                  Bateria {robot.batteryPercent ?? "--"}% · {robot.statusLabel ?? "Sin estado"}
+                <p className="muted">Bateria {robot.batteryPercent ?? "--"}% · {robot.statusLabel ?? "Sin estado"}</p>
+                <p className="muted">{robot.lastSeenAt ? `Ultima vez activo: ${formatDateTime(robot.lastSeenAt)}` : "Aun no llega heartbeat real."}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel-section" aria-labelledby="pairing-title">
+        <div className="section-heading">
+          <h2 id="pairing-title">Vinculacion del robot</h2>
+        </div>
+        <div className="assignment-list">
+          {visiblePairingRequests.length === 0 ? (
+            <div className="empty-state">
+              <h3>Todo al dia</h3>
+              <p>Cuando el Temi pida vinculacion, apareceran aqui el codigo y el formulario para asignarlo al curso.</p>
+            </div>
+          ) : null}
+          {visiblePairingRequests.map((request) => (
+            <article className="assignment-card" key={request.id}>
+              <div className="mission-symbol mission-symbol-yellow" aria-hidden="true" />
+              <div>
+                <h3>{request.proposedName}</h3>
+                <p>
+                  Codigo <strong>{request.code}</strong>
+                  {request.classroomName ? ` · ${request.classroomName}` : ""}
                 </p>
+                <p className="muted">
+                  {request.status === "pending"
+                    ? "Esperando confirmacion desde la plataforma."
+                    : "Confirmado. El robot debe consumir el token en su siguiente polling."}
+                </p>
+                <p className="muted">Expira: {formatDateTime(request.expiresAt)}</p>
+              </div>
+              <div className="assignment-actions">
+                <button
+                  className="button button-primary"
+                  disabled={request.status !== "pending"}
+                  onClick={() => setSelectedPairingRequest(request)}
+                  type="button"
+                >
+                  Confirmar robot
+                </button>
               </div>
             </article>
           ))}
@@ -145,7 +215,7 @@ export function DashboardScreen() {
           </Link>
         </div>
         <div className="assignment-list">
-          {assignmentCards.slice(0, 3).map(({ assignment, classSession, course, mission, robot, suggestedStudent }) => {
+          {assignmentCards.slice(0, 3).map(({ assignment, classSession, course, mission, robot, suggestedStudent, isWorkshopMission }) => {
             if (!mission || !course) return null;
 
             return (
@@ -166,7 +236,7 @@ export function DashboardScreen() {
                   ) : null}
                 </div>
                 <div className="assignment-actions">
-                  {!classSession && robot ? (
+                  {!classSession && robot && !isWorkshopMission ? (
                     <button
                       className="button button-secondary"
                       disabled={busyAssignmentId === assignment.id}
@@ -175,6 +245,11 @@ export function DashboardScreen() {
                     >
                       Preparar en robot
                     </button>
+                  ) : null}
+                  {isWorkshopMission ? (
+                    <Link className="button button-secondary" href={`/profesor/talleres/preparar/${assignment.id}`}>
+                      {classSession ? "Abrir taller" : "Preparar taller"}
+                    </Link>
                   ) : null}
                   {classSession?.status === "pending_approval" ? (
                     <button
@@ -195,6 +270,109 @@ export function DashboardScreen() {
           })}
         </div>
       </section>
+
+      {selectedPairingRequest ? (
+        <ConfirmPairingModal
+          courses={courses}
+          onClose={() => setSelectedPairingRequest(null)}
+          onSubmit={async (input) => {
+            await confirmPairingRequest(selectedPairingRequest.id, input);
+            setSelectedPairingRequest(null);
+          }}
+          pairingRequest={selectedPairingRequest}
+        />
+      ) : null}
     </div>
   );
+}
+
+function ConfirmPairingModal({
+  courses,
+  onClose,
+  onSubmit,
+  pairingRequest
+}: Readonly<{
+  courses: { id: string; name: string }[];
+  onClose: () => void;
+  onSubmit: (input: { assignedName: string; classroomName: string; courseId: string }) => Promise<void>;
+  pairingRequest: PairingRequest;
+}>) {
+  const [assignedName, setAssignedName] = useState(pairingRequest.proposedName);
+  const [classroomName, setClassroomName] = useState(pairingRequest.classroomName ?? "");
+  const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    try {
+      await onSubmit({
+        assignedName,
+        classroomName,
+        courseId
+      });
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "No pudimos confirmar el robot.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} title="Confirmar vinculacion del robot">
+      <form className="form-stack" onSubmit={handleSubmit}>
+        <p className="muted">
+          Codigo <strong>{pairingRequest.code}</strong>. Al confirmar, Temi recibira su token en el siguiente polling.
+        </p>
+        <label className="field" htmlFor="pairing-assigned-name">
+          Nombre visible del robot
+          <input
+            id="pairing-assigned-name"
+            maxLength={120}
+            onChange={(event) => setAssignedName(event.target.value)}
+            required
+            value={assignedName}
+          />
+        </label>
+        <label className="field" htmlFor="pairing-classroom">
+          Aula o espacio
+          <input
+            id="pairing-classroom"
+            maxLength={120}
+            onChange={(event) => setClassroomName(event.target.value)}
+            required
+            value={classroomName}
+          />
+        </label>
+        <label className="field" htmlFor="pairing-course">
+          Curso
+          <select id="pairing-course" onChange={(event) => setCourseId(event.target.value)} required value={courseId}>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {error ? <p className="form-error">{error}</p> : null}
+        <div className="modal-actions">
+          <button className="button button-ghost" onClick={onClose} type="button">
+            Cancelar
+          </button>
+          <button className="button button-primary" disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Confirmando..." : "Confirmar robot"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(new Date(value));
 }

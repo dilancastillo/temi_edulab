@@ -10,6 +10,10 @@ export class BackendError extends Error {
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
 
+function buildBackendUnavailableMessage() {
+  return `La API no responde en ${apiBaseUrl}. Verifica la base con npm.cmd run db:up y luego arranca la API con npm.cmd run dev:api.`;
+}
+
 export async function callBackend<T>(
   path: string,
   options: {
@@ -19,15 +23,21 @@ export async function callBackend<T>(
   } = {}
 ) {
   const hasBody = options.body !== undefined;
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    method: options.method ?? "GET",
-    headers: {
-      ...(hasBody ? { "content-type": "application/json" } : {}),
-      ...(options.token ? { authorization: `Bearer ${options.token}` } : {})
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    cache: "no-store"
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      method: options.method ?? "GET",
+      headers: {
+        ...(hasBody ? { "content-type": "application/json" } : {}),
+        ...(options.token ? { authorization: `Bearer ${options.token}` } : {})
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      cache: "no-store"
+    });
+  } catch {
+    throw new BackendError(503, buildBackendUnavailableMessage());
+  }
 
   if (!response.ok) {
     let message = "No pudimos completar la solicitud.";

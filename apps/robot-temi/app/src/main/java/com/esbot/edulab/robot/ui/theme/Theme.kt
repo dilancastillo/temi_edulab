@@ -1,19 +1,20 @@
 package com.esbot.edulab.robot.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 
 private val RobotColorScheme =
-    darkColorScheme(
+    lightColorScheme(
         primary = RobotPrimary,
         secondary = RobotAccent,
         tertiary = RobotReady,
         background = RobotBackground,
         surface = RobotSurface,
         surfaceVariant = RobotSurfaceAlt,
-        onPrimary = RobotText,
-        onSecondary = RobotText,
+        onPrimary = Color.White,
+        onSecondary = Color.White,
         onBackground = RobotText,
         onSurface = RobotText,
     )

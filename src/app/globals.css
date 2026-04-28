@@ -429,11 +429,78 @@ small {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.featured-mission-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 1.5rem;
+  padding: clamp(1.5rem, 4vw, 2.4rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #103572 0%, #1d56b1 100%);
+  color: #ffffff;
+  box-shadow: var(--shadow-card);
+}
+
+.featured-mission-copy h2,
+.featured-mission-copy p {
+  margin: 0;
+}
+
+.featured-mission-copy h2 {
+  margin-top: 0.25rem;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  line-height: 1.08;
+}
+
+.featured-mission-copy p:not(.eyebrow) {
+  margin-top: 0.8rem;
+  color: #e3eeff;
+  font-size: 1.05rem;
+}
+
+.featured-mission-hero .eyebrow {
+  color: #b4f1d5;
+}
+
+.featured-mission-aside {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.featured-mission-hero .definition-panel div {
+  background: rgb(255 255 255 / 12%);
+}
+
+.featured-mission-hero .definition-panel dt,
+.featured-mission-hero .definition-panel dd {
+  color: #ffffff;
+}
+
+.micro-challenge-list {
+  display: grid;
+  gap: 0.65rem;
+  padding-left: 1.2rem;
+  margin: 1rem 0 0;
+}
+
+.micro-challenge-list li {
+  color: #f2f7ff;
+  font-weight: 700;
+}
+
+.summary-pill-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .metric-card,
 .mission-card,
 .table-card,
 .profile-card,
-.empty-state {
+.empty-state,
+.workshop-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-surface);
@@ -619,6 +686,26 @@ small {
 .age-pill {
   background: var(--color-success-soft);
   color: #126432;
+}
+
+.status-pill-ready {
+  background: var(--color-success-soft);
+  color: #126432;
+}
+
+.status-pill-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.status-pill-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.status-pill-neutral {
+  background: #e9eff6;
+  color: #425264;
 }
 
 .table-card {
@@ -869,6 +956,173 @@ td {
   padding: clamp(1.5rem, 4vw, 2.5rem);
 }
 
+.workshop-card {
+  display: grid;
+  gap: 1.25rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.workshop-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.choice-fieldset {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.choice-fieldset legend {
+  font-weight: 800;
+}
+
+.choice-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.choice-grid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.choice-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.choice-card {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 100%;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.choice-card strong {
+  color: var(--color-text);
+}
+
+.choice-card span {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.choice-card[aria-pressed="true"] {
+  border-color: #7aa8f3;
+  background: var(--color-primary-soft);
+}
+
+.checkpoint-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.checkpoint-editor {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+
+.checkpoint-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.checkpoint-heading h3,
+.checklist-item p {
+  margin: 0;
+}
+
+.icon-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.icon-choice {
+  min-height: 3rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.icon-choice[aria-pressed="true"] {
+  border-color: #7aa8f3;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.checklist-item {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+}
+
+.checklist-item strong {
+  font-size: 1rem;
+}
+
+.checklist-item-ok {
+  background: var(--color-success-soft);
+  color: #146333;
+}
+
+.checklist-item-ok p {
+  color: #146333;
+}
+
+.checklist-item-pending {
+  background: #f2f6fb;
+  color: #31465a;
+}
+
+.checklist-item-pending p {
+  color: #53667a;
+}
+
+.toggle-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.toggle-field {
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  font-weight: 700;
+}
+
+.toggle-field input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+}
+
 .profile-layout {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
@@ -1039,6 +1293,454 @@ td {
   max-width: 48rem;
   color: #e4efff;
   font-size: 1.12rem;
+}
+
+.student-kid-hero,
+.student-mode-card,
+.student-summary-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.student-kid-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.8fr);
+  gap: 1rem;
+  align-items: center;
+  min-height: 240px;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  background: linear-gradient(135deg, #0c1c46 0%, #1e5ab4 100%);
+  color: #ffffff;
+}
+
+.student-kid-hero h1,
+.student-mode-card h2,
+.student-summary-card h2,
+.challenge-editor-card h2 {
+  margin: 0;
+}
+
+.student-kid-hero p:not(.eyebrow) {
+  max-width: 42rem;
+  color: #e4efff;
+  font-size: 1.05rem;
+}
+
+.student-kid-hero .eyebrow {
+  color: #b8f0d7;
+}
+
+.student-hero-progress {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: rgb(255 255 255 / 12%);
+}
+
+.student-hero-progress strong {
+  font-size: 2rem;
+}
+
+.kid-route-strip {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.kid-route-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: #dfe9f7;
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.kid-progress-track {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.kid-progress-track-advanced {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.kid-progress-bubble {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  min-height: 5.4rem;
+  padding: 0.85rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.kid-progress-bubble:not(:disabled):hover {
+  background: var(--color-primary-soft);
+}
+
+.kid-progress-bubble:disabled {
+  border-style: dashed;
+  color: #88a;
+  opacity: 0.7;
+}
+
+.kid-progress-bubble span {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  place-content: center;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 900;
+}
+
+.kid-progress-bubble strong {
+  font-size: 0.95rem;
+}
+
+.kid-progress-bubble[aria-current="true"] {
+  border-color: #7aa8f3;
+  background: #eef4ff;
+}
+
+.kid-progress-bubble-done {
+  border-color: #9fdcb4;
+  background: var(--color-success-soft);
+}
+
+.kid-progress-review span {
+  width: auto;
+  padding: 0 0.5rem;
+}
+
+.kid-step-card {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.kid-step-card h2,
+.kid-location-copy strong,
+.kid-idea-card {
+  margin: 0;
+}
+
+.kid-step-card p:not(.eyebrow) {
+  margin: 0;
+}
+
+.kid-idea-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.kid-idea-card {
+  min-height: 4rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #f4f8fd;
+  color: var(--color-text);
+  font-weight: 800;
+  text-align: left;
+}
+
+.kid-idea-card:hover {
+  background: var(--color-primary-soft);
+}
+
+.kid-idea-card:focus-visible,
+.kid-progress-bubble:focus-visible {
+  outline-offset: 2px;
+}
+
+.kid-location-card-large {
+  padding: 1.15rem 1.25rem;
+}
+
+.kid-location-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.kid-location-copy span {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.kid-review-card {
+  max-width: 860px;
+}
+
+.soft-star-row {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.soft-star {
+  color: rgb(255 255 255 / 35%);
+  font-size: 1.2rem;
+}
+
+.soft-star-on {
+  color: #ffd76a;
+}
+
+.student-mode-card,
+.student-summary-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.student-guided-layout {
+  display: grid;
+  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.student-progress-map {
+  display: grid;
+  gap: 1rem;
+}
+
+.challenge-map {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.challenge-chip {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.challenge-chip span {
+  display: inline-grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  place-content: center;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 900;
+}
+
+.challenge-chip strong,
+.kid-summary-mini strong {
+  font-size: 1rem;
+}
+
+.challenge-chip small {
+  color: var(--color-muted);
+}
+
+.challenge-chip[aria-current="true"] {
+  border-color: #7aa8f3;
+  background: var(--color-primary-soft);
+}
+
+.challenge-chip-done {
+  border-color: #9fdcb4;
+  background: var(--color-success-soft);
+}
+
+.student-guided-main {
+  min-width: 0;
+}
+
+.challenge-editor-card {
+  min-height: 100%;
+}
+
+.template-button-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.kid-location-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+}
+
+.kid-location-card p,
+.kid-summary-list {
+  margin: 0;
+}
+
+.kid-location-icon {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  place-content: center;
+  border-radius: 50%;
+  background: #ffffff;
+  font-size: 1.8rem;
+}
+
+.icon-pill-row {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.icon-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.icon-pill[aria-pressed="true"] {
+  border-color: #7aa8f3;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.advanced-editor-card {
+  gap: 1.25rem;
+}
+
+.advanced-instructions-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+  gap: 1rem;
+  min-height: 620px;
+}
+
+.classroom-blockly-shell {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: 1rem;
+  min-height: 620px;
+}
+
+.classroom-blockly-palette {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #f2f5fa;
+}
+
+.classroom-blockly-palette-header {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.classroom-blockly-palette-header span {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.classroom-blockly-palette-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.classroom-block-button {
+  min-height: 3.25rem;
+  padding: 0.85rem 1rem;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  font-weight: 900;
+  text-align: left;
+}
+
+.classroom-block-button-guide_greeting,
+.classroom-block-button-guide_farewell {
+  background: #9157bd;
+}
+
+.classroom-block-button-guide_go_to,
+.classroom-block-button-guide_return_base {
+  background: #b08a58;
+}
+
+.classroom-block-button-guide_explain {
+  background: #6aa85a;
+}
+
+.classroom-block-button:not(:disabled):hover {
+  filter: brightness(1.04);
+}
+
+.classroom-block-button:disabled {
+  opacity: 0.6;
+}
+
+.classroom-blockly-controls {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.compact-instructions {
+  min-height: auto;
+}
+
+.kid-summary-mini {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+
+.kid-summary-list {
+  display: grid;
+  gap: 0.5rem;
+  padding-left: 1.1rem;
+}
+
+.celebration-card {
+  background: linear-gradient(135deg, #156c3c 0%, #2c9e63 100%);
+}
+
+.celebration-stars {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  font-size: 2.3rem;
+  color: #ffd76a;
+}
+
+.blockly-card-compact {
+  min-height: 620px;
 }
 
 .student-section {
@@ -1271,8 +1973,26 @@ td {
   }
 
   .mission-grid,
-  .metric-grid {
+  .metric-grid,
+  .workshop-form-grid,
+  .checklist-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .choice-grid-three,
+  .featured-mission-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .student-kid-hero,
+  .student-guided-layout,
+  .advanced-instructions-grid,
+  .classroom-blockly-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .kid-progress-track {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -1308,6 +2028,23 @@ td {
   .metric-grid,
   .nav-list {
     grid-template-columns: 1fr;
+  }
+
+  .workshop-form-grid,
+  .choice-grid-two,
+  .choice-grid-three,
+  .checklist-grid,
+  .icon-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kid-progress-track {
+    grid-template-columns: 1fr;
+  }
+
+  .icon-pill-row,
+  .soft-star-row {
+    flex-wrap: wrap;
   }
 
   .filter-panel {
@@ -1361,7 +2098,10 @@ td {
     grid-template-columns: 260px;
   }
 
-  .mission-editor-layout {
+  .mission-editor-layout,
+  .student-guided-layout,
+  .advanced-instructions-grid,
+  .classroom-blockly-shell {
     grid-template-columns: 1fr;
   }
 

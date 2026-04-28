@@ -7,8 +7,8 @@
     "apps/api"
   ],
   "scripts": {
-    "dev": "next dev",
-    "dev:web": "next dev",
+    "dev": "next dev --hostname 0.0.0.0",
+    "dev:web": "next dev --hostname 0.0.0.0",
     "dev:api": "npm run dev --workspace apps/api",
     "db:up": "docker compose up -d postgres redis",
     "db:down": "docker compose down",

@@ -3,6 +3,7 @@ package com.esbot.edulab.robot.runtime
 import com.esbot.edulab.robot.data.local.QueueCommandEntity
 import com.esbot.edulab.robot.data.repository.RobotRepository
 import com.esbot.edulab.robot.model.CommandType
+import com.esbot.edulab.robot.model.MissionDefinition
 import com.esbot.edulab.robot.model.RobotPhase
 import com.esbot.edulab.robot.model.SafetyViolation
 import kotlinx.coroutines.CoroutineScope
@@ -34,10 +35,39 @@ class MissionRuntimeEngine(
         }
     }
 
+    fun loadRemoteSession(mission: MissionDefinition, activeStudentName: String?) {
+        scope.launch {
+            repository.startClassSession(
+                studentName = activeStudentName ?: mission.turnQueue.firstOrNull() ?: "Equipo del taller",
+                mission = mission,
+            )
+        }
+    }
+
     fun approveTeacherGate() {
         scope.launch {
             repository.approveTeacherStart()
             runRuntimeLoop()
+        }
+    }
+
+    fun syncPauseFromPlatform(reason: String = "Pausa recibida desde la plataforma") {
+        scope.launch {
+            bridge.stopMovement()
+            repository.pauseMission(reason)
+        }
+    }
+
+    fun syncSafeMode(reason: String) {
+        scope.launch {
+            bridge.stopMovement()
+            repository.enterSafeMode(
+                SafetyViolation(
+                    code = "REMOTE_SAFE_MODE",
+                    title = "Modo seguro desde plataforma",
+                    details = reason,
+                ),
+            )
         }
     }
 
@@ -181,7 +211,7 @@ class MissionRuntimeEngine(
     }
 
     private suspend fun executeSpeak(command: QueueCommandEntity, languageCode: String) {
-        repository.activateCommand(command, statusLabel = if (languageCode == "es") "Hablando" else "Speaking")
+        repository.activateCommand(command, statusLabel = if (languageCode == "es") "Temi esta hablando" else "Temi is speaking")
         val result = bridge.speak(command.primaryValue.orEmpty(), languageCode)
         if (!result.success) {
             repository.showRecoverableError(
@@ -198,6 +228,7 @@ class MissionRuntimeEngine(
     }
 
     private suspend fun executeNavigate(command: QueueCommandEntity, locations: List<com.esbot.edulab.robot.data.local.MapLocationEntity>) {
+        val snapshot = repository.currentSnapshot()
         val target = command.primaryValue.orEmpty()
         val resolvedLocation = locations.firstOrNull {
             it.available && it.name.equals(target, ignoreCase = true)
@@ -212,7 +243,13 @@ class MissionRuntimeEngine(
             )
             return
         }
-        repository.activateCommand(command, statusLabel = "Navegando")
+        repository.activateCommand(command, statusLabel = "Temi va en camino")
+        if (snapshot.executionModeLabel.contains("demo", ignoreCase = true)) {
+            bridge.speak("Estoy mostrando este recorrido sin moverme por seguridad.", snapshot.languageCode)
+            delay(450)
+            repository.completeCommand(command.id)
+            return
+        }
         val result = bridge.goTo(resolvedLocation.name)
         if (!result.success) {
             repository.showRecoverableError(
@@ -229,7 +266,7 @@ class MissionRuntimeEngine(
     }
 
     private suspend fun executeDetect(command: QueueCommandEntity, languageCode: String) {
-        repository.activateCommand(command, statusLabel = if (languageCode == "es") "Detectando" else "Detecting")
+        repository.activateCommand(command, statusLabel = if (languageCode == "es") "Temi esta revisando el espacio" else "Temi is checking the space")
         delay(1200)
         repository.completeCommand(command.id)
     }

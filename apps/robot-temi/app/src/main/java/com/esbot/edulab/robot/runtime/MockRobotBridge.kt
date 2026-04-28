@@ -21,8 +21,9 @@ class MockRobotBridge : RobotBridge {
             mapReady = true,
             locations = listOf(
                 RobotLocationDiagnostic(name = "Biblioteca", available = true, detail = "Ruta validada"),
-                RobotLocationDiagnostic(name = "Salon 5A", available = true, detail = "Base de clase"),
+                RobotLocationDiagnostic(name = "Salon 5A", available = true, detail = "Parada central"),
                 RobotLocationDiagnostic(name = "Laboratorio", available = true, detail = "Punto alterno"),
+                RobotLocationDiagnostic(name = "Punto base", available = true, detail = "Regreso del robot"),
             ),
             rawStatus = if (moving) "MOVING" else "READY",
         )

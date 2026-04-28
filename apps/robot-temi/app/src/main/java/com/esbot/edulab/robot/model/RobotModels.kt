@@ -50,7 +50,22 @@ data class MissionDefinition(
     val title: String,
     val classroom: String,
     val teacherName: String,
+    val studentModeLabel: String,
+    val deviceModeLabel: String,
+    val executionModeLabel: String,
+    val baseLocationName: String,
+    val routeStops: List<MissionRouteStop>,
+    val turnQueue: List<String>,
+    val welcomeLine: String,
+    val celebrationLine: String,
     val steps: List<MissionStepSpec>,
+)
+
+data class MissionRouteStop(
+    val locationName: String,
+    val alias: String,
+    val iconToken: String,
+    val explanation: String,
 )
 
 data class MissionStepSpec(

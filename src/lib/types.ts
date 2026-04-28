@@ -73,6 +73,7 @@ export type Assignment = {
   missionId: string;
   missionCode: string;
   instructions?: string;
+  workshop?: WorkshopSession;
   status: AssignmentStatus;
   assignedAt: string;
   assignedBy: string;
@@ -138,6 +139,71 @@ export type Robot = {
   lastSeenAt?: string;
 };
 
+export type RobotLocation = {
+  id: string;
+  robotId: string;
+  name: string;
+  available: boolean;
+  detail?: string;
+  lastValidatedAt: string;
+};
+
+export type PairingRequest = {
+  id: string;
+  robotId?: string;
+  institutionId?: string;
+  code: string;
+  proposedName: string;
+  classroomName?: string;
+  sessionUri?: string;
+  status: "pending" | "confirmed" | "consumed" | "expired";
+  expiresAt: string;
+  confirmedAt?: string;
+  consumedAt?: string;
+};
+
+export type WorkshopParticipationMode = "individual" | "teams";
+
+export type WorkshopDeviceMode = "student_device" | "team_device" | "teacher_demo";
+
+export type WorkshopExecutionMode = "normal" | "demo_safe";
+export type WorkshopStudentMode = "guided" | "advanced";
+
+export type WorkshopMessageMode = "template" | "custom";
+
+export type WorkshopIconKey = "board" | "books" | "star" | "paint" | "microscope" | "trophy";
+
+export type WorkshopCheckpoint = {
+  locationName: string;
+  alias: string;
+  iconKey: WorkshopIconKey;
+  messageMode: WorkshopMessageMode;
+  messageText: string;
+};
+
+export type WorkshopChecklist = {
+  robotConnected: boolean;
+  batteryReady: boolean;
+  mapReady: boolean;
+  checkpointsReady: boolean;
+  baseReady: boolean;
+  routeSafeConfirmed: boolean;
+  executionModeConfirmed: boolean;
+};
+
+export type WorkshopSession = {
+  missionType: "classroom_guide";
+  workshopName: string;
+  studentMode: WorkshopStudentMode;
+  participationMode: WorkshopParticipationMode;
+  deviceMode: WorkshopDeviceMode;
+  executionMode: WorkshopExecutionMode;
+  turnDurationMinutes: number;
+  baseLocationName: string;
+  checkpoints: WorkshopCheckpoint[];
+  checklist: WorkshopChecklist;
+};
+
 export type ClassSession = {
   id: string;
   institutionId: string;
@@ -150,6 +216,7 @@ export type ClassSession = {
   status: string;
   currentStepLabel?: string;
   progressPercent: number;
+  workshop?: WorkshopSession;
   approvedAt?: string;
   startedAt?: string;
   completedAt?: string;
@@ -168,4 +235,5 @@ export type AppBootstrap = {
   profile: TeacherProfile;
   robots: Robot[];
   classSessions: ClassSession[];
+  pairingRequests: PairingRequest[];
 };

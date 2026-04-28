@@ -31,10 +31,15 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -67,6 +72,9 @@ fun RobotShell(
     onRunDiagnostics: () -> Unit,
     onToggleLanguage: () -> Unit,
     onResetStandby: () -> Unit,
+    onUpdateApiBaseUrl: (String) -> Unit,
+    onRequestPairing: () -> Unit,
+    onSyncNow: () -> Unit,
     body: @Composable ColumnScope.() -> Unit,
 ) {
     Box(
@@ -114,7 +122,7 @@ fun RobotShell(
                             Icon(
                                 imageVector = Icons.Rounded.School,
                                 contentDescription = null,
-                                tint = RobotText,
+                                tint = Color.White,
                             )
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -161,6 +169,9 @@ fun RobotShell(
                 onRunDiagnostics = onRunDiagnostics,
                 onToggleLanguage = onToggleLanguage,
                 onResetStandby = onResetStandby,
+                onUpdateApiBaseUrl = onUpdateApiBaseUrl,
+                onRequestPairing = onRequestPairing,
+                onSyncNow = onSyncNow,
             )
         }
     }
@@ -184,7 +195,7 @@ fun StatusPill(label: String, tone: BannerTone) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = RobotText,
+            color = Color.White,
             fontWeight = FontWeight.Bold,
         )
     }
@@ -321,7 +332,12 @@ fun TeacherControlsOverlay(
     onRunDiagnostics: () -> Unit,
     onToggleLanguage: () -> Unit,
     onResetStandby: () -> Unit,
+    onUpdateApiBaseUrl: (String) -> Unit,
+    onRequestPairing: () -> Unit,
+    onSyncNow: () -> Unit,
 ) {
+    var apiBaseUrl by rememberSaveable(uiState.apiBaseUrl) { mutableStateOf(uiState.apiBaseUrl) }
+
     Box(
         modifier =
             Modifier
@@ -349,6 +365,50 @@ fun TeacherControlsOverlay(
                     style = MaterialTheme.typography.bodyMedium,
                     color = RobotTextMuted,
                 )
+                OutlinedTextField(
+                    value = apiBaseUrl,
+                    onValueChange = { apiBaseUrl = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("URL del backend") },
+                    supportingText = { Text("Usa la IP o dominio donde corre la API. Ejemplo: http://192.168.1.40:4000") },
+                )
+                Text(
+                    text = "Vinculacion: ${uiState.pairingStatusLabel}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = RobotTextMuted,
+                )
+                Text(
+                    text = "Sync: ${uiState.syncStatusLabel}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = RobotTextMuted,
+                )
+                Button(
+                    onClick = {
+                        onUpdateApiBaseUrl(apiBaseUrl)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = RobotAccent),
+                ) {
+                    Text("Guardar URL")
+                }
+                OutlinedButton(
+                    onClick = {
+                        onRequestPairing()
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Crear codigo de vinculacion")
+                }
+                OutlinedButton(
+                    onClick = {
+                        onSyncNow()
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Sincronizar ahora")
+                }
                 Button(
                     onClick = {
                         onTeacherApprove()

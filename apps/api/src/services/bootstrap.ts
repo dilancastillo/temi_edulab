@@ -1,5 +1,16 @@
 import type { FastifyInstance } from "fastify";
-import { serializeAssignment, serializeClassSession, serializeCourse, serializeInstitution, serializeMission, serializeProfile, serializeRobot, serializeStudent, serializeStudentWork } from "../lib/serializers.js";
+import {
+  serializeAssignment,
+  serializeClassSession,
+  serializeCourse,
+  serializeInstitution,
+  serializeMission,
+  serializePairingRequest,
+  serializeProfile,
+  serializeRobot,
+  serializeStudent,
+  serializeStudentWork
+} from "../lib/serializers.js";
 
 export async function buildBootstrap(app: FastifyInstance, userId: string) {
   const user = await app.prisma.user.findUnique({
@@ -38,6 +49,22 @@ export async function buildBootstrap(app: FastifyInstance, userId: string) {
           orderBy: { assignedAt: "desc" }
         });
 
+  const activeClassSessionsForAssignments = await app.prisma.classSession.findMany({
+    where: {
+      institutionId: user.institutionId,
+      assignmentId: { in: assignments.map((assignment) => assignment.id) },
+      status: { not: "COMPLETED" }
+    },
+    orderBy: { updatedAt: "desc" }
+  });
+
+  const workshopByAssignmentId = new Map<string, unknown>();
+  for (const session of activeClassSessionsForAssignments) {
+    if (!workshopByAssignmentId.has(session.assignmentId)) {
+      workshopByAssignmentId.set(session.assignmentId, session.missionRuntime);
+    }
+  }
+
   const students =
     user.role === "STUDENT"
       ? [user]
@@ -74,6 +101,17 @@ export async function buildBootstrap(app: FastifyInstance, userId: string) {
           take: 10
         });
 
+  const pairingRequests =
+    user.role === "STUDENT"
+      ? []
+      : await app.prisma.pairingRequest.findMany({
+          where: {
+            OR: [{ institutionId: null }, { institutionId: user.institutionId }],
+            expiresAt: { gt: new Date() }
+          },
+          orderBy: { createdAt: "desc" }
+        });
+
   return {
     session: {
       userId: user.id,
@@ -95,10 +133,11 @@ export async function buildBootstrap(app: FastifyInstance, userId: string) {
     courses: courses.map(serializeCourse),
     missions: missions.map(serializeMission),
     students: students.map(serializeStudent),
-    assignments: assignments.map(serializeAssignment),
+    assignments: assignments.map((assignment) => serializeAssignment(assignment, workshopByAssignmentId.get(assignment.id))),
     studentWorks: studentWorks.map(serializeStudentWork),
     profile: serializeProfile(user),
     robots: robots.map(serializeRobot),
-    classSessions: classSessions.map(serializeClassSession)
+    classSessions: classSessions.map(serializeClassSession),
+    pairingRequests: pairingRequests.map(serializePairingRequest)
   };
 }

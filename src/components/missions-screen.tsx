@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/demo-store-provider";
+import { classroomGuideMissionId } from "@/lib/mission-constants";
 import type { Assignment } from "@/lib/types";
 
 export function MissionsScreen() {
@@ -46,6 +47,7 @@ export function MissionsScreen() {
         {visibleAssignments.map((assignment) => {
           const mission = missions.find((candidate) => candidate.id === assignment.missionId);
           const course = courses.find((candidate) => candidate.id === assignment.courseId);
+          const isWorkshopMission = mission?.id === classroomGuideMissionId;
 
           if (!mission || !course) return null;
 
@@ -62,6 +64,11 @@ export function MissionsScreen() {
                 </p>
               </div>
               <div className="assignment-actions assignment-actions-right">
+                {isWorkshopMission ? (
+                  <Link className="button button-secondary" href={`/profesor/talleres/preparar/${assignment.id}`}>
+                    Preparar taller
+                  </Link>
+                ) : null}
                 {assignment.status === "active" ? (
                   <button className="button button-primary" onClick={() => void archiveAssignment(assignment.id)} type="button">
                     Archivar

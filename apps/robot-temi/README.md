@@ -11,6 +11,30 @@ Aplicacion Android nativa para Temi V3 dentro del monorepo de Esbot EduLab.
 - Modo seguro operativo con bloqueos y recuperacion.
 - Experiencia visible para estudiantes durante la clase.
 
+## Estado actual de la Fase 4
+
+- La app ya esta especializada para la mision `Temi guia mi salon`.
+- La experiencia visible del robot sigue el flujo real del taller:
+  - standby del aula,
+  - aprobacion docente,
+  - turno del equipo,
+  - recorrido de tres lugares,
+  - despedida y regreso a punto base.
+- La UI del robot ahora muestra:
+  - equipo actual y siguiente equipo,
+  - modo de trabajo del taller,
+  - ruta visible del recorrido,
+  - mensajes mas simples y amigables para primaria,
+  - feedback mas claro en error y modo seguro.
+- La sincronizacion real con la plataforma ya queda planteada en codigo:
+  - configuracion de URL del backend desde el panel docente,
+  - pairing real con codigo y polling,
+  - sincronizacion de ubicaciones,
+  - heartbeat,
+  - polling de sesiones,
+  - descarga del runtime real,
+  - reporte de eventos.
+
 ## Pantallas incluidas
 
 1. Home / Standby de aula.
@@ -28,13 +52,20 @@ Aplicacion Android nativa para Temi V3 dentro del monorepo de Esbot EduLab.
 - KSP 2.3.4 para compatibilidad con AGP 9 y built-in Kotlin.
 - Room 2.8.4 para snapshot, cola local, incidentes y diagnostico de ubicaciones.
 - `com.robotemi:sdk:1.137.1` encapsulado detras de un bridge por reflexion para reducir acoplamiento a cambios de API.
-- Sync real diferido: la app deja contratos, pairing visual y runtime local, pero todavia no conecta con el backend web.
+- Sync real por polling con token de dispositivo.
+- Persistencia local de configuracion de sync con DataStore.
+- `android:usesCleartextTraffic="true"` para pruebas locales sobre HTTP en red de aula.
 
 ## Estado de integracion
 
 - La app intenta hablar con Temi V3 mediante el SDK oficial.
 - Si una llamada del SDK falla o no esta disponible, el bridge cae a un comportamiento seguro y la UI sigue operativa.
-- El QR de pairing es visual y deterministico por ahora. La resolucion real del pairing queda para la siguiente fase de sync.
+- El panel docente ya permite:
+  - guardar la URL de la API,
+  - crear codigo de vinculacion,
+  - sincronizar manualmente.
+- El robot ya puede pedir pairing, esperar confirmacion en la web, recibir token y empezar a sincronizar.
+- El runtime descargado desde backend prioriza la entrega del estudiante cuando ya existe una submission valida.
 
 ## Verificacion en este entorno
 
@@ -46,8 +77,13 @@ En este workspace no hay `java`, `gradle` ni `adb` en PATH, asi que aqui no pude
 2. Configurar el SDK de Android 36 y JDK 17.
 3. Generar o completar el Gradle wrapper si se desea build reproducible por CLI.
 4. Instalar la app en Temi V3 y validar:
+   - URL del backend,
+   - pairing web <-> robot,
    - permisos,
    - mapa y ubicaciones,
+   - sync de ubicaciones,
+   - heartbeat,
+   - polling de sesiones,
    - TTS,
    - navegacion,
    - boton oculto de docente,

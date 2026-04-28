@@ -8,6 +8,7 @@ import { prismaPlugin } from "./plugins/prisma.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerTeacherRoutes } from "./routes/teacher.js";
 import { registerRobotRoutes } from "./routes/robot.js";
+import { ensureMissionCatalog } from "./services/mission-catalog.js";
 export async function buildApp() {
     const app = Fastify({
         logger: true
@@ -27,6 +28,7 @@ export async function buildApp() {
     });
     await app.register(sensible);
     await app.register(prismaPlugin);
+    await ensureMissionCatalog(app.prisma);
     app.setErrorHandler((error, _request, reply) => {
         if (error instanceof ZodError) {
             reply.status(400).send({

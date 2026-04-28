@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
 import { z } from "zod";
 import { addDays, createMissionCode, createOpaqueToken, hashToken } from "../lib/auth.js";
-import { buildMissionRuntime } from "../lib/runtime.js";
-import { serializeClassSession, serializePairingRequest, serializeRobot } from "../lib/serializers.js";
+import { buildClassroomGuideRuntime, buildMissionRuntime, materializeRobotMissionRuntime } from "../lib/runtime.js";
+import { serializeAssignment, serializeClassSession, serializePairingRequest, serializeRobot, serializeRobotLocation } from "../lib/serializers.js";
 import { requireTeacherSession, requireUserSession } from "../lib/session-auth.js";
 import { buildBootstrap } from "../services/bootstrap.js";
 import { config } from "../lib/config.js";
@@ -37,10 +37,31 @@ const studentWorkSchema = z.object({
     workspaceState: z.unknown().optional(),
     stepIndex: z.number().int().min(0).max(999)
 });
+const workshopCheckpointSchema = z.object({
+    locationName: z.string().trim().min(1).max(120),
+    alias: z.string().trim().min(2).max(40),
+    iconKey: z.enum(["board", "books", "star", "paint", "microscope", "trophy"]),
+    messageMode: z.enum(["template", "custom"]),
+    messageText: z.string().trim().min(5).max(90)
+});
+const workshopConfigSchema = z.object({
+    missionType: z.literal("classroom_guide"),
+    workshopName: z.string().trim().min(3).max(120),
+    studentMode: z.enum(["guided", "advanced"]),
+    participationMode: z.enum(["individual", "teams"]),
+    deviceMode: z.enum(["student_device", "team_device", "teacher_demo"]),
+    executionMode: z.enum(["normal", "demo_safe"]),
+    turnDurationMinutes: z.number().int().min(3).max(15),
+    baseLocationName: z.string().trim().min(1).max(120),
+    routeSafeConfirmed: z.boolean(),
+    executionModeConfirmed: z.boolean(),
+    checkpoints: z.array(workshopCheckpointSchema).length(3)
+});
 const classSessionSchema = z.object({
     assignmentId: z.string().min(1),
     robotId: z.string().min(1),
-    activeStudentName: z.string().trim().max(120).optional()
+    activeStudentName: z.string().trim().max(120).optional(),
+    workshop: workshopConfigSchema.optional()
 });
 const pairingConfirmSchema = z.object({
     assignedName: z.string().trim().min(3).max(120),
@@ -51,6 +72,13 @@ function assertInstitutionMatch(app, firstInstitutionId, secondInstitutionId) {
     if (!firstInstitutionId || !secondInstitutionId || firstInstitutionId !== secondInstitutionId) {
         throw app.httpErrors.forbidden("El recurso no pertenece a la institucion activa.");
     }
+}
+function normalizeLocationName(value) {
+    return value.trim().toLowerCase();
+}
+function findRobotLocation(locations, locationName) {
+    const normalized = normalizeLocationName(locationName);
+    return locations.find((location) => location.normalizedName === normalized);
 }
 export async function registerTeacherRoutes(app) {
     app.post("/v1/students", async (request) => {
@@ -174,7 +202,7 @@ export async function registerTeacherRoutes(app) {
         if (!mission) {
             throw app.httpErrors.notFound("No encontramos esa mision.");
         }
-        await app.prisma.assignment.create({
+        const createdAssignment = await app.prisma.assignment.create({
             data: {
                 id: `assignment-${crypto.randomUUID()}`,
                 institutionId: teacher.institutionId,
@@ -194,7 +222,10 @@ export async function registerTeacherRoutes(app) {
                 progress: "IN_PROGRESS"
             }
         });
-        return buildBootstrap(app, teacher.id);
+        return {
+            assignment: serializeAssignment(createdAssignment),
+            bootstrap: await buildBootstrap(app, teacher.id)
+        };
     });
     app.post("/v1/assignments/:assignmentId/archive", async (request) => {
         const teacher = await requireTeacherSession(app, request);
@@ -320,6 +351,30 @@ export async function registerTeacherRoutes(app) {
                 reviewCount
             }
         });
+        const activeClassSession = await app.prisma.classSession.findFirst({
+            where: {
+                assignmentId: body.assignmentId,
+                institutionId: user.institutionId,
+                status: { in: ["PENDING_APPROVAL", "READY", "RUNNING", "PAUSED", "ERROR", "SAFE_MODE"] }
+            },
+            orderBy: { updatedAt: "desc" }
+        });
+        if (activeClassSession) {
+            const currentRuntime = activeClassSession.missionRuntime;
+            const nextRuntime = materializeRobotMissionRuntime({
+                missionRuntime: currentRuntime,
+                workspaceState: body.workspaceState,
+                activeStudentName: user.fullName
+            });
+            await app.prisma.classSession.update({
+                where: { id: activeClassSession.id },
+                data: {
+                    activeStudentName: user.fullName,
+                    missionRuntime: nextRuntime,
+                    currentStepLabel: `Entrega de ${user.fullName} lista para el robot`
+                }
+            });
+        }
         return buildBootstrap(app, user.id);
     });
     app.get("/v1/robots", async (request) => {
@@ -330,6 +385,21 @@ export async function registerTeacherRoutes(app) {
         });
         return {
             robots: robots.map(serializeRobot)
+        };
+    });
+    app.get("/v1/robots/:robotId/locations", async (request) => {
+        const teacher = await requireTeacherSession(app, request);
+        const params = z.object({ robotId: z.string().min(1) }).parse(request.params);
+        const robot = await app.prisma.robot.findUnique({
+            where: { id: params.robotId }
+        });
+        assertInstitutionMatch(app, teacher.institutionId, robot?.institutionId);
+        const locations = await app.prisma.robotLocation.findMany({
+            where: { robotId: params.robotId },
+            orderBy: [{ available: "desc" }, { name: "asc" }]
+        });
+        return {
+            robotLocations: locations.map(serializeRobotLocation)
         };
     });
     app.get("/v1/class-sessions", async (request) => {
@@ -354,38 +424,111 @@ export async function registerTeacherRoutes(app) {
         if (!assignment || !robot) {
             throw app.httpErrors.notFound("No encontramos la asignacion o el robot.");
         }
-        const [mission, locations] = await Promise.all([
+        const [mission, locations, course] = await Promise.all([
             app.prisma.mission.findUnique({ where: { id: assignment.missionId } }),
-            app.prisma.robotLocation.findMany({ where: { robotId: robot.id } })
+            app.prisma.robotLocation.findMany({ where: { robotId: robot.id } }),
+            app.prisma.course.findUnique({ where: { id: assignment.courseId } })
         ]);
-        if (!mission) {
+        if (!mission || !course) {
             throw app.httpErrors.notFound("La mision no existe.");
         }
-        const runtime = buildMissionRuntime({
-            assignment,
-            mission,
-            robot,
-            teacher,
-            activeStudentName: body.activeStudentName,
-            locations
-        });
-        const classSession = await app.prisma.classSession.create({
-            data: {
-                id: `class-session-${crypto.randomUUID()}`,
-                institutionId: teacher.institutionId,
-                robotId: robot.id,
-                courseId: assignment.courseId,
-                assignmentId: assignment.id,
-                teacherId: teacher.id,
-                classroomName: robot.classroomName ?? "Aula asignada",
-                missionTitle: mission.title,
+        const runtime = body.workshop
+            ? (() => {
+                const resolvedBaseLocation = findRobotLocation(locations, body.workshop.baseLocationName);
+                if (!resolvedBaseLocation || !resolvedBaseLocation.available) {
+                    throw app.httpErrors.badRequest("Selecciona un punto base real del robot.");
+                }
+                const resolvedCheckpoints = body.workshop.checkpoints.map((checkpoint) => {
+                    const resolvedLocation = findRobotLocation(locations, checkpoint.locationName);
+                    if (!resolvedLocation || !resolvedLocation.available) {
+                        throw app.httpErrors.badRequest(`La ubicacion ${checkpoint.locationName} no esta disponible en el robot.`);
+                    }
+                    return {
+                        ...checkpoint,
+                        locationName: resolvedLocation.name,
+                        normalizedLocationName: resolvedLocation.normalizedName
+                    };
+                });
+                if (new Set(resolvedCheckpoints.map((checkpoint) => checkpoint.normalizedLocationName)).size !== 3) {
+                    throw app.httpErrors.badRequest("Selecciona tres ubicaciones diferentes para el recorrido.");
+                }
+                return buildClassroomGuideRuntime({
+                    assignment,
+                    mission,
+                    robot,
+                    teacher,
+                    courseName: course.name,
+                    workshopName: body.workshop.workshopName,
+                    studentMode: body.workshop.studentMode,
+                    participationMode: body.workshop.participationMode,
+                    deviceMode: body.workshop.deviceMode,
+                    executionMode: body.workshop.executionMode,
+                    turnDurationMinutes: body.workshop.turnDurationMinutes,
+                    baseLocationName: resolvedBaseLocation.name,
+                    checkpoints: resolvedCheckpoints.map((checkpoint) => ({
+                        locationName: checkpoint.locationName,
+                        alias: checkpoint.alias,
+                        iconKey: checkpoint.iconKey,
+                        messageMode: checkpoint.messageMode,
+                        messageText: checkpoint.messageText
+                    })),
+                    checklist: {
+                        robotConnected: robot.connectionState === "CONNECTED",
+                        batteryReady: (robot.batteryPercent ?? 0) >= 40,
+                        mapReady: locations.filter((location) => location.available).length >= 3,
+                        checkpointsReady: true,
+                        baseReady: true,
+                        routeSafeConfirmed: body.workshop.routeSafeConfirmed,
+                        executionModeConfirmed: body.workshop.executionModeConfirmed
+                    }
+                });
+            })()
+            : buildMissionRuntime({
+                assignment,
+                mission,
+                robot,
+                teacher,
                 activeStudentName: body.activeStudentName,
-                status: "PENDING_APPROVAL",
-                missionRuntime: runtime,
-                currentStepLabel: "Esperando aprobacion del docente",
-                progressPercent: 0
-            }
+                locations
+            });
+        const existingSession = await app.prisma.classSession.findFirst({
+            where: {
+                assignmentId: assignment.id,
+                robotId: robot.id,
+                status: {
+                    not: "COMPLETED"
+                }
+            },
+            orderBy: { updatedAt: "desc" }
         });
+        const sessionData = {
+            institutionId: teacher.institutionId,
+            robotId: robot.id,
+            courseId: assignment.courseId,
+            assignmentId: assignment.id,
+            teacherId: teacher.id,
+            classroomName: robot.classroomName ?? "Aula asignada",
+            missionTitle: mission.title,
+            activeStudentName: body.activeStudentName,
+            status: "PENDING_APPROVAL",
+            missionRuntime: runtime,
+            currentStepLabel: body.workshop ? "Taller listo para revision final del docente" : "Esperando aprobacion del docente",
+            progressPercent: 0,
+            approvedAt: null,
+            startedAt: null,
+            completedAt: null
+        };
+        const classSession = existingSession
+            ? await app.prisma.classSession.update({
+                where: { id: existingSession.id },
+                data: sessionData
+            })
+            : await app.prisma.classSession.create({
+                data: {
+                    id: `class-session-${crypto.randomUUID()}`,
+                    ...sessionData
+                }
+            });
         return {
             classSession: serializeClassSession(classSession),
             bootstrap: await buildBootstrap(app, teacher.id)

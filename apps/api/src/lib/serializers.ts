@@ -20,6 +20,8 @@ import type {
   UserRole
 } from "@prisma/client";
 
+type JsonRecord = Record<string, unknown>;
+
 function mapRole(role: UserRole) {
   switch (role) {
     case "TEACHER":
@@ -86,6 +88,85 @@ function mapStudentWorkStatus(status: StudentWorkStatus) {
 
 function mapPairingStatus(status: PairingStatus) {
   return status.toLowerCase();
+}
+
+function asRecord(value: unknown): JsonRecord | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as JsonRecord;
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function readNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readBoolean(value: unknown) {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+export function serializeWorkshopRuntime(runtimeValue: unknown) {
+  const runtime = asRecord(runtimeValue);
+  if (!runtime || readString(runtime.type) !== "classroom_guide") {
+    return undefined;
+  }
+
+  const checkpoints = Array.isArray(runtime.checkpoints)
+    ? runtime.checkpoints
+        .map((item) => {
+          const checkpoint = asRecord(item);
+          if (!checkpoint) {
+            return null;
+          }
+
+          const locationName = readString(checkpoint.locationName);
+          const alias = readString(checkpoint.alias);
+          const iconKey = readString(checkpoint.iconKey);
+          const messageMode = readString(checkpoint.messageMode);
+          const messageText = readString(checkpoint.messageText);
+
+          if (!locationName || !alias || !iconKey || !messageMode || !messageText) {
+            return null;
+          }
+
+          return {
+            locationName,
+            alias,
+            iconKey,
+            messageMode,
+            messageText
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null)
+    : [];
+
+  const checklist = asRecord(runtime.checklist);
+
+  return {
+    missionType: "classroom_guide" as const,
+    workshopName: readString(runtime.workshopName) ?? "Temi guia mi salon",
+    studentMode: readString(runtime.studentMode) === "advanced" ? "advanced" : "guided",
+    participationMode: readString(runtime.participationMode) ?? "individual",
+    deviceMode: readString(runtime.deviceMode) ?? "student_device",
+    executionMode: readString(runtime.executionMode) ?? "normal",
+    turnDurationMinutes: readNumber(runtime.turnDurationMinutes) ?? 7,
+    baseLocationName: readString(runtime.baseLocationName) ?? "",
+    checkpoints,
+    checklist: {
+      robotConnected: readBoolean(checklist?.robotConnected) ?? false,
+      batteryReady: readBoolean(checklist?.batteryReady) ?? false,
+      mapReady: readBoolean(checklist?.mapReady) ?? false,
+      checkpointsReady: readBoolean(checklist?.checkpointsReady) ?? false,
+      baseReady: readBoolean(checklist?.baseReady) ?? false,
+      routeSafeConfirmed: readBoolean(checklist?.routeSafeConfirmed) ?? false,
+      executionModeConfirmed: readBoolean(checklist?.executionModeConfirmed) ?? false
+    }
+  };
 }
 
 export function serializeInstitution(institution: Institution) {
@@ -158,7 +239,7 @@ export function serializeMission(mission: Mission) {
   };
 }
 
-export function serializeAssignment(assignment: Assignment) {
+export function serializeAssignment(assignment: Assignment, workshopRuntime?: unknown) {
   return {
     id: assignment.id,
     institutionId: assignment.institutionId,
@@ -166,6 +247,7 @@ export function serializeAssignment(assignment: Assignment) {
     missionId: assignment.missionId,
     missionCode: assignment.missionCode,
     instructions: assignment.instructions ?? undefined,
+    workshop: serializeWorkshopRuntime(workshopRuntime),
     status: mapAssignmentStatus(assignment.status),
     assignedAt: assignment.assignedAt.toISOString(),
     assignedBy: assignment.assignedById,
@@ -228,6 +310,7 @@ export function serializeClassSession(session: ClassSession) {
     status: session.status.toLowerCase(),
     currentStepLabel: session.currentStepLabel ?? undefined,
     progressPercent: session.progressPercent,
+    workshop: serializeWorkshopRuntime(session.missionRuntime),
     approvedAt: session.approvedAt?.toISOString(),
     startedAt: session.startedAt?.toISOString(),
     completedAt: session.completedAt?.toISOString(),

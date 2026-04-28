@@ -11,8 +11,14 @@ import type {
   ImportedStudent,
   Institution,
   Mission,
+  PairingRequest,
   ProfileInput,
   Robot,
+  WorkshopCheckpoint,
+  WorkshopDeviceMode,
+  WorkshopExecutionMode,
+  WorkshopParticipationMode,
+  WorkshopStudentMode,
   Session,
   Student,
   StudentInput,
@@ -32,6 +38,20 @@ type AssignMissionInput = {
   instructions?: string;
 };
 
+type WorkshopConfigInput = {
+  missionType: "classroom_guide";
+  workshopName: string;
+  studentMode: WorkshopStudentMode;
+  participationMode: WorkshopParticipationMode;
+  deviceMode: WorkshopDeviceMode;
+  executionMode: WorkshopExecutionMode;
+  turnDurationMinutes: number;
+  baseLocationName: string;
+  routeSafeConfirmed: boolean;
+  executionModeConfirmed: boolean;
+  checkpoints: WorkshopCheckpoint[];
+};
+
 type SaveStudentWorkInput = {
   studentId: string;
   assignmentId: string;
@@ -46,6 +66,7 @@ type CreateClassSessionInput = {
   assignmentId: string;
   robotId: string;
   activeStudentName?: string;
+  workshop?: WorkshopConfigInput;
 };
 
 type DemoStore = {
@@ -60,6 +81,7 @@ type DemoStore = {
   session: Session | null;
   robots: Robot[];
   classSessions: ClassSession[];
+  pairingRequests: PairingRequest[];
   loginWithPassword: (email: string, password: string) => Promise<AuthResult>;
   loginWithProvider: (provider: Extract<AuthProvider, "google" | "microsoft">) => AuthResult;
   loginStudentWithPassword: (email: string, password: string) => Promise<StudentLoginResult>;
@@ -69,14 +91,15 @@ type DemoStore = {
   updateStudent: (studentId: string, input: StudentInput) => Promise<void>;
   deleteStudent: (studentId: string) => Promise<void>;
   importStudents: (students: ImportedStudent[]) => Promise<{ added: number; skipped: string[] }>;
-  assignMission: (input: AssignMissionInput) => Promise<void>;
+  assignMission: (input: AssignMissionInput) => Promise<Assignment>;
   archiveAssignment: (assignmentId: string) => Promise<void>;
   deleteAssignment: (assignmentId: string) => Promise<void>;
   saveStudentWork: (input: SaveStudentWorkInput) => Promise<void>;
   submitStudentWork: (input: SubmitStudentWorkInput) => Promise<void>;
   updateProfile: (input: ProfileInput) => Promise<void>;
-  createClassSession: (input: CreateClassSessionInput) => Promise<void>;
-  approveClassSession: (classSessionId: string) => Promise<void>;
+  createClassSession: (input: CreateClassSessionInput) => Promise<ClassSession>;
+  approveClassSession: (classSessionId: string) => Promise<ClassSession>;
+  confirmPairingRequest: (pairingRequestId: string, input: { assignedName: string; classroomName: string; courseId: string }) => Promise<void>;
   resetDemoData: () => Promise<void>;
   refreshData: () => Promise<void>;
 };
@@ -275,11 +298,12 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
   }, []);
 
   const assignMission = useCallback(async (input: AssignMissionInput) => {
-    const nextBootstrap = await fetchJson<AppBootstrap>("/api/assignments", {
+    const result = await fetchJson<{ assignment: Assignment; bootstrap: AppBootstrap }>("/api/assignments", {
       method: "POST",
       body: JSON.stringify(input)
     });
-    setBootstrap(nextBootstrap);
+    setBootstrap(result.bootstrap);
+    return result.assignment;
   }, []);
 
   const archiveAssignment = useCallback(async (assignmentId: string) => {
@@ -321,19 +345,35 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
   }, []);
 
   const createClassSession = useCallback(async (input: CreateClassSessionInput) => {
-    const result = await fetchJson<{ bootstrap: AppBootstrap }>("/api/class-sessions", {
+    const result = await fetchJson<{ bootstrap: AppBootstrap; classSession: ClassSession }>("/api/class-sessions", {
       method: "POST",
       body: JSON.stringify(input)
     });
     setBootstrap(result.bootstrap);
+    return result.classSession;
   }, []);
 
   const approveClassSession = useCallback(async (classSessionId: string) => {
-    const result = await fetchJson<{ bootstrap: AppBootstrap }>(`/api/class-sessions/${classSessionId}/approve`, {
-      method: "POST"
-    });
+    const result = await fetchJson<{ bootstrap: AppBootstrap; classSession: ClassSession }>(
+      `/api/class-sessions/${classSessionId}/approve`,
+      {
+        method: "POST"
+      }
+    );
     setBootstrap(result.bootstrap);
+    return result.classSession;
   }, []);
+
+  const confirmPairingRequest = useCallback(
+    async (pairingRequestId: string, input: { assignedName: string; classroomName: string; courseId: string }) => {
+      const result = await fetchJson<{ bootstrap: AppBootstrap }>(`/api/pairing-requests/${pairingRequestId}/confirm`, {
+        method: "POST",
+        body: JSON.stringify(input)
+      });
+      setBootstrap(result.bootstrap);
+    },
+    []
+  );
 
   const resetDemoData = useCallback(async () => {
     await refreshData();
@@ -352,6 +392,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       session: bootstrap.session,
       robots: bootstrap.robots,
       classSessions: bootstrap.classSessions,
+      pairingRequests: bootstrap.pairingRequests,
       loginWithPassword,
       loginWithProvider,
       loginStudentWithPassword,
@@ -369,6 +410,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       updateProfile,
       createClassSession,
       approveClassSession,
+      confirmPairingRequest,
       resetDemoData,
       refreshData
     }),
@@ -378,6 +420,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       archiveAssignment,
       assignMission,
       bootstrap,
+      confirmPairingRequest,
       createClassSession,
       deleteAssignment,
       deleteStudent,

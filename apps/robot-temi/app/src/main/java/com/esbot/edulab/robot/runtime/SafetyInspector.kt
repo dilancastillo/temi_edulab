@@ -36,6 +36,25 @@ object SafetyInspector {
             }
         }
 
+        val stopNavigations =
+            pending.filter {
+                it.commandType == CommandType.Navigate &&
+                    !it.title.contains("Volver", ignoreCase = true) &&
+                    !it.primaryValue.isNullOrBlank()
+            }
+        val duplicatedStops =
+            stopNavigations
+                .groupBy { it.primaryValue?.normalizedLocationKey().orEmpty() }
+                .filterKeys { it.isNotBlank() }
+                .filterValues { commands -> commands.size > 1 }
+        if (duplicatedStops.isNotEmpty()) {
+            violations += SafetyViolation(
+                code = "REPEATED_STOP",
+                title = "Paradas repetidas",
+                details = "El recorrido usa el mismo lugar mas de una vez y debe revisarse antes de ejecutarse.",
+            )
+        }
+
         pending.windowed(size = 3, step = 1, partialWindows = false).forEach { window ->
             if (window.all { it.commandType == CommandType.Navigate } &&
                 window.map { it.primaryValue }.distinct().size == 1
@@ -65,5 +84,13 @@ object SafetyInspector {
 }
 
 private fun String.normalizedLocationKey(): String {
-    return trim().lowercase()
+    return normalizeText(this)
+}
+
+private fun normalizeText(value: String): String {
+    return java.text.Normalizer
+        .normalize(value, java.text.Normalizer.Form.NFD)
+        .replace("\\p{Mn}+".toRegex(), "")
+        .trim()
+        .lowercase()
 }

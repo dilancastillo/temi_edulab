@@ -115,6 +115,17 @@ export const demoUsers = {
 
 export const demoMissions = [
   {
+    id: "mission-temi-classroom-guide",
+    title: "Temi guia mi salon",
+    summary: "Prepara un taller guiado para que Temi recorra tres lugares reales del aula y los presente.",
+    category: "ROBOTICS",
+    ageBand: "AGE_7_10",
+    durationMinutes: 75,
+    outcomes: ["Secuenciacion", "Orientacion espacial", "Expresion creativa"],
+    status: "PUBLISHED",
+    coverTone: "GREEN"
+  },
+  {
     id: "mission-order-steps",
     title: "Ordena los pasos",
     summary: "Organiza instrucciones paso a paso para que el robot llegue correctamente a la meta.",

@@ -78,7 +78,8 @@ const bootstrap: AppBootstrap = {
       statusLabel: "Listo"
     }
   ],
-  classSessions: []
+  classSessions: [],
+  pairingRequests: []
 };
 
 describe("DashboardScreen", () => {
@@ -87,6 +88,10 @@ describe("DashboardScreen", () => {
       "fetch",
       vi.fn(async () => ({
         ok: true,
+        status: 200,
+        headers: {
+          get: () => "application/json"
+        },
         json: async () => bootstrap
       }))
     );

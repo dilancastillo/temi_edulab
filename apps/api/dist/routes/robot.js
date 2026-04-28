@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { addDays, createShortCode, normalizeLocation } from "../lib/auth.js";
+import { materializeRobotMissionRuntime } from "../lib/runtime.js";
 import { serializePairingRequest, serializeRobotLocation } from "../lib/serializers.js";
 import { requireRobotSession } from "../lib/session-auth.js";
 const pairingRequestSchema = z.object({
@@ -132,7 +133,6 @@ export async function registerRobotRoutes(app) {
             await app.prisma.classSession.updateMany({
                 where: { id: body.classSessionId, robotId: robot.id },
                 data: {
-                    status: body.connectionState === "CONNECTED" ? "RUNNING" : "PAUSED",
                     currentStepLabel: body.currentStepLabel,
                     progressPercent: body.progressPercent
                 }
@@ -156,12 +156,32 @@ export async function registerRobotRoutes(app) {
                 classSession: null
             };
         }
+        const latestStudentWork = await app.prisma.studentWork.findFirst({
+            where: {
+                assignmentId: classSession.assignmentId,
+                status: "SUBMITTED"
+            },
+            include: {
+                student: {
+                    select: {
+                        fullName: true
+                    }
+                }
+            },
+            orderBy: [{ submittedAt: "desc" }, { updatedAt: "desc" }]
+        });
+        const missionRuntime = materializeRobotMissionRuntime({
+            missionRuntime: classSession.missionRuntime,
+            workspaceState: latestStudentWork?.workspaceState,
+            activeStudentName: classSession.activeStudentName ?? latestStudentWork?.student.fullName ?? null
+        });
         return {
             classSession: {
                 id: classSession.id,
                 status: classSession.status.toLowerCase(),
-                missionRuntime: classSession.missionRuntime,
+                missionRuntime,
                 missionTitle: classSession.missionTitle,
+                activeStudentName: classSession.activeStudentName ?? latestStudentWork?.student.fullName ?? undefined,
                 currentStepLabel: classSession.currentStepLabel,
                 progressPercent: classSession.progressPercent,
                 approvedAt: classSession.approvedAt?.toISOString()

@@ -20,5 +20,6 @@ export const emptyBootstrap: AppBootstrap = {
     biography: ""
   },
   robots: [],
-  classSessions: []
+  classSessions: [],
+  pairingRequests: []
 };

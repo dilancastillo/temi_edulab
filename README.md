@@ -14,7 +14,7 @@ La web ya no depende de `localStorage` como fuente principal. Ahora trabaja asi:
 2. esas rutas guardan la sesion web en cookie `HttpOnly`
 3. Next reenvia las solicitudes al backend en `apps/api`
 4. el backend persiste en PostgreSQL con Prisma
-5. el robot se integrara contra ese mismo backend por polling y token de dispositivo
+5. el robot se integra contra ese mismo backend por polling, pairing y token de dispositivo
 
 ## Stack
 
@@ -78,6 +78,9 @@ npm.cmd run dev:web
 
 8. Abre `http://localhost:3000`.
 
+Si vas a entrar desde otro equipo o desde la IP LAN de tu PC, abre `http://TU_IP:3000`.
+La configuracion de desarrollo ya permite `localhost`, `127.0.0.1` y las IPv4 locales detectadas por Next.
+
 ## Credenciales demo
 
 Profesor:
@@ -110,11 +113,13 @@ Codigo de mision demo:
 - perfil docente
 - guardado y envio de entregas de estudiante
 - dashboard profesor con estado de robot y sesiones de clase
+- dashboard profesor con vinculacion de robot y confirmacion de pairing
 - endpoints backend para pairing, heartbeat, sync de ubicaciones, polling de sesiones y eventos de robot
+- entrega del estudiante aplicada al runtime real que consume el robot
 
-## Lo que sigue en la integracion robot
+## Integracion robot ya prevista
 
-El backend ya quedo listo para que la app de Temi consuma:
+La Fase 4 deja conectados estos contratos para la app de Temi:
 
 - `POST /v1/robot/pairing-requests`
 - `GET /v1/robot/pairing-requests/:pairingRequestId`
@@ -123,7 +128,18 @@ El backend ya quedo listo para que la app de Temi consuma:
 - `GET /v1/robot/sessions/next`
 - `POST /v1/robot/events`
 
-Falta la siguiente fase: reemplazar en `apps/robot-temi` el runtime/mock local por llamadas reales a esos endpoints.
+En la app Android ya quedo montada la base para:
+
+- configurar la URL del backend desde el panel docente del robot
+- crear y consumir pairing real
+- sincronizar ubicaciones reales del mapa
+- enviar heartbeat
+- descargar la sesion y el runtime real
+- reportar eventos de inicio, pausa, error, modo seguro y completado
+
+## Especificaciones de mision
+
+- `Temi guia mi salon`: ver `docs/temi-guia-mi-salon-spec.md`
 
 ## Verificacion
 

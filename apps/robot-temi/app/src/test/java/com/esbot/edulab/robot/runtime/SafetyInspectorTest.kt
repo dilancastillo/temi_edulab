@@ -39,6 +39,29 @@ class SafetyInspectorTest {
     }
 
     @Test
+    fun `detects repeated classroom stop before returning to base`() {
+        val violations =
+            SafetyInspector.inspect(
+                queue =
+                    listOf(
+                        navigateCommand(index = 0, target = "Biblioteca", title = "Ir al lugar 1"),
+                        navigateCommand(index = 1, target = "Salon 5A", title = "Ir al lugar 2"),
+                        navigateCommand(index = 2, target = "Biblioteca", title = "Ir al lugar 3"),
+                        navigateCommand(index = 3, target = "Punto base", title = "Volver al punto base"),
+                    ),
+                locations =
+                    listOf(
+                        location("Biblioteca"),
+                        location("Salon 5A"),
+                        location("Punto base"),
+                    ),
+                mapReady = true,
+            )
+
+        assertTrue(violations.any { it.code == "REPEATED_STOP" })
+    }
+
+    @Test
     fun `accepts locations with different casing`() {
         val violations =
             SafetyInspector.inspect(
@@ -62,12 +85,12 @@ class SafetyInspectorTest {
         assertEquals("MAP_NOT_READY", violations.first().code)
     }
 
-    private fun navigateCommand(index: Int, target: String): QueueCommandEntity {
+    private fun navigateCommand(index: Int, target: String, title: String = "Ir a $target"): QueueCommandEntity {
         return QueueCommandEntity(
             missionId = "mission",
             commandIndex = index,
             commandType = CommandType.Navigate,
-            title = "Ir a $target",
+            title = title,
             primaryValue = target,
             secondaryValue = null,
             tertiaryValue = null,

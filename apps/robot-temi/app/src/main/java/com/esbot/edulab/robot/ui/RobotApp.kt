@@ -29,5 +29,8 @@ fun RobotApp(viewModel: RobotViewModel) {
         onReleaseSafeMode = viewModel::onReleaseSafeMode,
         onRunDiagnostics = viewModel::onRunDiagnostics,
         onResetStandby = viewModel::onResetStandby,
+        onUpdateApiBaseUrl = viewModel::onUpdateApiBaseUrl,
+        onRequestPairing = viewModel::onRequestPairing,
+        onSyncNow = viewModel::onSyncNow,
     )
 }
