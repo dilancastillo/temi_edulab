@@ -28,7 +28,8 @@ fun EsbotTopBar(
     isCharging: Boolean,
     currentLanguageCode: String,
     onMenuClick: () -> Unit,
-    onLanguageClick: () -> Unit
+    onLanguageClick: () -> Unit,
+    robotId: String = ""
 ) {
     Row(
         modifier = Modifier
@@ -69,6 +70,16 @@ fun EsbotTopBar(
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(text = currentLanguageCode, fontWeight = FontWeight.Medium, fontSize = 20.sp)
+        }
+
+        if (robotId.isNotBlank()) {
+            Spacer(modifier = Modifier.width(20.dp))
+            Text(
+                text = "Robot ID: $robotId",
+                fontWeight = FontWeight.Normal,
+                fontSize = 16.sp,
+                color = Color(0xFF555555)
+            )
         }
 
         Spacer(modifier = Modifier.weight(1f))

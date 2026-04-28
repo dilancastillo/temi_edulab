@@ -2,6 +2,11 @@ package com.esbot.edulab.ui.home
 
 import com.esbot.edulab.core.network.FakeNetworkStatusProvider
 import com.esbot.edulab.core.robot.FakeBatteryStatusProvider
+import com.esbot.edulab.core.robot.ImageOverlayController
+import com.esbot.edulab.core.robot.LocationServer
+import com.esbot.edulab.core.robot.RobotCommandRunner
+import com.esbot.edulab.core.robot.RobotWebSocketClient
+import com.esbot.edulab.core.robot.VideoOverlayController
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.boolean
 import io.kotest.property.arbitrary.int
@@ -40,25 +45,47 @@ class HomeViewModelTest {
     private val fakeNetworkStatusProvider = FakeNetworkStatusProvider()
     private val fakeBatteryStatusProvider = FakeBatteryStatusProvider()
 
+    private fun fakeLocationServer() = object : LocationServer {
+        override fun start() = Unit
+        override fun stop() = Unit
+    }
+
+    private fun fakeCommandRunner() = object : RobotCommandRunner {
+        override fun run(command: com.esbot.edulab.core.robot.RobotCommand) = Result.success(Unit)
+        override fun runSequence(commands: List<com.esbot.edulab.core.robot.RobotCommand>) = Result.success(Unit)
+    }
+
+    private fun makeViewModel(
+        network: FakeNetworkStatusProvider = FakeNetworkStatusProvider(),
+        battery: FakeBatteryStatusProvider = FakeBatteryStatusProvider()
+    ) = HomeViewModel(
+        networkStatusProvider = network,
+        batteryStatusProvider = battery,
+        locationServer = fakeLocationServer(),
+        imageOverlayController = ImageOverlayController(),
+        videoOverlayController = VideoOverlayController(),
+        robotWebSocketClient = RobotWebSocketClient(fakeCommandRunner())
+    )
+
     // --- Tests existentes de conectividad ---
 
     @Test
     fun `uiState isConnected es false por defecto`() = runTest {
-        val viewModel = HomeViewModel(FakeNetworkStatusProvider(initial = false), FakeBatteryStatusProvider())
+        val viewModel = makeViewModel(network = FakeNetworkStatusProvider(initial = false))
         assertFalse(viewModel.uiState.first().isConnected)
     }
 
     @Test
     fun `uiState isConnected refleja cambio de false a true`() = runTest {
         val fakeNetwork = FakeNetworkStatusProvider(initial = false)
-        val viewModel = HomeViewModel(fakeNetwork, FakeBatteryStatusProvider())
+        val viewModel = makeViewModel(network = fakeNetwork)
         fakeNetwork.emit(true)
         assertTrue(viewModel.uiState.value.isConnected)
     }
 
     @Test
     fun `uiState currentTime no es vacio al inicializar`() = runTest {
-        val viewModel = HomeViewModel(FakeNetworkStatusProvider(), FakeBatteryStatusProvider())
+        val viewModel = makeViewModel()
         assertTrue(viewModel.uiState.first().currentTime.isNotEmpty())
     }
 
@@ -66,7 +93,7 @@ class HomeViewModelTest {
 
     @Test
     fun `HomeUiState tiene batteryPercentage null e isCharging false por defecto`() = runTest {
-        val viewModel = HomeViewModel(FakeNetworkStatusProvider(), FakeBatteryStatusProvider())
+        val viewModel = makeViewModel()
         val state = viewModel.uiState.first()
         assertNull(state.batteryPercentage)
         assertFalse(state.isCharging)
@@ -75,7 +102,7 @@ class HomeViewModelTest {
     @Test
     fun `emitir 50 y true actualiza ambos campos`() = runTest {
         val fakeBattery = FakeBatteryStatusProvider()
-        val viewModel = HomeViewModel(FakeNetworkStatusProvider(), fakeBattery)
+        val viewModel = makeViewModel(battery = fakeBattery)
         fakeBattery.emitPercentage(50)
         fakeBattery.emitCharging(true)
         val state = viewModel.uiState.value
@@ -86,7 +113,7 @@ class HomeViewModelTest {
     @Test
     fun `emitir 0 false caso borde minimo`() = runTest {
         val fakeBattery = FakeBatteryStatusProvider()
-        val viewModel = HomeViewModel(FakeNetworkStatusProvider(), fakeBattery)
+        val viewModel = makeViewModel(battery = fakeBattery)
         fakeBattery.emitPercentage(0)
         fakeBattery.emitCharging(false)
         assertEquals(0, viewModel.uiState.value.batteryPercentage)
@@ -96,7 +123,7 @@ class HomeViewModelTest {
     @Test
     fun `emitir 100 true caso borde maximo`() = runTest {
         val fakeBattery = FakeBatteryStatusProvider()
-        val viewModel = HomeViewModel(FakeNetworkStatusProvider(), fakeBattery)
+        val viewModel = makeViewModel(battery = fakeBattery)
         fakeBattery.emitPercentage(100)
         fakeBattery.emitCharging(true)
         assertEquals(100, viewModel.uiState.value.batteryPercentage)
@@ -106,7 +133,7 @@ class HomeViewModelTest {
     @Test
     fun `emitir null mantiene batteryPercentage como null`() = runTest {
         val fakeBattery = FakeBatteryStatusProvider(initialPercentage = null)
-        val viewModel = HomeViewModel(FakeNetworkStatusProvider(), fakeBattery)
+        val viewModel = makeViewModel(battery = fakeBattery)
         fakeBattery.emitPercentage(null)
         assertNull(viewModel.uiState.value.batteryPercentage)
     }
@@ -115,7 +142,7 @@ class HomeViewModelTest {
     fun `actualizaciones de bateria no afectan isConnected ni currentTime`() = runTest {
         val fakeNetwork = FakeNetworkStatusProvider(initial = true)
         val fakeBattery = FakeBatteryStatusProvider()
-        val viewModel = HomeViewModel(fakeNetwork, fakeBattery)
+        val viewModel = makeViewModel(network = fakeNetwork, battery = fakeBattery)
         val timeBefore = viewModel.uiState.value.currentTime
         fakeBattery.emitPercentage(80)
         fakeBattery.emitCharging(true)
@@ -131,7 +158,7 @@ class HomeViewModelTest {
         // Validates: Requirements 4.2, 4.3, 6.2, 6.3
         checkAll(Arb.int(0..100), Arb.boolean()) { percentage, charging ->
             val fakeBattery = FakeBatteryStatusProvider()
-            val viewModel = HomeViewModel(FakeNetworkStatusProvider(), fakeBattery)
+            val viewModel = makeViewModel(battery = fakeBattery)
             fakeBattery.emitPercentage(percentage)
             fakeBattery.emitCharging(charging)
             assertEquals(percentage, viewModel.uiState.value.batteryPercentage)
@@ -143,28 +170,20 @@ class HomeViewModelTest {
     fun `Property 2 valores fuera de rango no actualizan batteryPercentage`() = runTest {
         // Feature: temi-battery-solid-refactor, Property 2: valores fuera de rango ignorados
         // Validates: Requirement 2.11
-        // TemiBatteryObserver filters values outside [0,100] before updating the StateFlow.
-        // This test verifies the contract: when an invalid value arrives, batteryPercentage stays unchanged.
         checkAll(
             Arb.int(Int.MIN_VALUE..-1),
             Arb.int(101..Int.MAX_VALUE)
         ) { negative, tooLarge ->
-            // Case 1: initial state is null, invalid value is NOT emitted → remains null
             val fakeBattery1 = FakeBatteryStatusProvider(initialPercentage = null)
-            val viewModel1 = HomeViewModel(FakeNetworkStatusProvider(), fakeBattery1)
-            // TemiBatteryObserver would NOT call emitPercentage for negative values
+            val viewModel1 = makeViewModel(battery = fakeBattery1)
             assertNull(viewModel1.uiState.value.batteryPercentage)
 
-            // Case 2: after a valid value, invalid value is NOT emitted → valid value preserved
             val fakeBattery2 = FakeBatteryStatusProvider(initialPercentage = null)
-            val viewModel2 = HomeViewModel(FakeNetworkStatusProvider(), fakeBattery2)
+            val viewModel2 = makeViewModel(battery = fakeBattery2)
             fakeBattery2.emitPercentage(50)
             assertEquals(50, viewModel2.uiState.value.batteryPercentage)
-            // TemiBatteryObserver would NOT call emitPercentage for negative or tooLarge values
-            // So batteryPercentage stays at 50 (we simulate by not emitting)
             assertEquals(50, viewModel2.uiState.value.batteryPercentage)
 
-            // negative and tooLarge represent the filtered values — used as generators only
             @Suppress("UNUSED_EXPRESSION")
             negative + tooLarge
         }
@@ -176,7 +195,7 @@ class HomeViewModelTest {
         // Validates: Requirements 4.5, 6.5
         checkAll(Arb.boolean()) { charging ->
             val fakeBattery = FakeBatteryStatusProvider()
-            val viewModel = HomeViewModel(FakeNetworkStatusProvider(), fakeBattery)
+            val viewModel = makeViewModel(battery = fakeBattery)
             fakeBattery.emitPercentage(null)
             fakeBattery.emitCharging(charging)
             assertNull(viewModel.uiState.value.batteryPercentage)
@@ -190,7 +209,7 @@ class HomeViewModelTest {
         // Validates: Requirements 4.2, 6.2
         checkAll(Arb.list(Arb.int(0..100), 1..10)) { values ->
             val fakeBattery = FakeBatteryStatusProvider()
-            val viewModel = HomeViewModel(FakeNetworkStatusProvider(), fakeBattery)
+            val viewModel = makeViewModel(battery = fakeBattery)
             values.forEach { fakeBattery.emitPercentage(it) }
             assertEquals(values.last(), viewModel.uiState.value.batteryPercentage)
         }

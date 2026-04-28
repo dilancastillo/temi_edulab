@@ -1,32 +1,28 @@
-export const ROBOT_API_URL = process.env.NEXT_PUBLIC_ROBOT_API_URL ?? "http://192.168.10.64:8765";
-
-export function getRobotApiUrl(): string {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("esbot.robotIp.v1");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as string;
-        if (parsed && parsed.length > 0) return parsed;
-      } catch { /* ignore */ }
-    }
-  }
-  return ROBOT_API_URL;
-}
 export const FALLBACK_LOCATIONS = ["Sala Principal"];
 
+export function getRobotId(): string {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("esbot.robotId.v1");
+    if (stored && stored.length > 0) return stored;
+  }
+  return "temi-1";
+}
+
+export function setRobotId(id: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("esbot.robotId.v1", id);
+  }
+}
+
 export async function fetchRobotLocations(): Promise<string[]> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3000);
   try {
-    const response = await fetch(`${getRobotApiUrl()}/locations`, { signal: controller.signal });
+    const response = await fetch(`/api/robot/locations?robotId=${getRobotId()}`);
     const data = (await response.json()) as { locations?: string[] };
     const locations = data.locations;
     if (!Array.isArray(locations) || locations.length === 0) return FALLBACK_LOCATIONS;
     return locations;
   } catch {
     return FALLBACK_LOCATIONS;
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 
@@ -103,7 +99,26 @@ export type RepeatCommand = {
   commands: RobotExecuteCommand[];
 };
 
-export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | RepeatCommand;
+export type WhileCountCommand = {
+  type: "WhileCount";
+  limit: number;
+  commands: RobotExecuteCommand[];
+};
+
+export type WhileTimerCommand = {
+  type: "WhileTimer";
+  seconds: number;
+  commands: RobotExecuteCommand[];
+};
+
+export type WhileListenCommand = {
+  type: "WhileListen";
+  stopWord: string;
+  maxIterations: number;
+  commands: RobotExecuteCommand[];
+};
+
+export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | RepeatCommand | WhileCountCommand | WhileTimerCommand | WhileListenCommand;
 
 export async function uploadVideo(file: File): Promise<{ ok: boolean; videoUrl?: string; message?: string }> {
   try {
@@ -131,18 +146,15 @@ export async function uploadImage(file: File): Promise<{ ok: boolean; imageUrl?:
   }
 }
 
-// 1.2 Enviar comandos al robot vía POST /execute con timeout de 5s
+// 1.2 Enviar comandos al robot vía POST /api/robot/execute
 export async function executeRobotCommands(
   commands: RobotExecuteCommand[]
 ): Promise<RobotRunResult> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min para secuencias con imágenes
   try {
-    const response = await fetch(`${getRobotApiUrl()}/execute`, {
+    const response = await fetch(`/api/robot/execute`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ commands }),
-      signal: controller.signal,
+      body: JSON.stringify({ robotId: getRobotId(), commands }),
     });
     const data = (await response.json()) as RobotRunResult;
     if (response.ok) {
@@ -151,9 +163,6 @@ export async function executeRobotCommands(
     return { ok: false, message: data.message ?? `Error ${response.status}` };
   } catch {
     return { ok: false, message: "Robot no disponible o tiempo de espera agotado" };
-
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 
@@ -237,6 +246,28 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         for (let i = 0; i < times; i++) {
           acc.push(...innerCommands);
         }
+      } else if (b["type"] === "temi_while_count") {
+        const limit = Math.max(1, Math.min(50, parseInt(fields?.["LIMIT"] ?? "5", 10)));
+        const doInput = (b["inputs"] as Record<string, unknown>)?.["DO"];
+        const innerBlock = (doInput as Record<string, unknown>)?.["block"];
+        const innerCommands: RobotExecuteCommand[] = [];
+        walk(innerBlock, innerCommands);
+        for (let i = 0; i < limit; i++) acc.push(...innerCommands);
+      } else if (b["type"] === "temi_while_timer") {
+        const seconds = Math.max(1, Math.min(300, parseInt(fields?.["SECONDS"] ?? "30", 10)));
+        const doInput = (b["inputs"] as Record<string, unknown>)?.["DO"];
+        const innerBlock = (doInput as Record<string, unknown>)?.["block"];
+        const innerCommands: RobotExecuteCommand[] = [];
+        walk(innerBlock, innerCommands);
+        acc.push({ type: "WhileTimer", seconds, commands: innerCommands });
+      } else if (b["type"] === "temi_while_listen") {
+        const rawWord = (fields?.["STOP_WORD"] ?? "").trim();
+        const stopWord = rawWord.length > 0 ? rawWord : "listo";
+        const doInput = (b["inputs"] as Record<string, unknown>)?.["DO"];
+        const innerBlock = (doInput as Record<string, unknown>)?.["block"];
+        const innerCommands: RobotExecuteCommand[] = [];
+        walk(innerBlock, innerCommands);
+        acc.push({ type: "WhileListen", stopWord, maxIterations: 5, commands: innerCommands });
       }
 
       const next = (b["next"] as Record<string, unknown>)?.["block"];

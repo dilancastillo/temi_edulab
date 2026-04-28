@@ -16,6 +16,9 @@ class RobotReflectionRunner @Inject constructor(
     private val videoOverlayController: VideoOverlayController
 ) : RobotCommandRunner {
 
+    // Shared execution context — updated by askConditionAndWait after each ASR result
+    @Volatile private var lastAnswer: String? = null
+
     override fun run(command: RobotCommand): Result<Unit> {
         return when (command) {
             is RobotCommand.Navigate -> navigateAndWait(command.location)
@@ -28,6 +31,41 @@ class RobotReflectionRunner @Inject constructor(
                 repeat(command.times) {
                     val result = runSequence(command.commands)
                     if (result.isFailure) return result
+                }
+                Result.success(Unit)
+            }
+            is RobotCommand.WhileCount -> {
+                if (command.limit < 1) return Result.success(Unit)
+                var counter = 0
+                while (counter < command.limit) {
+                    val result = runSequence(command.commands)
+                    if (result.isFailure) return result
+                    counter++
+                }
+                Result.success(Unit)
+            }
+            is RobotCommand.WhileTimer -> {
+                if (command.seconds < 1) return Result.success(Unit)
+                val startMs = System.currentTimeMillis()
+                val limitMs = command.seconds * 1000L
+                while (System.currentTimeMillis() - startMs < limitMs) {
+                    val result = runSequence(command.commands)
+                    if (result.isFailure) return result
+                }
+                Result.success(Unit)
+            }
+            is RobotCommand.WhileListen -> {
+                if (command.maxIterations < 1) return Result.success(Unit)
+                var iterations = 0
+                while (iterations < command.maxIterations) {
+                    val current = lastAnswer
+                    if (iterations > 0 && current != null &&
+                        current.trim().equals(command.stopWord.trim(), ignoreCase = true)) {
+                        break
+                    }
+                    val result = runSequence(command.commands)
+                    if (result.isFailure) return result
+                    iterations++
                 }
                 Result.success(Unit)
             }
@@ -405,6 +443,7 @@ class RobotReflectionRunner @Inject constructor(
                                 Log.d(TAG, "✗ ASR sin match")
                             }
                         }
+                        lastAnswer = asrText
                         latch.countDown()
                         null
                     }

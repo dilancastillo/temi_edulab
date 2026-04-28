@@ -6,6 +6,7 @@ import com.esbot.edulab.core.network.NetworkStatusProvider
 import com.esbot.edulab.core.robot.BatteryStatusProvider
 import com.esbot.edulab.core.robot.ImageOverlayController
 import com.esbot.edulab.core.robot.LocationServer
+import com.esbot.edulab.core.robot.RobotWebSocketClient
 import com.esbot.edulab.core.robot.VideoOverlayController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -24,7 +25,8 @@ data class HomeUiState(
     val currentTime: String = "",
     val batteryPercentage: Int? = null,
     val isCharging: Boolean = false,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val robotId: String = ""
 )
 
 @HiltViewModel
@@ -33,7 +35,8 @@ class HomeViewModel @Inject constructor(
     private val batteryStatusProvider: BatteryStatusProvider,
     private val locationServer: LocationServer,
     private val imageOverlayController: ImageOverlayController,
-    private val videoOverlayController: VideoOverlayController
+    private val videoOverlayController: VideoOverlayController,
+    private val robotWebSocketClient: RobotWebSocketClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(currentTime = getCurrentTime()))
@@ -56,6 +59,12 @@ class HomeViewModel @Inject constructor(
 
     init {
         locationServer.start()
+        robotWebSocketClient.start()
+        // Resolve robotId and store in UI state
+        viewModelScope.launch {
+            val id = robotWebSocketClient.resolveRobotId()
+            _uiState.update { it.copy(robotId = id) }
+        }
         // Mark as loaded after a short delay to show loading indicator
         viewModelScope.launch {
             delay(500)
@@ -90,5 +99,6 @@ class HomeViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         locationServer.stop()
+        robotWebSocketClient.stop()
     }
 }

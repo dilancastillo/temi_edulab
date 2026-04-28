@@ -1,11 +1,12 @@
 /* eslint-disable @next/next/no-img-element -- User-uploaded demo avatars are local data URLs, not optimizable remote assets. */
 "use client";
 
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
+import { getRobotId, setRobotId } from "@/lib/robot-adapter";
 import type { ProfileInput } from "@/lib/types";
 
 export function SettingsScreen() {
@@ -13,6 +14,37 @@ export function SettingsScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [ipInput, setIpInput] = useState(robotIp);
   const [ipSaved, setIpSaved] = useState(false);
+
+  // Robot ID state
+  const [robotIdInput, setRobotIdInput] = useState(() => getRobotId());
+  const [robotIdSaved, setRobotIdSaved] = useState(false);
+  const [robotConnected, setRobotConnected] = useState<boolean | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function checkRobotStatus(id: string) {
+    const trimmed = id.trim();
+    if (!trimmed) { setRobotConnected(null); return; }
+    fetch(`/api/robot/status?robotId=${encodeURIComponent(trimmed)}`)
+      .then((r) => r.json())
+      .then((data: { connected?: boolean }) => { setRobotConnected(data.connected ?? false); })
+      .catch(() => { setRobotConnected(false); });
+  }
+
+  useEffect(() => {
+    const currentId = getRobotId();
+    checkRobotStatus(currentId);
+    pollingRef.current = setInterval(() => { checkRobotStatus(getRobotId()); }, 10_000);
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+  }, []);
+
+  function handleSaveRobotId(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = robotIdInput.trim();
+    setRobotId(trimmed);
+    setRobotIdSaved(true);
+    setTimeout(() => setRobotIdSaved(false), 2000);
+    checkRobotStatus(trimmed);
+  }
 
   function handleSaveIp(e: React.FormEvent) {
     e.preventDefault();
@@ -71,9 +103,59 @@ export function SettingsScreen() {
         </div>
       </section>
 
+      <section aria-labelledby="robot-id-title" className="profile-card">
+        <div className="section-heading">
+          <h2 id="robot-id-title">Conexión al robot Temi</h2>
+          <span
+            aria-label={robotConnected === null ? "Estado desconocido" : robotConnected ? "Conectado" : "Desconectado"}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              color: robotConnected === true ? "var(--color-success, #16a34a)" : "var(--color-text-muted)",
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                backgroundColor: robotConnected === true ? "#16a34a" : "#9ca3af",
+                display: "inline-block",
+              }}
+            />
+            {robotConnected === true ? "Conectado" : "Desconectado"}
+          </span>
+        </div>
+        <p style={{ color: "var(--color-text-muted)", marginBottom: "1rem", fontSize: "0.875rem" }}>
+          Ingresa el ID del robot (visible en la app Android). El estado se actualiza cada 10 segundos.
+        </p>
+        <form className="form-stack" onSubmit={handleSaveRobotId} style={{ maxWidth: 400 }}>
+          <label className="field" htmlFor="robot-id">
+            Robot ID
+            <input
+              id="robot-id"
+              onChange={(e) => { setRobotIdInput(e.target.value); setRobotIdSaved(false); }}
+              placeholder="ej: temi-1"
+              type="text"
+              value={robotIdInput}
+            />
+          </label>
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+            <button className="button button-primary" type="submit">
+              Guardar Robot ID
+            </button>
+            {robotIdSaved && <span className="success-message" style={{ margin: 0 }}>✅ Guardado</span>}
+          </div>
+        </form>
+      </section>
+
       <section aria-labelledby="robot-ip-title" className="profile-card">
         <div className="section-heading">
-          <h2 id="robot-ip-title">Conexión al robot Temi</h2>
+          <h2 id="robot-ip-title">IP del robot (legado)</h2>
         </div>
         <p style={{ color: "var(--color-text-muted)", marginBottom: "1rem", fontSize: "0.875rem" }}>
           Ingresa la dirección IP del robot en la red WiFi actual. El puerto 8765 se añade automáticamente.

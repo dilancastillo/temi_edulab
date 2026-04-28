@@ -49,6 +49,7 @@ fun HomeScreen(
             onLanguageClick = {
                 onLanguageClick(if (isSpanish) "en" else "es")
             },
+            robotId = uiState.robotId,
             viewModel = viewModel
         )
 

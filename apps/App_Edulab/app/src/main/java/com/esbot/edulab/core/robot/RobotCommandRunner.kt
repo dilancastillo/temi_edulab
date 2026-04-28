@@ -10,6 +10,13 @@ sealed class RobotCommand {
         val options: List<ConditionOption>
     ) : RobotCommand()
     data class Repeat(val times: Int, val commands: List<RobotCommand>) : RobotCommand()
+    data class WhileCount(val limit: Int, val commands: List<RobotCommand>) : RobotCommand()
+    data class WhileTimer(val seconds: Int, val commands: List<RobotCommand>) : RobotCommand()
+    data class WhileListen(
+        val stopWord: String,
+        val maxIterations: Int,
+        val commands: List<RobotCommand>
+    ) : RobotCommand()
 }
 
 data class ConditionOption(

@@ -325,6 +325,41 @@ class TemiLocationServer @Inject constructor(
                             Log.w(TAG, "  ✗ Repeat: no se pudieron parsear comandos internos")
                         }
                     }
+                    "WhileCount" -> {
+                        val limitMatch = Regex(""""limit"\s*:\s*(\d+)""").find(context)
+                        val limit = limitMatch?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+                        val innerCommands = parseInnerCommandsFromContext(context)
+                        if (innerCommands != null) {
+                            commands.add(RobotCommand.WhileCount(limit, innerCommands))
+                            Log.d(TAG, "  ✓ WhileCount: limit=$limit innerCommands=${innerCommands.size}")
+                        } else {
+                            Log.w(TAG, "  ✗ WhileCount: no se pudieron parsear comandos internos")
+                        }
+                    }
+                    "WhileTimer" -> {
+                        val secondsMatch = Regex(""""seconds"\s*:\s*(\d+)""").find(context)
+                        val seconds = secondsMatch?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+                        val innerCommands = parseInnerCommandsFromContext(context)
+                        if (innerCommands != null) {
+                            commands.add(RobotCommand.WhileTimer(seconds, innerCommands))
+                            Log.d(TAG, "  ✓ WhileTimer: seconds=$seconds innerCommands=${innerCommands.size}")
+                        } else {
+                            Log.w(TAG, "  ✗ WhileTimer: no se pudieron parsear comandos internos")
+                        }
+                    }
+                    "WhileListen" -> {
+                        val stopWordMatch = Regex(""""stopWord"\s*:\s*"([^"]+)"""").find(context)
+                        val stopWord = stopWordMatch?.groupValues?.getOrNull(1) ?: "listo"
+                        val maxIterMatch = Regex(""""maxIterations"\s*:\s*(\d+)""").find(context)
+                        val maxIterations = maxIterMatch?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 5
+                        val innerCommands = parseInnerCommandsFromContext(context)
+                        if (innerCommands != null) {
+                            commands.add(RobotCommand.WhileListen(stopWord, maxIterations, innerCommands))
+                            Log.d(TAG, "  ✓ WhileListen: stopWord='$stopWord' maxIterations=$maxIterations innerCommands=${innerCommands.size}")
+                        } else {
+                            Log.w(TAG, "  ✗ WhileListen: no se pudieron parsear comandos internos")
+                        }
+                    }
                     else -> Log.d(TAG, "  ⊘ Tipo desconocido ignorado: $type")
                 }
                 searchStart = typeMatch.range.last + 1

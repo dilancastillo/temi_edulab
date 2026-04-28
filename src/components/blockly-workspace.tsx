@@ -60,7 +60,12 @@ const toolbox = {
       kind: "category",
       name: "Control",
       colour: "#4a7c59",
-      contents: [{ kind: "block", type: "temi_repeat" }]
+      contents: [
+        { kind: "block", type: "temi_repeat" },
+        { kind: "block", type: "temi_while_count" },
+        { kind: "block", type: "temi_while_timer" },
+        { kind: "block", type: "temi_while_listen" }
+      ]
     }
   ]
 };
@@ -168,6 +173,42 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       nextStatement: null,
       colour: 120,
       tooltip: "Repite los bloques internos N veces",
+      helpUrl: ""
+    },
+    {
+      type: "temi_while_count",
+      message0: "repetir mientras contador < %1",
+      args0: [{ type: "field_number", name: "LIMIT", value: 5, min: 1, max: 50, precision: 1 }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 120,
+      tooltip: "Repite los bloques internos mientras el contador sea menor que N",
+      helpUrl: ""
+    },
+    {
+      type: "temi_while_timer",
+      message0: "repetir mientras tiempo < %1 segundos",
+      args0: [{ type: "field_number", name: "SECONDS", value: 30, min: 1, max: 300, precision: 1 }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 120,
+      tooltip: "Repite los bloques internos mientras el tiempo transcurrido sea menor que N segundos",
+      helpUrl: ""
+    },
+    {
+      type: "temi_while_listen",
+      message0: "repetir hasta escuchar %1",
+      args0: [{ type: "field_input", name: "STOP_WORD", text: "listo" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 120,
+      tooltip: "Repite los bloques internos hasta que el robot escuche la palabra de parada (máx. 5 veces)",
       helpUrl: ""
     }
   ]);

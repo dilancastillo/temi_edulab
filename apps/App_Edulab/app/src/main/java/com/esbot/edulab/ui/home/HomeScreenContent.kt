@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -23,6 +25,7 @@ fun HomeScreenContent(
     isCharging: Boolean,
     currentLanguageCode: String,
     onLanguageClick: () -> Unit,
+    robotId: String = "",
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val isMenuOpen = remember { mutableStateOf(false) }
@@ -38,7 +41,8 @@ fun HomeScreenContent(
                     isCharging = isCharging,
                     currentLanguageCode = currentLanguageCode,
                     onMenuClick = { isMenuOpen.value = true },
-                    onLanguageClick = onLanguageClick
+                    onLanguageClick = onLanguageClick,
+                    robotId = robotId
                 )
             }
         ) { paddingValues ->
