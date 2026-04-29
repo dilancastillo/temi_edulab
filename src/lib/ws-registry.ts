@@ -13,14 +13,16 @@ export type LocationsResponseMessage = {
   locations: string[];
 };
 
-// Singleton en memoria del proceso Node.js
-export const connectionRegistry = new Map<string, WebSocket>();
-
-// Map de Promises pendientes: requestId → { resolve, reject }
-export const pendingRequests = new Map<
-  string,
-  {
+declare global {
+  var __connectionRegistry: Map<string, WebSocket> | undefined;
+  var __pendingRequests: Map<string, {
     resolve: (msg: ResponseMessage | LocationsResponseMessage) => void;
     reject: (err: Error) => void;
-  }
->();
+  }> | undefined;
+}
+
+global.__connectionRegistry ??= new Map<string, WebSocket>();
+global.__pendingRequests ??= new Map();
+
+export const connectionRegistry = global.__connectionRegistry;
+export const pendingRequests = global.__pendingRequests;

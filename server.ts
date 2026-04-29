@@ -2,6 +2,7 @@ import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
 import { WebSocketServer } from "ws";
+import "./src/lib/ws-registry.js"; // inicializa el global registry
 import { handleWsConnection } from "./src/lib/ws-handler.js";
 
 const dev = process.env.NODE_ENV !== "production";

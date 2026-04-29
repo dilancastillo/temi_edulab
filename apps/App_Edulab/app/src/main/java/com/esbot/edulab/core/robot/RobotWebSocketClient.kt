@@ -18,7 +18,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "RobotWebSocketClient"
-private const val SERVER_URL = "ws://87.99.152.162/api/robot/ws"
+private const val SERVER_URL = "ws://87.99.152.162:3000/api/robot/ws"
 private const val RECONNECT_DELAY_MS = 5000L
 
 @Singleton

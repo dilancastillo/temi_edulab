@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "NODE_ENV=development tsx server.ts",
+    "dev": "cross-env NODE_ENV=development tsx server.ts",
     "build": "next build",
     "start": "tsx server.ts",
     "lint": "eslint",
@@ -42,6 +42,7 @@
     "fast-check": "^4.6.0",
     "jsdom": "29.0.2",
     "tsx": "^4.21.0",
+    "cross-env": "^7.0.3",
     "typescript": "6.0.2",
     "vitest": "3.2.4"
   }
