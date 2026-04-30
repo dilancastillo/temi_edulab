@@ -254,14 +254,14 @@ class RobotWebSocketClient @Inject constructor(
     private fun parseCommand(obj: JsonObject): RobotCommand? {
         return try {
             when (val type = obj.get("type")?.asString ?: "") {
-                "navigate" -> RobotCommand.Navigate(obj.get("location").asString)
-                "say" -> RobotCommand.Say(obj.get("text").asString)
-                "showImage" -> RobotCommand.ShowImage(
+                "navigate", "Navigate" -> RobotCommand.Navigate(obj.get("location").asString)
+                "say", "Say" -> RobotCommand.Say(obj.get("text").asString)
+                "showImage", "ShowImage" -> RobotCommand.ShowImage(
                     imageUrl = obj.get("imageUrl").asString,
                     durationMs = obj.get("durationMs")?.asLong ?: 7000L
                 )
-                "showVideo" -> RobotCommand.ShowVideo(obj.get("videoUrl").asString)
-                "askCondition" -> {
+                "showVideo", "ShowVideo" -> RobotCommand.ShowVideo(obj.get("videoUrl").asString)
+                "askCondition", "AskCondition" -> {
                     val optionsArray = obj.getAsJsonArray("options")
                     val options = optionsArray.map { optEl ->
                         val opt = optEl.asJsonObject
@@ -276,19 +276,19 @@ class RobotWebSocketClient @Inject constructor(
                         options = options
                     )
                 }
-                "repeat" -> RobotCommand.Repeat(
+                "repeat", "Repeat" -> RobotCommand.Repeat(
                     times = obj.get("times").asInt,
                     commands = parseCommands(obj.getAsJsonArray("commands"))
                 )
-                "whileCount" -> RobotCommand.WhileCount(
+                "whileCount", "WhileCount" -> RobotCommand.WhileCount(
                     limit = obj.get("limit").asInt,
                     commands = parseCommands(obj.getAsJsonArray("commands"))
                 )
-                "whileTimer" -> RobotCommand.WhileTimer(
+                "whileTimer", "WhileTimer" -> RobotCommand.WhileTimer(
                     seconds = obj.get("seconds").asInt,
                     commands = parseCommands(obj.getAsJsonArray("commands"))
                 )
-                "whileListen" -> RobotCommand.WhileListen(
+                "whileListen", "WhileListen" -> RobotCommand.WhileListen(
                     stopWord = obj.get("stopWord").asString,
                     maxIterations = obj.get("maxIterations").asInt,
                     commands = parseCommands(obj.getAsJsonArray("commands"))
