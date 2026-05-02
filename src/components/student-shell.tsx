@@ -25,7 +25,7 @@ export function StudentShell({ children }: Readonly<{ children: React.ReactNode 
       return;
     }
     if (session.role !== "student") {
-      router.replace("/profesor");
+      router.replace(session.role === "teacher" ? "/profesor" : "/institucion");
     }
   }, [isLoginRoute, isReady, router, session]);
 

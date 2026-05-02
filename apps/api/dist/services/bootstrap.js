@@ -1,4 +1,4 @@
-import { serializeAssignment, serializeClassSession, serializeCourse, serializeInstitution, serializeMission, serializePairingRequest, serializeProfile, serializeRobot, serializeStudent, serializeStudentWork } from "../lib/serializers.js";
+import { serializeAssignment, serializeAuditLog, serializeBuildingFloor, serializeCampus, serializeClassSession, serializeCourse, serializeInstitutionBranding, serializeInstitutionLicense, serializeInstitutionPolicy, serializeInstitutionReportSnapshot, serializeInstitutionTemplate, serializeInstitution, serializeLearningSpace, serializeMission, serializePairingRequest, serializeProfile, serializeRobot, serializeRobotMaintenanceRecord, serializeStudent, serializeStudentWork } from "../lib/serializers.js";
 export async function buildBootstrap(app, userId) {
     const user = await app.prisma.user.findUnique({
         where: { id: userId }
@@ -79,6 +79,9 @@ export async function buildBootstrap(app, userId) {
             },
             orderBy: { createdAt: "desc" }
         });
+    const institutional = user.role === "STUDENT"
+        ? emptyInstitutionalSnapshot()
+        : await buildInstitutionalSnapshot(app, user.institutionId);
     return {
         session: {
             userId: user.id,
@@ -104,6 +107,72 @@ export async function buildBootstrap(app, userId) {
         profile: serializeProfile(user),
         robots: robots.map(serializeRobot),
         classSessions: classSessions.map(serializeClassSession),
-        pairingRequests: pairingRequests.map(serializePairingRequest)
+        pairingRequests: pairingRequests.map(serializePairingRequest),
+        institutional
+    };
+}
+function emptyInstitutionalSnapshot() {
+    return {
+        campuses: [],
+        floors: [],
+        spaces: [],
+        licenses: [],
+        branding: null,
+        policies: [],
+        templates: [],
+        reportSnapshots: [],
+        maintenanceRecords: [],
+        auditLogs: [],
+        summary: {
+            campuses: 0,
+            spaces: 0,
+            activeTeachers: 0,
+            activeStudents: 0,
+            robots: 0,
+            connectedRobots: 0,
+            activeLicenses: 0,
+            publishedPolicies: 0,
+            approvedTemplates: 0
+        }
+    };
+}
+async function buildInstitutionalSnapshot(app, institutionId) {
+    const [campuses, floors, spaces, licenses, branding, policies, templates, reportSnapshots, maintenanceRecords, auditLogs, activeTeachers, activeStudents, connectedRobots] = await Promise.all([
+        app.prisma.campus.findMany({ where: { institutionId }, orderBy: { name: "asc" } }),
+        app.prisma.buildingFloor.findMany({ where: { institutionId }, orderBy: [{ campusId: "asc" }, { levelNumber: "asc" }] }),
+        app.prisma.learningSpace.findMany({ where: { institutionId }, orderBy: [{ campusId: "asc" }, { name: "asc" }] }),
+        app.prisma.institutionLicense.findMany({ where: { institutionId }, orderBy: { endsAt: "desc" } }),
+        app.prisma.institutionBranding.findUnique({ where: { institutionId } }),
+        app.prisma.institutionPolicy.findMany({ where: { institutionId }, orderBy: [{ status: "asc" }, { updatedAt: "desc" }] }),
+        app.prisma.institutionTemplate.findMany({ where: { institutionId }, orderBy: [{ status: "asc" }, { updatedAt: "desc" }] }),
+        app.prisma.institutionReportSnapshot.findMany({ where: { institutionId }, orderBy: { createdAt: "desc" }, take: 8 }),
+        app.prisma.robotMaintenanceRecord.findMany({ where: { institutionId }, orderBy: { createdAt: "desc" }, take: 8 }),
+        app.prisma.auditLog.findMany({ where: { institutionId }, orderBy: { createdAt: "desc" }, take: 12 }),
+        app.prisma.user.count({ where: { institutionId, role: { in: ["TEACHER", "INSTITUTION_ADMIN"] }, accountStatus: "ACTIVE" } }),
+        app.prisma.user.count({ where: { institutionId, role: "STUDENT", accountStatus: "ACTIVE" } }),
+        app.prisma.robot.count({ where: { institutionId, connectionState: "CONNECTED" } })
+    ]);
+    return {
+        campuses: campuses.map(serializeCampus),
+        floors: floors.map(serializeBuildingFloor),
+        spaces: spaces.map(serializeLearningSpace),
+        licenses: licenses.map(serializeInstitutionLicense),
+        branding: serializeInstitutionBranding(branding),
+        policies: policies.map(serializeInstitutionPolicy),
+        templates: templates.map(serializeInstitutionTemplate),
+        reportSnapshots: reportSnapshots.map(serializeInstitutionReportSnapshot),
+        maintenanceRecords: maintenanceRecords.map(serializeRobotMaintenanceRecord),
+        auditLogs: auditLogs.map(serializeAuditLog),
+        summary: {
+            campuses: campuses.length,
+            spaces: spaces.length,
+            activeTeachers,
+            activeStudents,
+            robots: await app.prisma.robot.count({ where: { institutionId } }),
+            connectedRobots,
+            activeLicenses: licenses.filter((license) => ["ACTIVE", "TRIAL"].includes(license.status)).length,
+            publishedPolicies: policies.filter((policy) => policy.status === "PUBLISHED").length,
+            approvedTemplates: templates.filter((template) => template.status === "APPROVED").length
+        }
     };
 }

@@ -76,6 +76,13 @@ function assertInstitutionMatch(app, firstInstitutionId, secondInstitutionId) {
 function normalizeLocationName(value) {
     return value.trim().toLowerCase();
 }
+function slugifyRobotName(value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
 function findRobotLocation(locations, locationName) {
     const normalized = normalizeLocationName(locationName);
     return locations.find((location) => location.normalizedName === normalized);
@@ -583,8 +590,26 @@ export async function registerTeacherRoutes(app) {
         assertInstitutionMatch(app, teacher.institutionId, course?.institutionId);
         const token = createOpaqueToken();
         const tokenExpiresAt = addDays(new Date(), config.robotTokenTtlDays);
-        const robotId = pairingRequest.robotId ?? `robot-${crypto.randomUUID()}`;
-        const slug = body.assignedName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const baseSlug = slugifyRobotName(body.assignedName);
+        const institutionRobotWithSameIdentity = pairingRequest.robotId
+            ? await app.prisma.robot.findUnique({
+                where: { id: pairingRequest.robotId }
+            })
+            : await app.prisma.robot.findFirst({
+                where: {
+                    institutionId: teacher.institutionId,
+                    OR: [{ displayName: body.assignedName }, { slug: baseSlug }]
+                }
+            });
+        const globalRobotWithSameSlug = institutionRobotWithSameIdentity?.slug === baseSlug
+            ? institutionRobotWithSameIdentity
+            : await app.prisma.robot.findUnique({
+                where: { slug: baseSlug }
+            });
+        const robotId = institutionRobotWithSameIdentity?.id ?? pairingRequest.robotId ?? `robot-${crypto.randomUUID()}`;
+        const slug = globalRobotWithSameSlug && globalRobotWithSameSlug.id !== robotId
+            ? `${baseSlug}-${robotId.slice(-6).toLowerCase()}`
+            : baseSlug;
         await app.prisma.robot.upsert({
             where: { id: robotId },
             create: {

@@ -45,6 +45,19 @@ export async function requireTeacherSession(app: FastifyInstance, request: Fasti
   return user as User & { institutionId: string };
 }
 
+export async function requireInstitutionAdminSession(app: FastifyInstance, request: FastifyRequest): Promise<User & { institutionId: string }> {
+  const user = await requireUserSession(app, request);
+  if (!["INSTITUTION_ADMIN", "ADMIN"].includes(user.role)) {
+    throw app.httpErrors.forbidden("Necesitas permisos institucionales para esta accion.");
+  }
+
+  if (!user.institutionId) {
+    throw app.httpErrors.forbidden("La cuenta no esta asociada a una institucion.");
+  }
+
+  return user as User & { institutionId: string };
+}
+
 export async function requireRobotSession(app: FastifyInstance, request: FastifyRequest) {
   const token = readBearerToken(request);
   if (!token) {

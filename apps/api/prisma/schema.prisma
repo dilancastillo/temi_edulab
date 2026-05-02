@@ -82,12 +82,89 @@ enum PairingStatus {
   EXPIRED
 }
 
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum CampusStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SpaceKind {
+  CLASSROOM
+  LIBRARY
+  LAB
+  AUDITORIUM
+  MAKERSPACE
+  OFFICE
+  OTHER
+}
+
+enum LicenseStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum DataPolicyKind {
+  PRIVACY
+  DATA_PROCESSING
+  MINORS_NOTICE
+  ROBOT_USE
+  MARKETING
+}
+
+enum DataPolicyStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum TemplateKind {
+  REPORT
+  CERTIFICATE
+  COMMUNICATION
+  RUBRIC
+  CONSENT
+  WORKSHOP_GUIDE
+}
+
+enum TemplateStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ARCHIVED
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  PUBLISHED
+  CONFIRMED
+  SUSPENDED
+}
+
 model Institution {
   id            String          @id
   name          String
   slug          String          @unique
+  legalName     String?
+  daneCode      String?
+  department    String?
+  city          String?
+  country       String          @default("Colombia")
+  defaultLocale String          @default("es-CO")
+  enabledLevels Json?
+  dataPolicyMode String         @default("TEMPLATE")
+  marketingConsentEnabled Boolean @default(false)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+  campuses      Campus[]
+  floors        BuildingFloor[]
+  spaces        LearningSpace[]
   courses       Course[]
   users         User[]
   assignments   Assignment[]
@@ -95,16 +172,30 @@ model Institution {
   robots        Robot[]
   classSessions ClassSession[]
   pairingRequests PairingRequest[]
+  licenses      InstitutionLicense[]
+  branding      InstitutionBranding?
+  policies      InstitutionPolicy[]
+  policyAcceptances PolicyAcceptance[]
+  templates     InstitutionTemplate[]
+  reportSnapshots InstitutionReportSnapshot[]
+  maintenanceRecords RobotMaintenanceRecord[]
+  auditLogs     AuditLog[]
 }
 
 model Course {
   id            String          @id
   institutionId String
+  campusId      String?
   name          String
   level         String
+  academicLevel String?
+  gradeLabel    String?
+  groupLabel    String?
+  academicYear  String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   institution   Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  campus        Campus?         @relation(fields: [campusId], references: [id], onDelete: SetNull)
   students      User[]          @relation("CourseStudents")
   assignments   Assignment[]
   robots        Robot[]
@@ -118,12 +209,15 @@ model User {
   institutionId    String?
   courseId         String?
   role             UserRole
+  accountStatus    AccountStatus    @default(ACTIVE)
   authProvider     AuthProvider     @default(PASSWORD)
   fullName         String
   email            String           @unique
   passwordHash     String?
   biography        String?
   avatarUrl        String?
+  permissions      Json?
+  locale           String           @default("es-CO")
   progress         StudentProgress?
   currentMissionId String?
   createdAt        DateTime         @default(now())
@@ -135,6 +229,9 @@ model User {
   webSessions      WebSession[]
   taughtSessions   ClassSession[]   @relation("ClassSessionsByTeacher")
   pairingApprovals PairingRequest[] @relation("PairingApprovedBy")
+  policyAcceptances PolicyAcceptance[]
+  approvedTemplates InstitutionTemplate[] @relation("TemplateApprovedBy")
+  auditLogs        AuditLog[]
 }
 
 model WebSession {
@@ -214,8 +311,16 @@ model Robot {
   id              String          @id
   institutionId   String
   courseId        String?
+  campusId        String?
+  floorId         String?
+  spaceId         String?
   displayName     String
   slug            String          @unique
+  serialNumber    String?
+  modelName       String?
+  firmwareVersion String?
+  sdkVersion      String?
+  maintenanceStatus String?
   classroomName   String?
   pairCode        String?         @unique
   pairCodeExpiresAt DateTime?
@@ -229,12 +334,17 @@ model Robot {
   updatedAt       DateTime        @updatedAt
   institution     Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   course          Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  campus          Campus?         @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  floor           BuildingFloor?  @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  space           LearningSpace?  @relation(fields: [spaceId], references: [id], onDelete: SetNull)
   locations       RobotLocation[]
   classSessions   ClassSession[]
   robotEvents     RobotEvent[]
   pairingRequests PairingRequest[]
+  maintenanceRecords RobotMaintenanceRecord[]
 
   @@index([institutionId])
+  @@index([campusId])
 }
 
 model RobotLocation {
@@ -318,4 +428,199 @@ model PairingRequest {
   confirmedBy        User?         @relation("PairingApprovedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
 
   @@index([status, expiresAt])
+}
+
+model Campus {
+  id            String       @id @default(cuid())
+  institutionId String
+  name          String
+  city          String
+  address       String?
+  phone         String?
+  status        CampusStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  institution   Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  floors        BuildingFloor[]
+  spaces        LearningSpace[]
+  courses       Course[]
+  robots        Robot[]
+
+  @@index([institutionId, status])
+}
+
+model BuildingFloor {
+  id            String       @id @default(cuid())
+  institutionId String
+  campusId      String
+  name          String
+  levelNumber   Int
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  institution   Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  campus        Campus       @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  spaces        LearningSpace[]
+  robots        Robot[]
+
+  @@index([institutionId])
+  @@unique([campusId, levelNumber])
+}
+
+model LearningSpace {
+  id                 String       @id @default(cuid())
+  institutionId      String
+  campusId           String
+  floorId            String?
+  name               String
+  kind               SpaceKind
+  capacity           Int?
+  safetyNotes        String?
+  accessibilityNotes String?
+  isRobotReady       Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  institution        Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  campus             Campus       @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  floor              BuildingFloor? @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  robots             Robot[]
+
+  @@index([institutionId, kind])
+  @@index([campusId])
+}
+
+model InstitutionLicense {
+  id            String        @id @default(cuid())
+  institutionId String
+  name          String
+  status        LicenseStatus @default(TRIAL)
+  startsAt      DateTime
+  endsAt        DateTime
+  maxRobots     Int
+  maxTeachers   Int
+  maxStudents   Int
+  maxMissions   Int
+  trialMode     Boolean       @default(true)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  institution   Institution   @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId, status])
+}
+
+model InstitutionBranding {
+  id                String      @id @default(cuid())
+  institutionId     String      @unique
+  logoUrl           String?
+  sealUrl           String?
+  primaryColor      String      @default("#2856a6")
+  accentColor       String      @default("#1f9d55")
+  neutralColor      String      @default("#f4f7fb")
+  marketingHeadline String?
+  welcomeMessage    String?
+  reportFooter      String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  institution       Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+}
+
+model InstitutionPolicy {
+  id              String           @id @default(cuid())
+  institutionId   String
+  kind            DataPolicyKind
+  title           String
+  version         String
+  status          DataPolicyStatus @default(DRAFT)
+  content         String
+  sourceReference String?
+  effectiveAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  institution     Institution      @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  acceptances     PolicyAcceptance[]
+
+  @@unique([institutionId, kind, version])
+  @@index([institutionId, status])
+}
+
+model PolicyAcceptance {
+  id            String            @id @default(cuid())
+  institutionId String
+  userId        String
+  policyId      String
+  acceptedAt    DateTime          @default(now())
+  ipAddress     String?
+  userAgent     String?
+  institution   Institution       @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy        InstitutionPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, policyId])
+  @@index([institutionId, acceptedAt])
+}
+
+model InstitutionTemplate {
+  id               String         @id @default(cuid())
+  institutionId    String
+  kind             TemplateKind
+  name             String
+  status           TemplateStatus @default(DRAFT)
+  content          String
+  variables        Json
+  requiresApproval Boolean        @default(true)
+  approvedAt       DateTime?
+  approvedById     String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  institution      Institution    @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  approvedBy       User?          @relation("TemplateApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([institutionId, kind, status])
+}
+
+model InstitutionReportSnapshot {
+  id            String      @id @default(cuid())
+  institutionId String
+  kind          String
+  title         String
+  rangeStart    DateTime
+  rangeEnd      DateTime
+  metrics       Json
+  createdAt     DateTime    @default(now())
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId, kind, createdAt])
+}
+
+model RobotMaintenanceRecord {
+  id            String   @id @default(cuid())
+  institutionId String
+  robotId       String
+  kind          String
+  status        String
+  notes         String?
+  dueAt         DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  robot         Robot    @relation(fields: [robotId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId, status])
+  @@index([robotId, createdAt])
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  institutionId String
+  actorId       String?
+  action        AuditAction
+  resourceType  String
+  resourceId    String?
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  actor         User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([institutionId, createdAt])
 }

@@ -10,6 +10,7 @@ import type {
   Course,
   ImportedStudent,
   Institution,
+  InstitutionalSnapshot,
   Mission,
   PairingRequest,
   ProfileInput,
@@ -24,12 +25,14 @@ import type {
   StudentInput,
   StudentLoginResult,
   StudentWork,
-  TeacherProfile
+  TeacherProfile,
+  UserRole
 } from "@/lib/types";
 
 type AuthResult = {
   ok: boolean;
   message?: string;
+  role?: UserRole;
 };
 
 type AssignMissionInput = {
@@ -72,6 +75,7 @@ type CreateClassSessionInput = {
 type DemoStore = {
   isReady: boolean;
   institution: Institution;
+  institutional: InstitutionalSnapshot;
   courses: Course[];
   missions: Mission[];
   students: Student[];
@@ -102,6 +106,70 @@ type DemoStore = {
   confirmPairingRequest: (pairingRequestId: string, input: { assignedName: string; classroomName: string; courseId: string }) => Promise<void>;
   resetDemoData: () => Promise<void>;
   refreshData: () => Promise<void>;
+  updateInstitutionSettings: (input: InstitutionSettingsInput) => Promise<void>;
+  updateInstitutionBranding: (input: InstitutionBrandingInput) => Promise<void>;
+  addInstitutionCampus: (input: InstitutionCampusInput) => Promise<void>;
+  addInstitutionSpace: (input: InstitutionSpaceInput) => Promise<void>;
+  addInstitutionStaff: (input: InstitutionStaffInput) => Promise<void>;
+  addInstitutionTemplate: (input: InstitutionTemplateInput) => Promise<void>;
+  publishInstitutionPolicy: (policyId: string, input: { content?: string }) => Promise<void>;
+};
+
+type InstitutionSettingsInput = {
+  name: string;
+  legalName?: string;
+  daneCode?: string;
+  department?: string;
+  city?: string;
+  defaultLocale: "es-CO" | "en-US";
+  enabledLevels: string[];
+  marketingConsentEnabled: boolean;
+};
+
+type InstitutionBrandingInput = {
+  logoUrl?: string;
+  sealUrl?: string;
+  primaryColor: string;
+  accentColor: string;
+  neutralColor: string;
+  marketingHeadline?: string;
+  welcomeMessage?: string;
+  reportFooter?: string;
+};
+
+type InstitutionCampusInput = {
+  name: string;
+  city: string;
+  address?: string;
+  phone?: string;
+};
+
+type InstitutionSpaceInput = {
+  campusId: string;
+  floorName: string;
+  levelNumber: number;
+  name: string;
+  kind: string;
+  capacity?: number;
+  safetyNotes?: string;
+  accessibilityNotes?: string;
+  isRobotReady: boolean;
+};
+
+type InstitutionStaffInput = {
+  fullName: string;
+  email: string;
+  password: string;
+  rolePreset: "teacher" | "institution_admin" | "academic_coordinator" | "technical_support";
+  courseId?: string;
+};
+
+type InstitutionTemplateInput = {
+  kind: "report" | "certificate" | "communication" | "rubric" | "consent" | "workshop_guide";
+  name: string;
+  content: string;
+  variables: string[];
+  requiresApproval: boolean;
 };
 
 type ErrorPayload = {
@@ -195,7 +263,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       });
 
       setBootstrap(nextBootstrap);
-      return { ok: true };
+      return { ok: true, role: nextBootstrap.session?.role };
     } catch (error) {
       return {
         ok: false,
@@ -379,10 +447,67 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
     await refreshData();
   }, [refreshData]);
 
+  const updateInstitutionSettings = useCallback(async (input: InstitutionSettingsInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/institution/settings", {
+      method: "PATCH",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const updateInstitutionBranding = useCallback(async (input: InstitutionBrandingInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/institution/branding", {
+      method: "PATCH",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const addInstitutionCampus = useCallback(async (input: InstitutionCampusInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/institution/campuses", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const addInstitutionSpace = useCallback(async (input: InstitutionSpaceInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/institution/spaces", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const addInstitutionStaff = useCallback(async (input: InstitutionStaffInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/institution/staff", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const addInstitutionTemplate = useCallback(async (input: InstitutionTemplateInput) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>("/api/institution/templates", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
+  const publishInstitutionPolicy = useCallback(async (policyId: string, input: { content?: string }) => {
+    const nextBootstrap = await fetchJson<AppBootstrap>(`/api/institution/policies/${policyId}/publish`, {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+    setBootstrap(nextBootstrap);
+  }, []);
+
   const value = useMemo<DemoStore>(
     () => ({
       isReady,
       institution: bootstrap.institution,
+      institutional: bootstrap.institutional,
       courses: bootstrap.courses,
       missions: bootstrap.missions,
       students: bootstrap.students,
@@ -412,9 +537,20 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       approveClassSession,
       confirmPairingRequest,
       resetDemoData,
-      refreshData
+      refreshData,
+      updateInstitutionSettings,
+      updateInstitutionBranding,
+      addInstitutionCampus,
+      addInstitutionSpace,
+      addInstitutionStaff,
+      addInstitutionTemplate,
+      publishInstitutionPolicy
     }),
     [
+      addInstitutionCampus,
+      addInstitutionSpace,
+      addInstitutionStaff,
+      addInstitutionTemplate,
       addStudent,
       approveClassSession,
       archiveAssignment,
@@ -425,6 +561,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       deleteAssignment,
       deleteStudent,
       importStudents,
+      publishInstitutionPolicy,
       isReady,
       loginStudentWithMissionCode,
       loginStudentWithPassword,
@@ -435,6 +572,8 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       resetDemoData,
       saveStudentWork,
       submitStudentWork,
+      updateInstitutionBranding,
+      updateInstitutionSettings,
       updateProfile,
       updateStudent
     ]

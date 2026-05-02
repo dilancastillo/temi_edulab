@@ -3,7 +3,16 @@ import type { Assignment, Course, Institution, Mission, Student, StudentWork, Te
 export const demoInstitution: Institution = {
   id: "inst-esbot",
   name: "Colegio Esbot EduLab",
-  slug: "esbot-edulab"
+  slug: "esbot-edulab",
+  legalName: "Colegio Esbot EduLab S.A.S.",
+  daneCode: "150001000001",
+  department: "Boyaca",
+  city: "Tunja",
+  country: "Colombia",
+  defaultLocale: "es-CO",
+  enabledLevels: ["BASICA_PRIMARIA", "BASICA_SECUNDARIA", "MEDIA"],
+  dataPolicyMode: "colombia_baseline",
+  marketingConsentEnabled: true
 };
 
 export const demoCourses: Course[] = [

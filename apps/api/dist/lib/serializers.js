@@ -128,15 +128,29 @@ export function serializeInstitution(institution) {
     return {
         id: institution.id,
         name: institution.name,
-        slug: institution.slug
+        slug: institution.slug,
+        legalName: institution.legalName ?? undefined,
+        daneCode: institution.daneCode ?? undefined,
+        department: institution.department ?? undefined,
+        city: institution.city ?? undefined,
+        country: institution.country,
+        defaultLocale: institution.defaultLocale,
+        enabledLevels: Array.isArray(institution.enabledLevels) ? institution.enabledLevels.map(String) : [],
+        dataPolicyMode: institution.dataPolicyMode,
+        marketingConsentEnabled: institution.marketingConsentEnabled
     };
 }
 export function serializeCourse(course) {
     return {
         id: course.id,
         institutionId: course.institutionId,
+        campusId: course.campusId ?? undefined,
         name: course.name,
-        level: course.level
+        level: course.level,
+        academicLevel: course.academicLevel ?? undefined,
+        gradeLabel: course.gradeLabel ?? undefined,
+        groupLabel: course.groupLabel ?? undefined,
+        academicYear: course.academicYear ?? undefined
     };
 }
 export function serializeProfile(user) {
@@ -146,7 +160,9 @@ export function serializeProfile(user) {
         fullName: user.fullName,
         email: user.email,
         biography: user.biography ?? "",
-        avatarUrl: user.avatarUrl ?? undefined
+        avatarUrl: user.avatarUrl ?? undefined,
+        accountStatus: user.accountStatus.toLowerCase(),
+        locale: user.locale
     };
 }
 export function serializeSession(user, provider) {
@@ -228,7 +244,15 @@ export function serializeRobot(robot) {
         connectionState: robot.connectionState,
         batteryPercent: robot.batteryPercent ?? undefined,
         statusLabel: robot.statusLabel ?? undefined,
-        lastSeenAt: robot.lastSeenAt?.toISOString()
+        lastSeenAt: robot.lastSeenAt?.toISOString(),
+        campusId: robot.campusId ?? undefined,
+        floorId: robot.floorId ?? undefined,
+        spaceId: robot.spaceId ?? undefined,
+        serialNumber: robot.serialNumber ?? undefined,
+        modelName: robot.modelName ?? undefined,
+        firmwareVersion: robot.firmwareVersion ?? undefined,
+        sdkVersion: robot.sdkVersion ?? undefined,
+        maintenanceStatus: robot.maintenanceStatus ?? undefined
     };
 }
 export function serializeRobotLocation(location) {
@@ -275,5 +299,136 @@ export function serializePairingRequest(request) {
         expiresAt: request.expiresAt.toISOString(),
         confirmedAt: request.confirmedAt?.toISOString(),
         consumedAt: request.consumedAt?.toISOString()
+    };
+}
+export function serializeCampus(campus) {
+    return {
+        id: campus.id,
+        institutionId: campus.institutionId,
+        name: campus.name,
+        city: campus.city,
+        address: campus.address ?? undefined,
+        phone: campus.phone ?? undefined,
+        status: campus.status.toLowerCase(),
+        createdAt: campus.createdAt.toISOString()
+    };
+}
+export function serializeBuildingFloor(floor) {
+    return {
+        id: floor.id,
+        institutionId: floor.institutionId,
+        campusId: floor.campusId,
+        name: floor.name,
+        levelNumber: floor.levelNumber
+    };
+}
+export function serializeLearningSpace(space) {
+    return {
+        id: space.id,
+        institutionId: space.institutionId,
+        campusId: space.campusId,
+        floorId: space.floorId ?? undefined,
+        name: space.name,
+        kind: space.kind.toLowerCase(),
+        capacity: space.capacity ?? undefined,
+        safetyNotes: space.safetyNotes ?? undefined,
+        accessibilityNotes: space.accessibilityNotes ?? undefined,
+        isRobotReady: space.isRobotReady
+    };
+}
+export function serializeInstitutionLicense(license) {
+    return {
+        id: license.id,
+        institutionId: license.institutionId,
+        name: license.name,
+        status: license.status.toLowerCase(),
+        startsAt: license.startsAt.toISOString(),
+        endsAt: license.endsAt.toISOString(),
+        maxRobots: license.maxRobots,
+        maxTeachers: license.maxTeachers,
+        maxStudents: license.maxStudents,
+        maxMissions: license.maxMissions,
+        trialMode: license.trialMode,
+        notes: license.notes ?? undefined
+    };
+}
+export function serializeInstitutionBranding(branding) {
+    if (!branding)
+        return null;
+    return {
+        id: branding.id,
+        institutionId: branding.institutionId,
+        logoUrl: branding.logoUrl ?? undefined,
+        sealUrl: branding.sealUrl ?? undefined,
+        primaryColor: branding.primaryColor,
+        accentColor: branding.accentColor,
+        neutralColor: branding.neutralColor,
+        marketingHeadline: branding.marketingHeadline ?? undefined,
+        welcomeMessage: branding.welcomeMessage ?? undefined,
+        reportFooter: branding.reportFooter ?? undefined
+    };
+}
+export function serializeInstitutionPolicy(policy) {
+    return {
+        id: policy.id,
+        institutionId: policy.institutionId,
+        kind: policy.kind.toLowerCase(),
+        title: policy.title,
+        version: policy.version,
+        status: policy.status.toLowerCase(),
+        content: policy.content,
+        sourceReference: policy.sourceReference ?? undefined,
+        effectiveAt: policy.effectiveAt?.toISOString()
+    };
+}
+export function serializeInstitutionTemplate(template) {
+    return {
+        id: template.id,
+        institutionId: template.institutionId,
+        kind: template.kind.toLowerCase(),
+        name: template.name,
+        status: template.status.toLowerCase(),
+        content: template.content,
+        variables: Array.isArray(template.variables) ? template.variables.map(String) : [],
+        requiresApproval: template.requiresApproval,
+        approvedAt: template.approvedAt?.toISOString(),
+        approvedById: template.approvedById ?? undefined
+    };
+}
+export function serializeInstitutionReportSnapshot(report) {
+    return {
+        id: report.id,
+        institutionId: report.institutionId,
+        kind: report.kind,
+        title: report.title,
+        rangeStart: report.rangeStart.toISOString(),
+        rangeEnd: report.rangeEnd.toISOString(),
+        metrics: asRecord(report.metrics) ?? {},
+        createdAt: report.createdAt.toISOString()
+    };
+}
+export function serializeRobotMaintenanceRecord(record) {
+    return {
+        id: record.id,
+        institutionId: record.institutionId,
+        robotId: record.robotId,
+        kind: record.kind,
+        status: record.status,
+        notes: record.notes ?? undefined,
+        dueAt: record.dueAt?.toISOString(),
+        completedAt: record.completedAt?.toISOString(),
+        createdAt: record.createdAt.toISOString()
+    };
+}
+export function serializeAuditLog(log) {
+    return {
+        id: log.id,
+        institutionId: log.institutionId,
+        actorId: log.actorId ?? undefined,
+        action: log.action.toLowerCase(),
+        resourceType: log.resourceType,
+        resourceId: log.resourceId ?? undefined,
+        metadata: asRecord(log.metadata) ?? undefined,
+        createdAt: log.createdAt.toISOString()
     };
 }

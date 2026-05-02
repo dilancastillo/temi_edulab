@@ -6,27 +6,22 @@ import { useEffect } from "react";
 import { LogoMark } from "@/components/logo";
 import { useDemoStore } from "@/components/demo-store-provider";
 
-const navItems = [
-  { href: "/profesor", label: "Inicio" },
-  { href: "/profesor/estudiantes", label: "Estudiantes" },
-  { href: "/profesor/biblioteca", label: "Biblioteca" },
-  { href: "/profesor/misiones", label: "Misiones en curso" },
-  { href: "/profesor/configuracion", label: "Configuracion" }
-] as const;
+const navItems = [{ href: "/institucion", label: "Centro institucional" }] as const;
 
-export function ProfessorShell({ children }: Readonly<{ children: React.ReactNode }>) {
+export function InstitutionShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isReady, logout, profile, session } = useDemoStore();
-  const canAccess = session?.role === "teacher" || session?.role === "institution_admin" || session?.role === "admin";
+  const { institution, isReady, logout, profile, session } = useDemoStore();
+  const canAccess = session?.role === "institution_admin" || session?.role === "admin";
 
   useEffect(() => {
-    if (isReady && !session) {
+    if (!isReady) return;
+    if (!session) {
       router.replace("/login");
       return;
     }
-    if (isReady && !canAccess) {
-      router.replace(session?.role === "student" ? "/estudiante" : "/institucion");
+    if (!canAccess) {
+      router.replace(session.role === "student" ? "/estudiante" : "/profesor");
     }
   }, [canAccess, isReady, router, session]);
 
@@ -34,26 +29,26 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
     return (
       <main className="loading-screen" aria-live="polite">
         <LogoMark />
-        <p>Cargando el panel docente...</p>
+        <p>Cargando el centro institucional...</p>
       </main>
     );
   }
 
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Navegacion principal">
+      <aside className="sidebar" aria-label="Navegacion institucional">
         <LogoMark />
         <div className="sidebar-user">
           <span className="avatar avatar-small">{profile.fullName.slice(0, 2).toUpperCase()}</span>
           <span>
             <strong>{profile.fullName}</strong>
-            <small>{session.role === "teacher" ? "Profesor" : "Admin institucional"}</small>
+            <small>{institution.name || "Institucion"}</small>
           </span>
         </div>
         <nav>
           <ul className="nav-list">
             {navItems.map((item) => {
-              const isActive = item.href === "/profesor" ? pathname === item.href : pathname.startsWith(item.href);
+              const isActive = pathname === item.href;
 
               return (
                 <li key={item.href}>
@@ -65,6 +60,9 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
             })}
           </ul>
         </nav>
+        <Link className="nav-link" href="/profesor">
+          Ver panel docente
+        </Link>
         <button
           className="nav-link nav-link-button"
           onClick={async () => {

@@ -34,6 +34,16 @@ export async function requireTeacherSession(app, request) {
     }
     return user;
 }
+export async function requireInstitutionAdminSession(app, request) {
+    const user = await requireUserSession(app, request);
+    if (!["INSTITUTION_ADMIN", "ADMIN"].includes(user.role)) {
+        throw app.httpErrors.forbidden("Necesitas permisos institucionales para esta accion.");
+    }
+    if (!user.institutionId) {
+        throw app.httpErrors.forbidden("La cuenta no esta asociada a una institucion.");
+    }
+    return user;
+}
 export async function requireRobotSession(app, request) {
     const token = readBearerToken(request);
     if (!token) {

@@ -7,6 +7,7 @@ import { ZodError } from "zod";
 import { config } from "./lib/config.js";
 import { prismaPlugin } from "./plugins/prisma.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerInstitutionRoutes } from "./routes/institution.js";
 import { registerTeacherRoutes } from "./routes/teacher.js";
 import { registerRobotRoutes } from "./routes/robot.js";
 import { ensureMissionCatalog } from "./services/mission-catalog.js";
@@ -69,6 +70,7 @@ export async function buildApp() {
   });
 
   await registerAuthRoutes(app);
+  await registerInstitutionRoutes(app);
   await registerTeacherRoutes(app);
   await registerRobotRoutes(app);
 

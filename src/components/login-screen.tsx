@@ -16,6 +16,8 @@ export function LoginScreen() {
   useEffect(() => {
     if (isReady && session?.role === "teacher") {
       router.replace("/profesor");
+    } else if (isReady && (session?.role === "institution_admin" || session?.role === "admin")) {
+      router.replace("/institucion");
     } else if (isReady && session?.role === "student") {
       router.replace("/estudiante");
     }
@@ -30,7 +32,7 @@ export function LoginScreen() {
       return;
     }
 
-    router.push("/profesor");
+    router.push(result.role === "institution_admin" || result.role === "admin" ? "/institucion" : "/profesor");
   }
 
   function handleProvider(provider: "google" | "microsoft") {

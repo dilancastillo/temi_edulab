@@ -6,13 +6,27 @@ export type Institution = {
   id: string;
   name: string;
   slug: string;
+  legalName?: string;
+  daneCode?: string;
+  department?: string;
+  city?: string;
+  country: string;
+  defaultLocale: "es-CO" | "en-US";
+  enabledLevels: string[];
+  dataPolicyMode: string;
+  marketingConsentEnabled: boolean;
 };
 
 export type Course = {
   id: string;
   institutionId: string;
+  campusId?: string;
   name: string;
   level: string;
+  academicLevel?: string;
+  gradeLabel?: string;
+  groupLabel?: string;
+  academicYear?: string;
 };
 
 export type TeacherProfile = {
@@ -22,6 +36,8 @@ export type TeacherProfile = {
   email: string;
   biography: string;
   avatarUrl?: string;
+  accountStatus?: "active" | "suspended";
+  locale?: string;
 };
 
 export type Session = {
@@ -130,6 +146,9 @@ export type Robot = {
   id: string;
   institutionId: string;
   courseId?: string;
+  campusId?: string;
+  floorId?: string;
+  spaceId?: string;
   displayName: string;
   classroomName?: string;
   pairCode?: string;
@@ -137,6 +156,11 @@ export type Robot = {
   batteryPercent?: number;
   statusLabel?: string;
   lastSeenAt?: string;
+  serialNumber?: string;
+  modelName?: string;
+  firmwareVersion?: string;
+  sdkVersion?: string;
+  maintenanceStatus?: string;
 };
 
 export type RobotLocation = {
@@ -224,6 +248,151 @@ export type ClassSession = {
   updatedAt: string;
 };
 
+export type Campus = {
+  id: string;
+  institutionId: string;
+  name: string;
+  city: string;
+  address?: string;
+  phone?: string;
+  status: "active" | "inactive";
+  createdAt: string;
+};
+
+export type BuildingFloor = {
+  id: string;
+  institutionId: string;
+  campusId: string;
+  name: string;
+  levelNumber: number;
+};
+
+export type LearningSpace = {
+  id: string;
+  institutionId: string;
+  campusId: string;
+  floorId?: string;
+  name: string;
+  kind: "classroom" | "library" | "lab" | "auditorium" | "makerspace" | "office" | "other";
+  capacity?: number;
+  safetyNotes?: string;
+  accessibilityNotes?: string;
+  isRobotReady: boolean;
+};
+
+export type InstitutionLicense = {
+  id: string;
+  institutionId: string;
+  name: string;
+  status: "trial" | "active" | "expired" | "suspended";
+  startsAt: string;
+  endsAt: string;
+  maxRobots: number;
+  maxTeachers: number;
+  maxStudents: number;
+  maxMissions: number;
+  trialMode: boolean;
+  notes?: string;
+};
+
+export type InstitutionBranding = {
+  id: string;
+  institutionId: string;
+  logoUrl?: string;
+  sealUrl?: string;
+  primaryColor: string;
+  accentColor: string;
+  neutralColor: string;
+  marketingHeadline?: string;
+  welcomeMessage?: string;
+  reportFooter?: string;
+};
+
+export type InstitutionPolicy = {
+  id: string;
+  institutionId: string;
+  kind: "privacy" | "data_processing" | "minors_notice" | "robot_use" | "marketing";
+  title: string;
+  version: string;
+  status: "draft" | "published" | "archived";
+  content: string;
+  sourceReference?: string;
+  effectiveAt?: string;
+};
+
+export type InstitutionTemplate = {
+  id: string;
+  institutionId: string;
+  kind: "report" | "certificate" | "communication" | "rubric" | "consent" | "workshop_guide";
+  name: string;
+  status: "draft" | "pending_approval" | "approved" | "archived";
+  content: string;
+  variables: string[];
+  requiresApproval: boolean;
+  approvedAt?: string;
+  approvedById?: string;
+};
+
+export type InstitutionReportSnapshot = {
+  id: string;
+  institutionId: string;
+  kind: string;
+  title: string;
+  rangeStart: string;
+  rangeEnd: string;
+  metrics: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type RobotMaintenanceRecord = {
+  id: string;
+  institutionId: string;
+  robotId: string;
+  kind: string;
+  status: string;
+  notes?: string;
+  dueAt?: string;
+  completedAt?: string;
+  createdAt: string;
+};
+
+export type AuditLog = {
+  id: string;
+  institutionId: string;
+  actorId?: string;
+  action: "created" | "updated" | "published" | "confirmed" | "suspended";
+  resourceType: string;
+  resourceId?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type InstitutionalSummary = {
+  campuses: number;
+  spaces: number;
+  activeTeachers: number;
+  activeStudents: number;
+  robots: number;
+  connectedRobots: number;
+  activeLicenses: number;
+  publishedPolicies: number;
+  approvedTemplates: number;
+};
+
+export type InstitutionalSnapshot = {
+  campuses: Campus[];
+  floors: BuildingFloor[];
+  spaces: LearningSpace[];
+  licenses: InstitutionLicense[];
+  branding: InstitutionBranding | null;
+  policies: InstitutionPolicy[];
+  templates: InstitutionTemplate[];
+  reportSnapshots: InstitutionReportSnapshot[];
+  maintenanceRecords: RobotMaintenanceRecord[];
+  auditLogs: AuditLog[];
+  summary: InstitutionalSummary;
+};
+
 export type AppBootstrap = {
   session: Session | null;
   institution: Institution;
@@ -236,4 +405,5 @@ export type AppBootstrap = {
   robots: Robot[];
   classSessions: ClassSession[];
   pairingRequests: PairingRequest[];
+  institutional: InstitutionalSnapshot;
 };

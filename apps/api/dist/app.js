@@ -1,11 +1,13 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import sensible from "@fastify/sensible";
+import { Prisma } from "@prisma/client";
 import Fastify from "fastify";
 import { ZodError } from "zod";
 import { config } from "./lib/config.js";
 import { prismaPlugin } from "./plugins/prisma.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerInstitutionRoutes } from "./routes/institution.js";
 import { registerTeacherRoutes } from "./routes/teacher.js";
 import { registerRobotRoutes } from "./routes/robot.js";
 import { ensureMissionCatalog } from "./services/mission-catalog.js";
@@ -37,6 +39,14 @@ export async function buildApp() {
             });
             return;
         }
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === "P2002") {
+                reply.status(409).send({
+                    message: "Ya existe un registro con ese valor. Prueba con otro nombre o reutiliza el robot existente."
+                });
+                return;
+            }
+        }
         if (typeof error === "object" && error !== null && "statusCode" in error && typeof error.statusCode === "number") {
             const httpError = error;
             reply.status(httpError.statusCode).send({
@@ -50,6 +60,7 @@ export async function buildApp() {
         });
     });
     await registerAuthRoutes(app);
+    await registerInstitutionRoutes(app);
     await registerTeacherRoutes(app);
     await registerRobotRoutes(app);
     app.get("/health", async () => ({ ok: true }));

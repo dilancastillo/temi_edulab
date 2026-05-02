@@ -16,7 +16,12 @@ const bootstrap: AppBootstrap = {
   institution: {
     id: "inst-esbot",
     name: "Colegio Esbot EduLab",
-    slug: "esbot-edulab"
+    slug: "esbot-edulab",
+    country: "Colombia",
+    defaultLocale: "es-CO",
+    enabledLevels: ["BASICA_SECUNDARIA"],
+    dataPolicyMode: "colombia_baseline",
+    marketingConsentEnabled: true
   },
   courses: [{ id: "course-10a", institutionId: "inst-esbot", name: "10 A", level: "10" }],
   missions: [
@@ -79,7 +84,30 @@ const bootstrap: AppBootstrap = {
     }
   ],
   classSessions: [],
-  pairingRequests: []
+  pairingRequests: [],
+  institutional: {
+    campuses: [],
+    floors: [],
+    spaces: [],
+    licenses: [],
+    branding: null,
+    policies: [],
+    templates: [],
+    reportSnapshots: [],
+    maintenanceRecords: [],
+    auditLogs: [],
+    summary: {
+      campuses: 0,
+      spaces: 0,
+      activeTeachers: 1,
+      activeStudents: 1,
+      robots: 1,
+      connectedRobots: 1,
+      activeLicenses: 0,
+      publishedPolicies: 0,
+      approvedTemplates: 0
+    }
+  }
 };
 
 describe("DashboardScreen", () => {
