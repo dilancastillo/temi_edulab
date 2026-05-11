@@ -18,8 +18,7 @@ export function ExecuteButton({ workspaceState, sequence, disabled, label = "Eje
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
-  const hasExecutableBlock = sequence.includes("temi_move") || sequence.includes("temi_say");
-  const isDisabled = disabled || !hasExecutableBlock || loading;
+  const isDisabled = disabled || loading;
 
   async function handleClick() {
     setMessage(null);

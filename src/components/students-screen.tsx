@@ -240,7 +240,12 @@ export function StudentsScreen() {
                             inline
                             label="Ejecutar"
                             workspaceState={studentWork.workspaceState}
-                            sequence={extractCommandsFromWorkspace(studentWork.workspaceState).map((c) => c.type === "Navigate" ? "temi_move" : c.type === "Say" ? "temi_say" : "temi_show_image")}
+                            sequence={extractCommandsFromWorkspace(studentWork.workspaceState).map((c) => {
+                              if (c.type === "Navigate") return "temi_move";
+                              if (c.type === "Say") return "temi_say";
+                              if (c.type === "WhileMqtt" || c.type === "WhileTimer" || c.type === "WhileListen") return "temi_move";
+                              return "temi_show_image";
+                            })}
                           />
                         )}
                       </div>
@@ -550,6 +555,21 @@ function SequencePreviewModal({
       const imgNum = imgCounter;
       const imgBlock = imageBlocks[imgNum - 1];
       return { iconSrc: "/imagen.png", icon: null, label: `Mostrar imagen ${imgNum}`, base64: imgBlock?.base64 ?? null, key: i };
+    }
+    if (block.type === "temi_while_mqtt") {
+      return { iconSrc: null, icon: "📡", label: `Repetir hasta MQTT en topic: ${block.fields["TOPIC"] ?? "robot/stop"}`, base64: null, key: i };
+    }
+    if (block.type === "temi_while_timer") {
+      return { iconSrc: null, icon: "⏱️", label: `Repetir durante ${block.fields["SECONDS"] ?? "30"} segundos`, base64: null, key: i };
+    }
+    if (block.type === "temi_while_listen") {
+      return { iconSrc: null, icon: "👂", label: `Repetir hasta escuchar: "${block.fields["STOP_WORD"] ?? "listo"}"`, base64: null, key: i };
+    }
+    if (block.type === "temi_while_count") {
+      return { iconSrc: null, icon: "🔢", label: `Repetir mientras contador < ${block.fields["LIMIT"] ?? "5"}`, base64: null, key: i };
+    }
+    if (block.type === "temi_repeat") {
+      return { iconSrc: null, icon: "🔁", label: `Repetir ${block.fields["TIMES"] ?? "2"} veces`, base64: null, key: i };
     }
     return { iconSrc: null, icon: "📹", label: block.type, base64: null, key: i };
   });
