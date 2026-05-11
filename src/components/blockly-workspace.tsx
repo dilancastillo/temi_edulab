@@ -64,7 +64,8 @@ const toolbox = {
         { kind: "block", type: "temi_repeat" },
         { kind: "block", type: "temi_while_count" },
         { kind: "block", type: "temi_while_timer" },
-        { kind: "block", type: "temi_while_listen" }
+        { kind: "block", type: "temi_while_listen" },
+        { kind: "block", type: "temi_while_mqtt" }
       ]
     }
   ]
@@ -210,6 +211,17 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       colour: 120,
       tooltip: "Repite los bloques internos hasta que el robot escuche la palabra de parada (máx. 5 veces)",
       helpUrl: ""
+    },
+    {
+      type: "temi_while_mqtt",
+      message0: "repetir hasta mensaje MQTT en topic %1",
+      args0: [{ type: "field_input", name: "TOPIC", text: "robot/stop" }],
+      message1: "%1",
+      args1: [{ type: "input_statement", name: "DO" }],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 120,
+      tooltip: "Repite los bloques internos hasta recibir un mensaje en el topic MQTT indicado"
     }
   ]);
 

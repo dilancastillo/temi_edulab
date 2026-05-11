@@ -1,6 +1,11 @@
 package com.esbot.edulab.core.robot
 
 import android.util.Log
+import org.eclipse.paho.client.mqttv3.MqttClient
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.eclipse.paho.client.mqttv3.IMqttMessageListener
+import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -69,6 +74,7 @@ class RobotReflectionRunner @Inject constructor(
                 }
                 Result.success(Unit)
             }
+            is RobotCommand.WhileMqtt -> whileMqttAndWait(command.topic, command.commands)
         }
     }
 
@@ -500,5 +506,62 @@ class RobotReflectionRunner @Inject constructor(
             Log.e(TAG, "askConditionAndWait falló: ${e.message}", e)
             Result.failure(e)
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // WhileMqtt — loops until a message arrives on the given MQTT topic
+    // -------------------------------------------------------------------------
+
+    private fun whileMqttAndWait(topic: String, commands: List<RobotCommand>): Result<Unit> {
+        @Volatile var stopReceived = false
+
+        val mqttClient = try {
+            buildMqttClient()
+        } catch (e: Exception) {
+            Log.e(TAG, "whileMqttAndWait: no se pudo conectar al broker MQTT: ${e.message}", e)
+            return Result.failure(e)
+        }
+
+        try {
+            mqttClient.subscribe(topic, 1) { _, _ ->
+                Log.d(TAG, "WhileMqtt: mensaje recibido en topic '$topic' → stopReceived = true")
+                stopReceived = true
+            }
+            Log.d(TAG, "WhileMqtt: suscrito a topic '$topic', iniciando bucle")
+
+            while (true) {
+                val result = runSequence(commands)
+                if (result.isFailure) return result
+                if (stopReceived) break
+            }
+
+            Log.d(TAG, "WhileMqtt: bucle finalizado por mensaje MQTT en topic '$topic'")
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "whileMqttAndWait falló: ${e.message}", e)
+            return Result.failure(e)
+        } finally {
+            try {
+                mqttClient.unsubscribe(topic)
+                mqttClient.disconnect()
+                Log.d(TAG, "WhileMqtt: cliente MQTT desconectado")
+            } catch (e: Exception) {
+                Log.w(TAG, "WhileMqtt: error al desconectar cliente MQTT: ${e.message}")
+            }
+        }
+    }
+
+    private fun buildMqttClient(): MqttClient {
+        val clientId = MqttConfig.CLIENT_ID_PREFIX + UUID.randomUUID().toString()
+        val client = MqttClient(MqttConfig.BROKER_URI, clientId, null)
+        val options = MqttConnectOptions().apply {
+            userName = MqttConfig.USERNAME
+            password = MqttConfig.PASSWORD.toCharArray()
+            isCleanSession = true
+            connectionTimeout = 10
+            keepAliveInterval = 30
+        }
+        client.connect(options)
+        return client
     }
 }

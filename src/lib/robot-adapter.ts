@@ -118,7 +118,13 @@ export type WhileListenCommand = {
   commands: RobotExecuteCommand[];
 };
 
-export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | RepeatCommand | WhileCountCommand | WhileTimerCommand | WhileListenCommand;
+export type WhileMqttCommand = {
+  type: "WhileMqtt";
+  topic: string;
+  commands: RobotExecuteCommand[];
+};
+
+export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | RepeatCommand | WhileCountCommand | WhileTimerCommand | WhileListenCommand | WhileMqttCommand;
 
 export async function uploadVideo(file: File): Promise<{ ok: boolean; videoUrl?: string; message?: string }> {
   try {
@@ -268,6 +274,13 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         const innerCommands: RobotExecuteCommand[] = [];
         walk(innerBlock, innerCommands);
         acc.push({ type: "WhileListen", stopWord, maxIterations: 5, commands: innerCommands });
+      } else if (b["type"] === "temi_while_mqtt") {
+        const topic = (fields?.["TOPIC"] ?? "robot/stop").trim() || "robot/stop";
+        const doInput = (b["inputs"] as Record<string, unknown>)?.["DO"];
+        const innerBlock = (doInput as Record<string, unknown>)?.["block"];
+        const innerCommands: RobotExecuteCommand[] = [];
+        walk(innerBlock, innerCommands);
+        acc.push({ type: "WhileMqtt", topic, commands: innerCommands });
       }
 
       const next = (b["next"] as Record<string, unknown>)?.["block"];

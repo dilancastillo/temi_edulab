@@ -1,9 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+}
+
+// Load local.properties for secrets (never committed to git)
+val localProps = Properties().also { props ->
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) props.load(localFile.inputStream())
 }
 
 android {
@@ -20,6 +28,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // MQTT credentials injected from local.properties
+        buildConfigField("String", "MQTT_BROKER_URI", "\"${localProps.getProperty("mqtt.brokerUri", "ssl://836d5632ad3e49e09331dd43ab24ccad.s1.eu.hivemq.cloud:8883")}\"")
+        buildConfigField("String", "MQTT_USERNAME",   "\"${localProps.getProperty("mqtt.username", "edulab")}\"")
+        buildConfigField("String", "MQTT_PASSWORD",   "\"${localProps.getProperty("mqtt.password", "")}\"")
     }
 
     buildTypes {
@@ -40,6 +53,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     testOptions {
         unitTests {
@@ -80,4 +94,5 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
+    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
 }

@@ -293,6 +293,10 @@ class RobotWebSocketClient @Inject constructor(
                     maxIterations = obj.get("maxIterations").asInt,
                     commands = parseCommands(obj.getAsJsonArray("commands"))
                 )
+                "whileMqtt", "WhileMqtt" -> RobotCommand.WhileMqtt(
+                    topic = obj.get("topic").asString,
+                    commands = parseCommands(obj.getAsJsonArray("commands"))
+                )
                 else -> {
                     Log.w(TAG, "Tipo de comando desconocido: $type")
                     null

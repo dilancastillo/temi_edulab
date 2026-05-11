@@ -17,6 +17,10 @@ sealed class RobotCommand {
         val maxIterations: Int,
         val commands: List<RobotCommand>
     ) : RobotCommand()
+    data class WhileMqtt(
+        val topic: String,
+        val commands: List<RobotCommand>
+    ) : RobotCommand()
 }
 
 data class ConditionOption(
