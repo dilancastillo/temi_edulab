@@ -8,6 +8,7 @@ import org.eclipse.paho.client.mqttv3.IMqttMessageListener
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -513,7 +514,7 @@ class RobotReflectionRunner @Inject constructor(
     // -------------------------------------------------------------------------
 
     private fun whileMqttAndWait(topic: String, commands: List<RobotCommand>): Result<Unit> {
-        @Volatile var stopReceived = false
+        val stopReceived = AtomicBoolean(false)
 
         val mqttClient = try {
             buildMqttClient()
@@ -525,14 +526,14 @@ class RobotReflectionRunner @Inject constructor(
         try {
             mqttClient.subscribe(topic, 1) { _, _ ->
                 Log.d(TAG, "WhileMqtt: mensaje recibido en topic '$topic' → stopReceived = true")
-                stopReceived = true
+                stopReceived.set(true)
             }
             Log.d(TAG, "WhileMqtt: suscrito a topic '$topic', iniciando bucle")
 
             while (true) {
                 val result = runSequence(commands)
                 if (result.isFailure) return result
-                if (stopReceived) break
+                if (stopReceived.get()) break
             }
 
             Log.d(TAG, "WhileMqtt: bucle finalizado por mensaje MQTT en topic '$topic'")
