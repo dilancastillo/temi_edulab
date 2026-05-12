@@ -283,9 +283,11 @@ export function StudentsScreen() {
         <StudentFormModal
           courses={courses}
           onClose={() => setMode(null)}
-          onSubmit={(input) => {
-            addStudent(input);
+          onSubmit={async (input) => {
+            const result = await addStudent(input);
+            if (!result.ok) return result.message ?? "Error al crear estudiante.";
             setMode(null);
+            return null;
           }}
           title="Agregar estudiante"
         />
@@ -296,9 +298,10 @@ export function StudentsScreen() {
           courses={courses}
           initialStudent={studentToEdit}
           onClose={() => setStudentToEdit(null)}
-          onSubmit={(input) => {
-            updateStudent(studentToEdit.id, input);
+          onSubmit={async (input) => {
+            await updateStudent(studentToEdit.id, input);
             setStudentToEdit(null);
+            return null;
           }}
           title="Editar estudiante"
         />
@@ -354,7 +357,7 @@ function StudentFormModal({
   courses: Course[];
   initialStudent?: Student;
   onClose: () => void;
-  onSubmit: (input: StudentInput) => void;
+  onSubmit: (input: StudentInput) => Promise<string | null>;
   title: string;
 }>) {
   const [fullName, setFullName] = useState(initialStudent?.fullName ?? "");
@@ -363,6 +366,8 @@ function StudentFormModal({
   const [courseId, setCourseId] = useState(initialStudent?.courseId ?? courses[0]?.id ?? "");
   const [avatarUrl, setAvatarUrl] = useState(initialStudent?.avatarUrl);
   const [fileError, setFileError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const isEditing = !!initialStudent;
 
   async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
@@ -374,9 +379,13 @@ function StudentFormModal({
     setAvatarUrl(await readFileAsDataUrl(file));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit({ avatarUrl, courseId, email, fullName, password: password || initialStudent?.password || "" });
+    setSubmitError("");
+    setSubmitting(true);
+    const error = await onSubmit({ avatarUrl, courseId, email, fullName, password: password || initialStudent?.password || "" });
+    setSubmitting(false);
+    if (error) setSubmitError(error);
   }
 
   return (
@@ -428,8 +437,11 @@ function StudentFormModal({
         </label>
         <div className="modal-actions">
           <button className="button button-ghost" onClick={onClose} type="button">Cancelar</button>
-          <button className="button button-primary" type="submit">Guardar estudiante</button>
+          <button className="button button-primary" disabled={submitting} type="submit">
+            {submitting ? "Guardando..." : "Guardar estudiante"}
+          </button>
         </div>
+        {submitError ? <p className="form-error" role="alert">{submitError}</p> : null}
       </form>
     </Modal>
   );

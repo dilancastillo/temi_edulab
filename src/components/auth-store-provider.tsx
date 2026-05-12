@@ -63,7 +63,7 @@ export type AuthStore = {
   // Estudiantes
   loginStudentWithPassword: (email: string, password: string) => Promise<StudentLoginResult>;
   loginStudentWithMissionCode: (missionCode: string, studentName: string) => Promise<StudentLoginResult>;
-  addStudent: (input: StudentInput) => Promise<void>;
+  addStudent: (input: StudentInput) => Promise<{ ok: boolean; message?: string }>;
   updateStudent: (studentId: string, input: StudentInput) => Promise<void>;
   deleteStudent: (studentId: string) => Promise<void>;
   importStudents: (students: ImportedStudent[]) => Promise<{ added: number; skipped: string[] }>;
@@ -327,8 +327,8 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
 
   // ── 5.8: Student operations ──────────────────────────────────────────────────
 
-  const addStudent = useCallback(async (input: StudentInput): Promise<void> => {
-    if (!teacherId) return;
+  const addStudent = useCallback(async (input: StudentInput): Promise<{ ok: boolean; message?: string }> => {
+    if (!teacherId) return { ok: false, message: "No hay sesión activa." };
     const newStudent: Student = {
       id: createId("student"),
       teacherId,
@@ -341,13 +341,15 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       avatarUrl: input.avatarUrl,
       createdAt: new Date().toISOString(),
     };
-    setStudents((current) => [newStudent, ...current]);
-    // Use server endpoint to hash password before storing
-    await fetch("/api/student/create", {
+    const res = await fetch("/api/student/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newStudent),
     });
+    const data = await res.json() as { ok: boolean; message?: string };
+    if (!data.ok) return { ok: false, message: data.message };
+    setStudents((current) => [newStudent, ...current]);
+    return { ok: true };
   }, [teacherId]);
 
   const updateStudent = useCallback(async (studentId: string, input: StudentInput): Promise<void> => {

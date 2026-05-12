@@ -19,6 +19,15 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(body.password, 10);
 
+    // Check for duplicate email globally
+    const { rows: existing } = await pool.query(
+      "SELECT id FROM students WHERE email = $1",
+      [body.email.trim().toLowerCase()]
+    );
+    if (existing.length > 0 && existing[0].id !== body.id) {
+      return NextResponse.json({ ok: false, message: "Ya existe un estudiante registrado con ese correo." }, { status: 409 });
+    }
+
     await pool.query(
       `INSERT INTO students (id, teacher_id, institution_id, course_id, full_name, email, password, progress, avatar_url, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
