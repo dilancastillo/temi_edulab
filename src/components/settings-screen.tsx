@@ -10,7 +10,7 @@ import { getRobotId, setRobotId } from "@/lib/robot-adapter";
 import type { ProfileInput } from "@/lib/types";
 
 export function SettingsScreen() {
-  const { profile, resetDemoData, updateProfile, robotIp, setRobotIp } = useDemoStore();
+  const { profile, updateProfile, robotIp, setRobotIp } = useDemoStore();
   const [isEditing, setIsEditing] = useState(false);
   const [ipInput, setIpInput] = useState(robotIp);
   const [ipSaved, setIpSaved] = useState(false);
@@ -96,11 +96,7 @@ export function SettingsScreen() {
             </div>
           </dl>
         </div>
-        <div className="profile-footer">
-          <button className="button button-danger-outline" onClick={resetDemoData} type="button">
-            Restablecer demo local
-          </button>
-        </div>
+
       </section>
 
       <section aria-labelledby="robot-id-title" className="profile-card">
