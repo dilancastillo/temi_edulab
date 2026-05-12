@@ -370,10 +370,24 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       avatarUrl: input.avatarUrl,
     };
 
+    const payload: Record<string, unknown> = {
+      id: updated.id,
+      teacherId: updated.teacherId,
+      institutionId: updated.institutionId,
+      courseId: updated.courseId,
+      fullName: updated.fullName,
+      email: updated.email,
+      progress: updated.progress,
+      avatarUrl: updated.avatarUrl,
+      createdAt: updated.createdAt,
+    };
+    // Only send newPassword if the user typed one — avoids double-hashing
+    if (input.password) payload["newPassword"] = input.password;
+
     const res = await fetch("/api/student/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
+      body: JSON.stringify(payload),
     });
     const data = await res.json() as { ok: boolean; message?: string };
     if (!data.ok) return { ok: false, message: data.message };

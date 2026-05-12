@@ -11,13 +11,12 @@ export async function POST(req: NextRequest) {
       courseId: string;
       fullName: string;
       email: string;
-      password: string;
+      password?: string;       // used on create
+      newPassword?: string;    // used on update — only set if user typed a new password
       progress: string;
       avatarUrl?: string;
       createdAt: string;
     };
-
-    const hashedPassword = await bcrypt.hash(body.password, 10);
 
     // Check for duplicate email globally
     const { rows: existing } = await pool.query(
@@ -28,22 +27,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, message: "Ya existe un estudiante registrado con ese correo." }, { status: 409 });
     }
 
-    await pool.query(
-      `INSERT INTO students (id, teacher_id, institution_id, course_id, full_name, email, password, progress, avatar_url, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-       ON CONFLICT (id) DO UPDATE SET
-         course_id = EXCLUDED.course_id,
-         full_name = EXCLUDED.full_name,
-         email = EXCLUDED.email,
-         password = EXCLUDED.password,
-         progress = EXCLUDED.progress,
-         avatar_url = EXCLUDED.avatar_url`,
-      [
-        body.id, body.teacherId, body.institutionId, body.courseId,
-        body.fullName, body.email, hashedPassword, body.progress,
-        body.avatarUrl ?? null, body.createdAt
-      ]
-    );
+    // Determine if we need to hash a password
+    const rawPassword = body.newPassword || body.password;
+    const hashedPassword = rawPassword ? await bcrypt.hash(rawPassword, 10) : null;
+
+    if (hashedPassword) {
+      // Full upsert including password
+      await pool.query(
+        `INSERT INTO students (id, teacher_id, institution_id, course_id, full_name, email, password, progress, avatar_url, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT (id) DO UPDATE SET
+           course_id = EXCLUDED.course_id,
+           full_name = EXCLUDED.full_name,
+           email = EXCLUDED.email,
+           password = EXCLUDED.password,
+           progress = EXCLUDED.progress,
+           avatar_url = EXCLUDED.avatar_url`,
+        [
+          body.id, body.teacherId, body.institutionId, body.courseId,
+          body.fullName, body.email, hashedPassword, body.progress,
+          body.avatarUrl ?? null, body.createdAt
+        ]
+      );
+    } else {
+      // Update without touching password
+      await pool.query(
+        `INSERT INTO students (id, teacher_id, institution_id, course_id, full_name, email, password, progress, avatar_url, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,'',$7,$8,$9)
+         ON CONFLICT (id) DO UPDATE SET
+           course_id = EXCLUDED.course_id,
+           full_name = EXCLUDED.full_name,
+           email = EXCLUDED.email,
+           progress = EXCLUDED.progress,
+           avatar_url = EXCLUDED.avatar_url`,
+        [
+          body.id, body.teacherId, body.institutionId, body.courseId,
+          body.fullName, body.email, body.progress,
+          body.avatarUrl ?? null, body.createdAt
+        ]
+      );
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {
