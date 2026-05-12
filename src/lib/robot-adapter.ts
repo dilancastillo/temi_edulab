@@ -66,7 +66,8 @@ export type SayCommand = {
   gender?: "FEMALE" | "MALE";
   speed?: number;
   pitch?: number;
-  language?: string; // "ES_ES" | "EN_US" | "PT_BR" | "FR_FR" | "DE_DE" | "ZH_CN"
+  language?: string;
+  showAnimation?: boolean;
 };
 
 export type ShowImageCommand = {
@@ -219,7 +220,8 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         const speed = fields?.["SPEED"] ? parseFloat(fields["SPEED"]) : undefined;
         const pitch = fields?.["PITCH"] ? parseInt(fields["PITCH"], 10) : undefined;
         const language = fields?.["LANGUAGE"];
-        if (text) acc.push({ type: "Say", text, gender, speed, pitch, language });
+        const showAnimation = fields?.["SHOW_ANIMATION"] === "true";
+        if (text) acc.push({ type: "Say", text, gender, speed, pitch, language, showAnimation });
       } else if (b["type"] === "temi_show_image") {
         const imageUrl = fields?.["IMAGE_URL"];
         if (imageUrl) acc.push({ type: "ShowImage", imageUrl });

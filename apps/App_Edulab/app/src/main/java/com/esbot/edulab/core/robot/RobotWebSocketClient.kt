@@ -266,7 +266,8 @@ class RobotWebSocketClient @Inject constructor(
                     gender = obj.get("gender")?.takeIf { !it.isJsonNull }?.asString,
                     speed = obj.get("speed")?.takeIf { !it.isJsonNull }?.asFloat,
                     pitch = obj.get("pitch")?.takeIf { !it.isJsonNull }?.asInt,
-                    language = obj.get("language")?.takeIf { !it.isJsonNull }?.asString
+                    language = obj.get("language")?.takeIf { !it.isJsonNull }?.asString,
+                    showAnimation = obj.get("showAnimation")?.takeIf { !it.isJsonNull }?.asBoolean ?: false
                 )
                 "showImage", "ShowImage" -> RobotCommand.ShowImage(
                     imageUrl = resolveUrl(obj.get("imageUrl").asString),
