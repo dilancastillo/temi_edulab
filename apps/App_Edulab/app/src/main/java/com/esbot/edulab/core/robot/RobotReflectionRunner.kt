@@ -224,43 +224,23 @@ class RobotReflectionRunner @Inject constructor(
                 langEnumClass.getField("SYSTEM").get(null)
             }
 
-            // Use create(String, boolean, Language) overload
+            // Use create(String, boolean, Language, boolean) to include showAnimationOnly
             val ttsRequest = try {
-                ttsRequestClass.getMethod("create", String::class.java, Boolean::class.javaPrimitiveType, langEnumClass)
-                    .invoke(null, text, false, langEnumValue)
-                    .also { Log.d(TAG, "TtsRequest creado con language=$language") }
+                ttsRequestClass.getMethod(
+                    "create",
+                    String::class.java,
+                    Boolean::class.javaPrimitiveType,
+                    langEnumClass,
+                    Boolean::class.javaPrimitiveType
+                ).invoke(null, text, false, langEnumValue, showAnimation)
+                    .also { Log.d(TAG, "TtsRequest creado con language=$language showAnimation=$showAnimation") }
             } catch (e: Exception) {
-                Log.w(TAG, "create(text, bool, Language) falló: ${e.message}, usando overload básico")
+                Log.w(TAG, "create(text, bool, Language, bool) falló: ${e.message}, usando overload básico")
                 ttsRequestClass.getMethod("create", String::class.java, Boolean::class.javaPrimitiveType)
                     .invoke(null, text, false)
             }
 
-            // Apply showAnimationOnly if requested
-            if (showAnimation) {
-                try {
-                    // Log available methods to find the correct setter name
-                    val animMethods = ttsRequestClass.methods.filter {
-                        it.name.contains("anim", ignoreCase = true) ||
-                        it.name.contains("Animation", ignoreCase = true) ||
-                        it.name.contains("show", ignoreCase = true)
-                    }
-                    Log.d(TAG, "TtsRequest métodos animación: ${animMethods.map { it.name + "(" + it.parameterTypes.map { p -> p.simpleName } + ")" }}")
-
-                    val setterName = animMethods.firstOrNull {
-                        it.parameterTypes.size == 1 && it.parameterTypes[0] == Boolean::class.javaPrimitiveType
-                    }?.name
-
-                    if (setterName != null) {
-                        ttsRequestClass.getMethod(setterName, Boolean::class.javaPrimitiveType)
-                            .invoke(ttsRequest, true)
-                        Log.d(TAG, "TtsRequest.$setterName(true) aplicado")
-                    } else {
-                        Log.w(TAG, "No se encontró setter de animación en TtsRequest")
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "showAnimation falló: ${e.message}")
-                }
-            }
+            // showAnimationOnly is set via create() — no separate setter needed
 
             // Get the request id to match callbacks
             val requestId = ttsRequestClass.getMethod("getId").invoke(ttsRequest)
