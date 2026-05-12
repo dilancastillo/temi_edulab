@@ -98,7 +98,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     },
     {
       type: "temi_say",
-      message0: "decir %1  género %2  velocidad %3  tono %4",
+      message0: "decir %1  género %2  velocidad %3  tono %4  idioma %5",
       args0: [
         { type: "field_input", name: "TEXT", text: "Hola, llegué a la meta" },
         {
@@ -110,12 +110,24 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
           ]
         },
         { type: "field_number", name: "SPEED", value: 1.0, min: 0.5, max: 2.0, precision: 0.1 },
-        { type: "field_number", name: "PITCH", value: 0, min: -10, max: 10, precision: 1 }
+        { type: "field_number", name: "PITCH", value: 0, min: -10, max: 10, precision: 1 },
+        {
+          type: "field_dropdown",
+          name: "LANGUAGE",
+          options: [
+            ["Español", "ES_ES"],
+            ["Inglés", "EN_US"],
+            ["Portugués", "PT_BR"],
+            ["Francés", "FR_FR"],
+            ["Alemán", "DE_DE"],
+            ["Chino", "ZH_CN"]
+          ]
+        }
       ],
       previousStatement: null,
       nextStatement: null,
       colour: 285,
-      tooltip: "Temi dice un texto. Puedes ajustar género (femenino/masculino), velocidad (0.5–2.0) y tono (-10 a 10).",
+      tooltip: "Temi dice un texto. Puedes ajustar género (femenino/masculino), velocidad (0.5–2.0), tono (-10 a 10) e idioma.",
       helpUrl: ""
     },
     {

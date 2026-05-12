@@ -28,7 +28,7 @@ class RobotReflectionRunner @Inject constructor(
     override fun run(command: RobotCommand): Result<Unit> {
         return when (command) {
             is RobotCommand.Navigate -> navigateAndWait(command.location)
-            is RobotCommand.Say -> speakAndWait(command.text, command.gender, command.speed, command.pitch)
+            is RobotCommand.Say -> speakAndWait(command.text, command.gender, command.speed, command.pitch, command.language)
             is RobotCommand.ShowImage -> showImageAndWait(command.imageUrl, command.durationMs)
             is RobotCommand.ShowVideo -> showVideoAndWait(command.videoUrl)
             is RobotCommand.AskCondition -> askConditionAndWait(command.question, command.options)
@@ -165,7 +165,8 @@ class RobotReflectionRunner @Inject constructor(
         text: String,
         gender: String? = null,
         speed: Float? = null,
-        pitch: Int? = null
+        pitch: Int? = null,
+        language: String? = null
     ): Result<Unit> {
         // Estimate timeout: ~10 chars/second + 10s buffer, minimum 30s
         val timeoutS = maxOf(30L, (text.length / 10L) + 10L)
@@ -202,11 +203,34 @@ class RobotReflectionRunner @Inject constructor(
             }
 
             val ttsRequestClass = Class.forName("com.robotemi.sdk.TtsRequest")
-            val ttsRequest = ttsRequestClass.getMethod(
-                "create",
-                String::class.java,
-                Boolean::class.javaPrimitiveType
-            ).invoke(null, text, false)
+
+            // Map language string to TtsRequest.Language int value
+            val languageInt: Int = when (language) {
+                "EN_US" -> 1
+                "ZH_CN" -> 2
+                "DE_DE" -> 11
+                "FR_FR" -> 12
+                "PT_BR" -> 14
+                "ES_ES" -> 21
+                else    -> 0 // SYSTEM
+            }
+
+            // Use create(speech, isShowOnConversationLayer, language) if available, else fallback
+            val ttsRequest = try {
+                ttsRequestClass.getMethod(
+                    "create",
+                    String::class.java,
+                    Boolean::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType
+                ).invoke(null, text, false, languageInt)
+            } catch (e: Exception) {
+                Log.w(TAG, "TtsRequest.create(text, bool, int) no disponible, usando overload básico")
+                ttsRequestClass.getMethod(
+                    "create",
+                    String::class.java,
+                    Boolean::class.javaPrimitiveType
+                ).invoke(null, text, false)
+            }
 
             // Get the request id to match callbacks
             val requestId = ttsRequestClass.getMethod("getId").invoke(ttsRequest)
