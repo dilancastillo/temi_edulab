@@ -64,7 +64,7 @@ export type AuthStore = {
   loginStudentWithPassword: (email: string, password: string) => Promise<StudentLoginResult>;
   loginStudentWithMissionCode: (missionCode: string, studentName: string) => Promise<StudentLoginResult>;
   addStudent: (input: StudentInput) => Promise<{ ok: boolean; message?: string }>;
-  updateStudent: (studentId: string, input: StudentInput) => Promise<void>;
+  updateStudent: (studentId: string, input: StudentInput) => Promise<{ ok: boolean; message?: string }>;
   deleteStudent: (studentId: string) => Promise<void>;
   importStudents: (students: ImportedStudent[]) => Promise<{ added: number; skipped: string[] }>;
 
@@ -352,32 +352,34 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     return { ok: true };
   }, [teacherId]);
 
-  const updateStudent = useCallback(async (studentId: string, input: StudentInput): Promise<void> => {
-    if (!teacherId) return;
-    setStudents((current) => {
-      const updated = current.map((s) =>
-        s.id === studentId
-          ? {
-              ...s,
-              courseId: input.courseId,
-              fullName: input.fullName.trim(),
-              email: input.email.trim().toLowerCase(),
-              password: input.password || s.password,
-              avatarUrl: input.avatarUrl
-            }
-          : s
-      );
-      const s = updated.find((s) => s.id === studentId);
-      if (s) {
-        // Use server endpoint to hash password before storing
-        void fetch("/api/student/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(s),
-        });
-      }
-      return updated;
+  const updateStudent = useCallback(async (studentId: string, input: StudentInput): Promise<{ ok: boolean; message?: string }> => {
+    if (!teacherId) return { ok: false, message: "No hay sesión activa." };
+
+    const current = await new Promise<Student[]>((resolve) => {
+      setStudents((s) => { resolve(s); return s; });
     });
+    const existing = current.find((s) => s.id === studentId);
+    if (!existing) return { ok: false, message: "Estudiante no encontrado." };
+
+    const updated: Student = {
+      ...existing,
+      courseId: input.courseId,
+      fullName: input.fullName.trim(),
+      email: input.email.trim().toLowerCase(),
+      password: input.password || existing.password,
+      avatarUrl: input.avatarUrl,
+    };
+
+    const res = await fetch("/api/student/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updated),
+    });
+    const data = await res.json() as { ok: boolean; message?: string };
+    if (!data.ok) return { ok: false, message: data.message };
+
+    setStudents((s) => s.map((st) => st.id === studentId ? updated : st));
+    return { ok: true };
   }, [teacherId]);
 
   const deleteStudent = useCallback(async (studentId: string): Promise<void> => {

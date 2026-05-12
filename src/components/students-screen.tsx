@@ -299,7 +299,8 @@ export function StudentsScreen() {
           initialStudent={studentToEdit}
           onClose={() => setStudentToEdit(null)}
           onSubmit={async (input) => {
-            await updateStudent(studentToEdit.id, input);
+            const result = await updateStudent(studentToEdit.id, input);
+            if (!result.ok) return result.message ?? "Error al actualizar estudiante.";
             setStudentToEdit(null);
             return null;
           }}
