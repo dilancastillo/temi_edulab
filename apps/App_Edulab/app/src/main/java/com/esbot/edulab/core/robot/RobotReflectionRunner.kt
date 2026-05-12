@@ -203,33 +203,35 @@ class RobotReflectionRunner @Inject constructor(
             }
 
             val ttsRequestClass = Class.forName("com.robotemi.sdk.TtsRequest")
+            val langEnumClass = Class.forName("com.robotemi.sdk.TtsRequest\$Language")
 
-            // Map language string to TtsRequest.Language int value
-            val languageInt: Int = when (language) {
-                "EN_US" -> 1
-                "ZH_CN" -> 2
-                "DE_DE" -> 11
-                "FR_FR" -> 12
-                "PT_BR" -> 14
-                "ES_ES" -> 21
-                else    -> 0 // SYSTEM
+            // Map language string to Language enum constant by name
+            val langEnumValue = try {
+                val name = when (language) {
+                    "EN_US" -> "EN_US"
+                    "ZH_CN" -> "ZH_CN"
+                    "DE_DE" -> "DE_DE"
+                    "FR_FR" -> "FR_FR"
+                    "PT_BR" -> "PT_BR"
+                    "ES_ES" -> "ES_ES"
+                    else    -> "SYSTEM"
+                }
+                langEnumClass.getField(name).get(null)
+                    .also { Log.d(TAG, "Language enum resuelto: $name") }
+            } catch (e: Exception) {
+                Log.w(TAG, "Language enum '$language' no encontrado, usando SYSTEM")
+                langEnumClass.getField("SYSTEM").get(null)
             }
 
-            // Use create(speech, isShowOnConversationLayer, language) if available, else fallback
+            // Use create(String, boolean, Language) overload
             val ttsRequest = try {
-                ttsRequestClass.getMethod(
-                    "create",
-                    String::class.java,
-                    Boolean::class.javaPrimitiveType,
-                    Int::class.javaPrimitiveType
-                ).invoke(null, text, false, languageInt)
+                ttsRequestClass.getMethod("create", String::class.java, Boolean::class.javaPrimitiveType, langEnumClass)
+                    .invoke(null, text, false, langEnumValue)
+                    .also { Log.d(TAG, "TtsRequest creado con language=$language") }
             } catch (e: Exception) {
-                Log.w(TAG, "TtsRequest.create(text, bool, int) no disponible, usando overload básico")
-                ttsRequestClass.getMethod(
-                    "create",
-                    String::class.java,
-                    Boolean::class.javaPrimitiveType
-                ).invoke(null, text, false)
+                Log.w(TAG, "create(text, bool, Language) falló: ${e.message}, usando overload básico")
+                ttsRequestClass.getMethod("create", String::class.java, Boolean::class.javaPrimitiveType)
+                    .invoke(null, text, false)
             }
 
             // Get the request id to match callbacks

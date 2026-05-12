@@ -19,7 +19,13 @@ import javax.inject.Singleton
 
 private const val TAG = "RobotWebSocketClient"
 private const val SERVER_URL = "ws://87.99.152.162:3000/api/robot/ws"
+private const val SERVER_BASE_URL = "http://87.99.152.162:3000"
 private const val RECONNECT_DELAY_MS = 5000L
+
+/** Converts a relative path like /uploads/images/foo.png to an absolute URL. */
+internal fun resolveUrl(url: String): String =
+    if (url.startsWith("http://") || url.startsWith("https://")) url
+    else "$SERVER_BASE_URL$url"
 
 @Singleton
 class RobotWebSocketClient @Inject constructor(
@@ -263,10 +269,10 @@ class RobotWebSocketClient @Inject constructor(
                     language = obj.get("language")?.takeIf { !it.isJsonNull }?.asString
                 )
                 "showImage", "ShowImage" -> RobotCommand.ShowImage(
-                    imageUrl = obj.get("imageUrl").asString,
+                    imageUrl = resolveUrl(obj.get("imageUrl").asString),
                     durationMs = obj.get("durationMs")?.asLong ?: 7000L
                 )
-                "showVideo", "ShowVideo" -> RobotCommand.ShowVideo(obj.get("videoUrl").asString)
+                "showVideo", "ShowVideo" -> RobotCommand.ShowVideo(resolveUrl(obj.get("videoUrl").asString))
                 "askCondition", "AskCondition" -> {
                     val optionsArray = obj.getAsJsonArray("options")
                     val options = optionsArray.map { optEl ->
