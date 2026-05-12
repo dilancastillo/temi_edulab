@@ -2,7 +2,12 @@ package com.esbot.edulab.core.robot
 
 sealed class RobotCommand {
     data class Navigate(val location: String) : RobotCommand()
-    data class Say(val text: String) : RobotCommand()
+    data class Say(
+        val text: String,
+        val gender: String? = null,   // "FEMALE" | "MALE"
+        val speed: Float? = null,     // 0.5 – 2.0, default 1.0
+        val pitch: Int? = null        // -10 – 10, default 0
+    ) : RobotCommand()
     data class ShowImage(val imageUrl: String, val durationMs: Long = 7000L) : RobotCommand()
     data class ShowVideo(val videoUrl: String) : RobotCommand()
     data class AskCondition(

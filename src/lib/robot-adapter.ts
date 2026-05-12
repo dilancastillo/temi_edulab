@@ -63,6 +63,9 @@ export type NavigateCommand = {
 export type SayCommand = {
   type: "Say";
   text: string;
+  gender?: "FEMALE" | "MALE";
+  speed?: number;
+  pitch?: number;
 };
 
 export type ShowImageCommand = {
@@ -211,7 +214,10 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         if (location) acc.push({ type: "Navigate", location });
       } else if (b["type"] === "temi_say") {
         const text = fields?.["TEXT"];
-        if (text) acc.push({ type: "Say", text });
+        const gender = fields?.["GENDER"] as "FEMALE" | "MALE" | undefined;
+        const speed = fields?.["SPEED"] ? parseFloat(fields["SPEED"]) : undefined;
+        const pitch = fields?.["PITCH"] ? parseInt(fields["PITCH"], 10) : undefined;
+        if (text) acc.push({ type: "Say", text, gender, speed, pitch });
       } else if (b["type"] === "temi_show_image") {
         const imageUrl = fields?.["IMAGE_URL"];
         if (imageUrl) acc.push({ type: "ShowImage", imageUrl });

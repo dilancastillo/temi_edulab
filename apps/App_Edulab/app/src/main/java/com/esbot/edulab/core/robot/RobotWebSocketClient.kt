@@ -255,7 +255,12 @@ class RobotWebSocketClient @Inject constructor(
         return try {
             when (val type = obj.get("type")?.asString ?: "") {
                 "navigate", "Navigate" -> RobotCommand.Navigate(obj.get("location").asString)
-                "say", "Say" -> RobotCommand.Say(obj.get("text").asString)
+                "say", "Say" -> RobotCommand.Say(
+                    text = obj.get("text").asString,
+                    gender = obj.get("gender")?.takeIf { !it.isJsonNull }?.asString,
+                    speed = obj.get("speed")?.takeIf { !it.isJsonNull }?.asFloat,
+                    pitch = obj.get("pitch")?.takeIf { !it.isJsonNull }?.asInt
+                )
                 "showImage", "ShowImage" -> RobotCommand.ShowImage(
                     imageUrl = obj.get("imageUrl").asString,
                     durationMs = obj.get("durationMs")?.asLong ?: 7000L

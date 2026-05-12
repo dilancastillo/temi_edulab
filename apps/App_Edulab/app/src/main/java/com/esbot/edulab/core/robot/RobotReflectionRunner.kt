@@ -28,7 +28,7 @@ class RobotReflectionRunner @Inject constructor(
     override fun run(command: RobotCommand): Result<Unit> {
         return when (command) {
             is RobotCommand.Navigate -> navigateAndWait(command.location)
-            is RobotCommand.Say -> speakAndWait(command.text)
+            is RobotCommand.Say -> speakAndWait(command.text, command.gender, command.speed, command.pitch)
             is RobotCommand.ShowImage -> showImageAndWait(command.imageUrl, command.durationMs)
             is RobotCommand.ShowVideo -> showVideoAndWait(command.videoUrl)
             is RobotCommand.AskCondition -> askConditionAndWait(command.question, command.options)
@@ -161,13 +161,45 @@ class RobotReflectionRunner @Inject constructor(
     // Speak — waits for COMPLETED via TtsListener
     // -------------------------------------------------------------------------
 
-    private fun speakAndWait(text: String): Result<Unit> {
+    private fun speakAndWait(
+        text: String,
+        gender: String? = null,
+        speed: Float? = null,
+        pitch: Int? = null
+    ): Result<Unit> {
         // Estimate timeout: ~10 chars/second + 10s buffer, minimum 30s
         val timeoutS = maxOf(30L, (text.length / 10L) + 10L)
         return try {
             val rClass = Class.forName("com.robotemi.sdk.Robot")
             val robot = rClass.getMethod("getInstance").invoke(null)
                 ?: return Result.failure(IllegalStateException("Robot instance not available"))
+
+            // Apply TtsVoice if any voice parameter is provided
+            if (gender != null || speed != null || pitch != null) {
+                try {
+                    val ttsVoiceClass = Class.forName("com.robotemi.sdk.voice.model.TtsVoice")
+                    val genderClass = Class.forName("com.robotemi.sdk.constants.Gender")
+
+                    // Resolve gender enum value (default FEMALE)
+                    val genderValue = try {
+                        val name = if (gender == "MALE") "MALE" else "FEMALE"
+                        genderClass.getField(name).get(null)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Gender enum '$gender' no encontrado, usando FEMALE")
+                        genderClass.getField("FEMALE").get(null)
+                    }
+
+                    // Build TtsVoice instance via primary constructor
+                    val ttsVoice = ttsVoiceClass
+                        .getConstructor(genderClass, Float::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+                        .newInstance(genderValue, speed ?: 1.0f, pitch ?: 0)
+
+                    rClass.getMethod("setTtsVoice", ttsVoiceClass).invoke(robot, ttsVoice)
+                    Log.d(TAG, "setTtsVoice(gender=$gender, speed=$speed, pitch=$pitch) aplicado")
+                } catch (e: Exception) {
+                    Log.w(TAG, "setTtsVoice no disponible o falló: ${e.message}")
+                }
+            }
 
             val ttsRequestClass = Class.forName("com.robotemi.sdk.TtsRequest")
             val ttsRequest = ttsRequestClass.getMethod(
