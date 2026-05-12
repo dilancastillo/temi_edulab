@@ -153,6 +153,7 @@ export function SettingsScreen() {
         </form>
       </section>
 
+      {/* Sección de IP manual del robot — deshabilitada, ahora se usa el Robot ID
       <section aria-labelledby="robot-ip-title" className="profile-card">
         <div className="section-heading">
           <h2 id="robot-ip-title">IP del robot (legado)</h2>
@@ -182,6 +183,7 @@ export function SettingsScreen() {
           </div>
         </form>
       </section>
+      */}
 
       {isEditing ? (
         <ProfileFormModal
