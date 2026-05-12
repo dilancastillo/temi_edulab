@@ -238,11 +238,27 @@ class RobotReflectionRunner @Inject constructor(
             // Apply showAnimationOnly if requested
             if (showAnimation) {
                 try {
-                    ttsRequestClass.getMethod("setShowAnimationOnly", Boolean::class.javaPrimitiveType)
-                        .invoke(ttsRequest, true)
-                    Log.d(TAG, "TtsRequest.setShowAnimationOnly(true) aplicado")
+                    // Log available methods to find the correct setter name
+                    val animMethods = ttsRequestClass.methods.filter {
+                        it.name.contains("anim", ignoreCase = true) ||
+                        it.name.contains("Animation", ignoreCase = true) ||
+                        it.name.contains("show", ignoreCase = true)
+                    }
+                    Log.d(TAG, "TtsRequest métodos animación: ${animMethods.map { it.name + "(" + it.parameterTypes.map { p -> p.simpleName } + ")" }}")
+
+                    val setterName = animMethods.firstOrNull {
+                        it.parameterTypes.size == 1 && it.parameterTypes[0] == Boolean::class.javaPrimitiveType
+                    }?.name
+
+                    if (setterName != null) {
+                        ttsRequestClass.getMethod(setterName, Boolean::class.javaPrimitiveType)
+                            .invoke(ttsRequest, true)
+                        Log.d(TAG, "TtsRequest.$setterName(true) aplicado")
+                    } else {
+                        Log.w(TAG, "No se encontró setter de animación en TtsRequest")
+                    }
                 } catch (e: Exception) {
-                    Log.w(TAG, "setShowAnimationOnly no disponible: ${e.message}")
+                    Log.w(TAG, "showAnimation falló: ${e.message}")
                 }
             }
 

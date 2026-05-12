@@ -218,7 +218,7 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         const text = fields?.["TEXT"];
         const gender = fields?.["GENDER"] as "FEMALE" | "MALE" | undefined;
         const speed = fields?.["SPEED"] ? parseFloat(fields["SPEED"]) : undefined;
-        const pitch = fields?.["PITCH"] ? parseInt(fields["PITCH"], 10) : undefined;
+        const pitch = fields?.["PITCH"] !== undefined && fields["PITCH"] !== "" ? parseInt(fields["PITCH"], 10) : undefined;
         const language = fields?.["LANGUAGE"];
         const showAnimation = fields?.["SHOW_ANIMATION"] === "true";
         if (text) acc.push({ type: "Say", text, gender, speed, pitch, language, showAnimation });
