@@ -384,7 +384,7 @@ function StudentFormModal({
     event.preventDefault();
     setSubmitError("");
     setSubmitting(true);
-    const error = await onSubmit({ avatarUrl, courseId, email, fullName, password: password || initialStudent?.password || "" });
+    const error = await onSubmit({ avatarUrl, courseId, email, fullName, password: password || "" });
     setSubmitting(false);
     if (error) setSubmitError(error);
   }
