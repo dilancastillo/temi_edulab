@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- User-uploaded demo avatars are local data URLs, not optimizable remote assets. */
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ConfirmDialog, Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
@@ -29,15 +29,7 @@ export function StudentsScreen() {
   const [mode, setMode] = useState<"add" | "import" | null>(null);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!openMenuId) return;
-    function handleOutsideClick() { setOpenMenuId(null); }
-    document.addEventListener("click", handleOutsideClick);
-    return () => document.removeEventListener("click", handleOutsideClick);
-  }, [openMenuId]);
+  const [studentToPreview, setStudentToPreview] = useState<{ student: Student; workspaceState: unknown } | null>(null);
 
   const filteredStudents = useMemo(() => {
     const normalisedQuery = query.trim().toLowerCase();
@@ -227,74 +219,34 @@ export function StudentsScreen() {
                     </td>
                     <td>{mission?.title ?? "Ninguno"}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
-                      <div style={{ position: "relative", display: "inline-block" }}>
-                        <button
-                          className="icon-button"
-                          aria-label="Acciones del estudiante"
-                          onClick={() => setOpenMenuId(openMenuId === student.id ? null : student.id)}
-                          type="button"
-                          style={{ fontSize: "1.25rem", padding: "0.25rem 0.5rem" }}
-                        >
-                          ⋯
+                      <div className="table-actions" style={{ flexWrap: "nowrap" }}>
+                        <button className="button button-secondary" onClick={() => setStudentToEdit(student)} type="button">
+                          Editar
                         </button>
-                        {openMenuId === student.id && (
-                          <div
-                            role="menu"
-                            style={{
-                              position: "absolute",
-                              right: 0,
-                              top: "100%",
-                              zIndex: 100,
-                              background: "var(--color-surface)",
-                              border: "1px solid var(--color-border)",
-                              borderRadius: "var(--radius)",
-                              boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-                              minWidth: 160,
-                              padding: "0.25rem 0",
-                            }}
+                        <button className="button button-danger-outline" onClick={() => setStudentToDelete(student)} type="button">
+                          Eliminar
+                        </button>
+                        {studentWork?.workspaceState != null && (
+                          <button
+                            className="button button-ghost"
+                            onClick={() => setStudentToPreview({ student, workspaceState: studentWork.workspaceState })}
+                            type="button"
                           >
-                            <button
-                              className="dropdown-item"
-                              onClick={() => { setStudentToEdit(student); setOpenMenuId(null); }}
-                              role="menuitem"
-                              type="button"
-                            >
-                              ✏️ Editar
-                            </button>
-                            <button
-                              className="dropdown-item dropdown-item-danger"
-                              onClick={() => { setStudentToDelete(student); setOpenMenuId(null); }}
-                              role="menuitem"
-                              type="button"
-                            >
-                              🗑️ Eliminar
-                            </button>
-                            {studentWork?.workspaceState != null && (
-                              <button
-                                className="dropdown-item"
-                                onClick={() => { setStudentToPreview({ student, workspaceState: studentWork.workspaceState }); setOpenMenuId(null); }}
-                                role="menuitem"
-                                type="button"
-                              >
-                                👁️ Ver secuencia
-                              </button>
-                            )}
-                            {studentWork?.workspaceState != null && (
-                              <div style={{ padding: "0.25rem 1rem" }}>
-                                <ExecuteButton
-                                  inline
-                                  label="▶ Ejecutar"
-                                  workspaceState={studentWork.workspaceState}
-                                  sequence={extractCommandsFromWorkspace(studentWork.workspaceState).map((c) => {
-                                    if (c.type === "Navigate") return "temi_move";
-                                    if (c.type === "Say") return "temi_say";
-                                    if (c.type === "WhileMqtt" || c.type === "WhileTimer" || c.type === "WhileListen") return "temi_move";
-                                    return "temi_show_image";
-                                  })}
-                                />
-                              </div>
-                            )}
-                          </div>
+                            Ver
+                          </button>
+                        )}
+                        {studentWork?.workspaceState != null && (
+                          <ExecuteButton
+                            inline
+                            label="Ejecutar"
+                            workspaceState={studentWork.workspaceState}
+                            sequence={extractCommandsFromWorkspace(studentWork.workspaceState).map((c) => {
+                              if (c.type === "Navigate") return "temi_move";
+                              if (c.type === "Say") return "temi_say";
+                              if (c.type === "WhileMqtt" || c.type === "WhileTimer" || c.type === "WhileListen") return "temi_move";
+                              return "temi_show_image";
+                            })}
+                          />
                         )}
                       </div>
                     </td>
