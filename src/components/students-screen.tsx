@@ -29,6 +29,7 @@ export function StudentsScreen() {
   const [mode, setMode] = useState<"add" | "import" | null>(null);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [studentToPreview, setStudentToPreview] = useState<{ student: Student; workspaceState: unknown } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Close dropdown when clicking outside
