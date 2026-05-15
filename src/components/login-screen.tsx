@@ -39,7 +39,7 @@ export function LoginScreen() {
         </div>
       </section>
       <section className="login-card" aria-labelledby="login-title">
-        <LogoMark />
+        <LogoMark large />
         <div>
           {/*<p className="eyebrow">Acceso local</p>*/}
           <h2 id="login-title">Iniciar sesión</h2>
