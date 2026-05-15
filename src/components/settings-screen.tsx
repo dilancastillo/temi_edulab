@@ -57,7 +57,7 @@ export function SettingsScreen() {
     setIpSaved(true);
     setTimeout(() => setIpSaved(false), 2000);
   }
-
+  if (!profile) return null;
   return (
     <div className="page-stack">
       <PageHeader

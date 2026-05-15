@@ -43,11 +43,13 @@ export function DashboardScreen() {
           <p>Estudiantes calificados</p>
           <strong>{gradedStudents}</strong>
         </article>
+        {/*
         <article className="metric-card">
           <span className="metric-icon metric-icon-blue" aria-hidden="true" />
           <p>Preparación de misiones</p>
           <strong>{robotReadiness}%</strong>
         </article>
+        */}
       </section>
 
       <section className="panel-section" aria-labelledby="active-missions-title">
