@@ -254,6 +254,7 @@ function ProfileFormModal({
             required
             type="email"
             value={email}
+            disabled
           />
         </label>
         <label className="field" htmlFor="profile-biography">
