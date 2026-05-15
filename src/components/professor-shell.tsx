@@ -41,6 +41,7 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
     <div className="app-shell">
       <aside className="sidebar" aria-label="Navegacion principal">
         <LogoMark subtitle={profile?.fullName ?? "Docente"} />
+        {/* sidebar-user oculto — el nombre del docente se muestra en el logo
         <div className="sidebar-user">
           <span className="avatar avatar-small">{(profile?.fullName ?? "??").slice(0, 2).toUpperCase()}</span>
           <span>
@@ -48,6 +49,7 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
             <small>Profesor</small>
           </span>
         </div>
+        */}
         <nav>
           <ul className="nav-list">
             {navItems.map((item) => {
