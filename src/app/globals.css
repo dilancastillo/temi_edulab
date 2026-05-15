@@ -102,6 +102,7 @@ img {
 
 .login-hero {
   display: grid;
+  grid-template-rows: 1fr auto;
   align-items: center;
   min-height: 100vh;
   padding: 4rem clamp(2rem, 6vw, 6rem);
@@ -120,6 +121,27 @@ img {
   max-width: 34rem;
   color: #dce8ff;
   font-size: 1.25rem;
+}
+
+.login-hero-copyright {
+  font-size: 0.8rem;
+  color: transparent;
+  background: linear-gradient(to bottom, #dce8ff, transparent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  margin: 0;
+  padding-bottom: 0.5rem;
+}
+
+.app-copyright {
+  text-align: right;
+  font-size: 0.75rem;
+  color: transparent;
+  background: linear-gradient(to bottom, var(--color-muted), transparent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  margin: 2rem 0 0 0;
+  padding-bottom: 0.5rem;
 }
 
 .login-card {

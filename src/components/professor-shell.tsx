@@ -75,6 +75,7 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
       </aside>
       <main className="content-shell" id="main-content">
         {children}
+        <p className="app-copyright">© 2026 All Rights Reserved.</p>
       </main>
     </div>
   );

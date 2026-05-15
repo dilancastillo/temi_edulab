@@ -94,7 +94,10 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
           Salir
         </button>
       </header>
-      <main className="student-content">{children}</main>
+      <main className="student-content">
+        {children}
+        <p className="app-copyright">© 2026 All Rights Reserved.</p>
+      </main>
     </div>
   );
 }

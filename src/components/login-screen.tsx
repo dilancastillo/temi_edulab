@@ -37,6 +37,7 @@ export function LoginScreen() {
           <h1>Bienvenido de nuevo</h1>
           <p>Gestiona tus grupos, asigna misiones y revisa el avance de tus estudiantes.</p>
         </div>
+        <p className="login-hero-copyright">© 2026 All Rights Reserved.</p>
       </section>
       <section className="login-card" aria-labelledby="login-title">
         <LogoMark large />
