@@ -40,7 +40,7 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Navegacion principal">
-        <LogoMark />
+        <LogoMark subtitle={profile?.fullName ?? "Docente"} />
         <div className="sidebar-user">
           <span className="avatar avatar-small">{(profile?.fullName ?? "??").slice(0, 2).toUpperCase()}</span>
           <span>

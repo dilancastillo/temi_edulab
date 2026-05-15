@@ -1,13 +1,13 @@
-export function LogoMark({ compact = false }: Readonly<{ compact?: boolean }>) {
+export function LogoMark({ compact = false, subtitle }: Readonly<{ compact?: boolean; subtitle?: string }>) {
   return (
     <div className="brand-lockup" aria-label="Esbot EduLab">
-      <span className="brand-mark" aria-hidden="true">
-        EB
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img alt="Esbot EduLab" className="brand-mark" src="/ic_logo_primary.png" />
       {!compact ? (
         <span className="brand-copy">
-          <strong>Esbot EduLab</strong>
-          <small>Aprendizaje STEAM</small>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img alt="Esbot EduLab" className="brand-logotipo" src="/logotipo.png" />
+          <small>{subtitle ?? "Aprendizaje STEAM"}</small>
         </span>
       ) : null}
     </div>
