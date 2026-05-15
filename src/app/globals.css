@@ -144,17 +144,27 @@ img {
 
 .brand-mark {
   display: inline-grid;
-  width: 3rem;
-  height: 3rem;
+  width: 3.5rem;
+  height: 3.5rem;
   place-content: center;
-  border: 2px solid #75d5ee;
-  border-radius: var(--radius);
   color: var(--color-primary);
   font-weight: 800;
 }
 
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .brand-copy {
   display: grid;
+}
+
+.brand-logotipo {
+  height: 1.4rem;
+  width: auto;
+  object-fit: contain;
 }
 
 .brand-copy strong {
