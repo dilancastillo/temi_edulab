@@ -33,7 +33,7 @@ export function LoginScreen() {
     <main className="login-page">
       <section className="login-hero" aria-label="Presentacion">
         <div>
-          <p className="eyebrow">Panel docente</p>
+          {/*<p className="eyebrow">Panel docente</p>*/}
           <h1>Bienvenido de nuevo</h1>
           <p>Gestiona tus grupos, asigna misiones y revisa el avance de tus estudiantes.</p>
         </div>
@@ -41,9 +41,9 @@ export function LoginScreen() {
       <section className="login-card" aria-labelledby="login-title">
         <LogoMark />
         <div>
-          <p className="eyebrow">Acceso local</p>
+          {/*<p className="eyebrow">Acceso local</p>*/}
           <h2 id="login-title">Iniciar sesión</h2>
-          <p className="muted">Usa la cuenta demo o entra en modo local.</p>
+          {/*<p className="muted">Usa la cuenta demo o entra en modo local.</p>*/}
         </div>
         <form className="form-stack" onSubmit={handleSubmit} method="post" action="#">
           <div className="field">
