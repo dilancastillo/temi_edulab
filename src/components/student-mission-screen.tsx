@@ -67,8 +67,9 @@ export function StudentMissionScreen() {
 
   function submitWork() {
     if (!student || !assignment) return;
-    // Guardar primero para sincronizar savedWorkspaceRef y evitar el popup de "Salir sin guardar"
-    saveWork();
+    // Sincronizar savedWorkspaceRef para evitar el popup de "Salir sin guardar" tras el refresh
+    savedWorkspaceRef.current = workspaceState;
+    setUnsavedState(null);
     submitStudentWork({
       studentId: student.id,
       assignmentId: assignment.id,
@@ -76,7 +77,6 @@ export function StudentMissionScreen() {
       workspaceState,
       stepIndex: evaluation.completedSteps
     });
-    setUnsavedState(null);
     setIsConfirmingSubmit(false);
     setNotice("Entrega enviada. Tu profesor la verá como pendiente de revisión.");
     router.refresh();
