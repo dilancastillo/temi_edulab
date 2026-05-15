@@ -630,22 +630,24 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       }
     });
 
-    void fetch("/api/student/save-work", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...input, id: workId, teacherId: effectiveTeacherId, institutionId: demoInstitution.id, updatedAt: submittedAt, submittedAt, status: "submitted" }),
-    });
+    // Esperar a que save-work y update-progress persistan antes de que el componente haga router.refresh()
+    await Promise.all([
+      fetch("/api/student/save-work", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...input, id: workId, teacherId: effectiveTeacherId, institutionId: demoInstitution.id, updatedAt: submittedAt, submittedAt, status: "submitted" }),
+      }),
+      fetch("/api/student/update-progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: input.studentId, progress: "Revisar", currentMissionId: input.missionId }),
+      }),
+    ]);
 
     setStudents((current) =>
       current.map((student) => {
         if (student.id !== input.studentId) return student;
-        const updated = { ...student, progress: "Revisar" as const, currentMissionId: input.missionId };
-        void fetch("/api/student/update-progress", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: updated.id, progress: updated.progress, currentMissionId: updated.currentMissionId }),
-        });
-        return updated;
+        return { ...student, progress: "Revisar" as const, currentMissionId: input.missionId };
       })
     );
 
