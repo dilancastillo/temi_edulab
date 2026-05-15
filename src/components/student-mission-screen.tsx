@@ -67,6 +67,8 @@ export function StudentMissionScreen() {
 
   function submitWork() {
     if (!student || !assignment) return;
+    // Guardar primero para sincronizar savedWorkspaceRef y evitar el popup de "Salir sin guardar"
+    saveWork();
     submitStudentWork({
       studentId: student.id,
       assignmentId: assignment.id,
