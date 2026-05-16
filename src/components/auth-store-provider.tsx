@@ -76,8 +76,6 @@ export type AuthStore = {
   // Trabajos
   saveStudentWork: (input: SaveStudentWorkInput) => Promise<void>;
   submitStudentWork: (input: SubmitStudentWorkInput) => Promise<void>;
-  deleteFreePlayWorks: () => Promise<void>;
-  refreshStudentWorks: () => Promise<void>;
 
   // Perfil
   updateProfile: (input: ProfileInput) => Promise<void>;
@@ -233,9 +231,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
               studentId: r.student_id as string,
               assignmentId: r.assignment_id as string,
               missionId: r.mission_id as string,
-              workspaceState: typeof r.workspace_state === "string"
-                ? (() => { try { return JSON.parse(r.workspace_state); } catch { return r.workspace_state; } })()
-                : r.workspace_state,
+              workspaceState: r.workspace_state,
               stepIndex: Number(r.step_index),
               status: r.status as "draft" | "submitted",
               updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : new Date().toISOString(),
@@ -529,25 +525,6 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     });
   }, [teacherId, assignments]);
 
-  const deleteFreePlayWorks = useCallback(async (): Promise<void> => {
-    if (!teacherId) return;
-    setStudentWorks((current) => current.filter((w) => w.assignmentId !== "free-play"));
-    await fetch("/api/teacher/delete-free-play-works", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teacherId }),
-    });
-  }, [teacherId]);
-
-  const refreshStudentWorks = useCallback(async (): Promise<void> => {
-    if (!teacherId) return;
-    try {
-      const res = await fetch(`/api/teacher/data?teacherId=${teacherId}`);
-      const data = await res.json() as { ok: boolean; studentWorks?: StudentWork[] };
-      if (data.ok) setStudentWorks(data.studentWorks ?? []);
-    } catch { /* ignore */ }
-  }, [teacherId]);
-
   // ── 5.11: Student work operations ────────────────────────────────────────────
 
   const saveStudentWork = useCallback(async (input: SaveStudentWorkInput): Promise<void> => {
@@ -792,8 +769,6 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       deleteAssignment,
       saveStudentWork,
       submitStudentWork,
-      deleteFreePlayWorks,
-      refreshStudentWorks,
       updateProfile,
       setRobotIp,
     }),
@@ -821,8 +796,6 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       deleteAssignment,
       saveStudentWork,
       submitStudentWork,
-      deleteFreePlayWorks,
-      refreshStudentWorks,
       updateProfile,
       setRobotIp,
     ]
