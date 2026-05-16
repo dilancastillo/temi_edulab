@@ -233,7 +233,9 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
               studentId: r.student_id as string,
               assignmentId: r.assignment_id as string,
               missionId: r.mission_id as string,
-              workspaceState: r.workspace_state,
+              workspaceState: typeof r.workspace_state === "string"
+                ? (() => { try { return JSON.parse(r.workspace_state); } catch { return r.workspace_state; } })()
+                : r.workspace_state,
               stepIndex: Number(r.step_index),
               status: r.status as "draft" | "submitted",
               updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : new Date().toISOString(),

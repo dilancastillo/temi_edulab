@@ -13,7 +13,7 @@ export function StudentFreePlayScreen() {
   const [sequence, setSequence] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
   const [unsaved, setUnsaved] = useState(false);
-  const savedWorkspaceRef = useRef<unknown>(null);
+  const savedWorkspaceRef = useRef<unknown>(savedWork?.workspaceState ?? null);
 
   const student = studentSession;
 
