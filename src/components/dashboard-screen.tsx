@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { FREE_PLAY_ASSIGNMENT_ID } from "@/components/student-free-play-screen";
@@ -9,7 +9,7 @@ import { FREE_PLAY_ASSIGNMENT_ID } from "@/components/student-free-play-screen";
 const ITEMS_PER_PAGE = 3;
 
 export function DashboardScreen() {
-  const { assignments, courses, missions, students, studentWorks, deleteFreePlayWorks } = useDemoStore();
+  const { assignments, courses, missions, students, studentWorks, deleteFreePlayWorks, refreshStudentWorks } = useDemoStore();
   const activeAssignments = assignments.filter((assignment) => assignment.status === "active");
   const studentsToReview = students.filter((student) => student.progress === "Revisar").length;
   const gradedStudents = students.filter((student) => student.progress === "Calificado").length;
@@ -21,6 +21,11 @@ export function DashboardScreen() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedAssignments = activeAssignments.slice(startIndex, endIndex);
+
+  // Refrescar studentWorks al entrar al dashboard para ver juego libre actualizado
+  useEffect(() => {
+    void refreshStudentWorks();
+  }, [refreshStudentWorks]);
 
   return (
     <div className="page-stack">

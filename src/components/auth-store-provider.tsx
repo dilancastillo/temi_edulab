@@ -77,6 +77,7 @@ export type AuthStore = {
   saveStudentWork: (input: SaveStudentWorkInput) => Promise<void>;
   submitStudentWork: (input: SubmitStudentWorkInput) => Promise<void>;
   deleteFreePlayWorks: () => Promise<void>;
+  refreshStudentWorks: () => Promise<void>;
 
   // Perfil
   updateProfile: (input: ProfileInput) => Promise<void>;
@@ -536,6 +537,15 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     });
   }, [teacherId]);
 
+  const refreshStudentWorks = useCallback(async (): Promise<void> => {
+    if (!teacherId) return;
+    try {
+      const res = await fetch(`/api/teacher/data?teacherId=${teacherId}`);
+      const data = await res.json() as { ok: boolean; studentWorks?: StudentWork[] };
+      if (data.ok) setStudentWorks(data.studentWorks ?? []);
+    } catch { /* ignore */ }
+  }, [teacherId]);
+
   // ── 5.11: Student work operations ────────────────────────────────────────────
 
   const saveStudentWork = useCallback(async (input: SaveStudentWorkInput): Promise<void> => {
@@ -781,6 +791,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       saveStudentWork,
       submitStudentWork,
       deleteFreePlayWorks,
+      refreshStudentWorks,
       updateProfile,
       setRobotIp,
     }),
@@ -809,6 +820,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       saveStudentWork,
       submitStudentWork,
       deleteFreePlayWorks,
+      refreshStudentWorks,
       updateProfile,
       setRobotIp,
     ]
