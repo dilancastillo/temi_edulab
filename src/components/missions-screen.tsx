@@ -5,12 +5,16 @@ import { useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
+import { FREE_PLAY_ASSIGNMENT_ID } from "@/components/student-free-play-screen";
 import type { Assignment } from "@/lib/types";
 
 export function MissionsScreen() {
-  const { archiveAssignment, assignments, courses, deleteAssignment, missions } = useDemoStore();
+  const { archiveAssignment, assignments, courses, deleteAssignment, deleteFreePlayWorks, missions, studentWorks } = useDemoStore();
   const [showArchived, setShowArchived] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = useState<Assignment | null>(null);
+  const [confirmDeleteFreePlay, setConfirmDeleteFreePlay] = useState(false);
+
+  const hasFreePlayWorks = studentWorks.some((w) => w.assignmentId === FREE_PLAY_ASSIGNMENT_ID);
 
   const visibleAssignments = useMemo(
     () => assignments.filter((assignment) => (showArchived ? assignment.status === "archived" : assignment.status === "active")),
@@ -36,12 +40,35 @@ export function MissionsScreen() {
       />
 
       <section className="assignment-list" aria-label="Listado de misiones">
-        {visibleAssignments.length === 0 ? (
+        {visibleAssignments.length === 0 && !hasFreePlayWorks ? (
           <div className="empty-state">
             <h2>No hay misiones para mostrar</h2>
             <p>Asigna una misión desde la biblioteca o cambia el filtro de archivadas.</p>
           </div>
         ) : null}
+
+        {!showArchived && hasFreePlayWorks && (
+          <article className="assignment-card assignment-card-wide" key="free-play">
+            <span className="mission-symbol mission-symbol-slate" aria-hidden="true">
+              <img src="/icon_fundamentos.png" alt="" />
+            </span>
+            <div>
+              <h2>Juego libre</h2>
+              <p className="muted">Exploración libre de bloques · Todos los cursos</p>
+              <p className="muted">
+                {studentWorks.filter((w) => w.assignmentId === FREE_PLAY_ASSIGNMENT_ID).length} estudiantes con progreso guardado
+              </p>
+            </div>
+            <div className="assignment-actions assignment-actions-right">
+              <Link className="button button-secondary" href="/profesor/estudiantes?mision=free-play&curso=all">
+                Ver progreso
+              </Link>
+              <button className="button button-danger-outline" onClick={() => setConfirmDeleteFreePlay(true)} type="button">
+                Eliminar
+              </button>
+            </div>
+          </article>
+        )}
 
         {visibleAssignments.map((assignment) => {
           const mission = missions.find((candidate) => candidate.id === assignment.missionId);
@@ -93,6 +120,20 @@ export function MissionsScreen() {
             setAssignmentToDelete(null);
           }}
           title="Eliminar misión"
+          tone="danger"
+        />
+      ) : null}
+
+      {confirmDeleteFreePlay ? (
+        <ConfirmDialog
+          body={<p>Se eliminará el progreso guardado de todos los estudiantes en Juego libre. Esta acción no se puede deshacer.</p>}
+          confirmLabel="Eliminar progreso"
+          onCancel={() => setConfirmDeleteFreePlay(false)}
+          onConfirm={() => {
+            void deleteFreePlayWorks();
+            setConfirmDeleteFreePlay(false);
+          }}
+          title="Eliminar Juego libre"
           tone="danger"
         />
       ) : null}

@@ -76,6 +76,7 @@ export type AuthStore = {
   // Trabajos
   saveStudentWork: (input: SaveStudentWorkInput) => Promise<void>;
   submitStudentWork: (input: SubmitStudentWorkInput) => Promise<void>;
+  deleteFreePlayWorks: () => Promise<void>;
 
   // Perfil
   updateProfile: (input: ProfileInput) => Promise<void>;
@@ -525,6 +526,16 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     });
   }, [teacherId, assignments]);
 
+  const deleteFreePlayWorks = useCallback(async (): Promise<void> => {
+    if (!teacherId) return;
+    setStudentWorks((current) => current.filter((w) => w.assignmentId !== "free-play"));
+    await fetch("/api/teacher/delete-free-play-works", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId }),
+    });
+  }, [teacherId]);
+
   // ── 5.11: Student work operations ────────────────────────────────────────────
 
   const saveStudentWork = useCallback(async (input: SaveStudentWorkInput): Promise<void> => {
@@ -769,6 +780,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       deleteAssignment,
       saveStudentWork,
       submitStudentWork,
+      deleteFreePlayWorks,
       updateProfile,
       setRobotIp,
     }),
@@ -796,6 +808,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       deleteAssignment,
       saveStudentWork,
       submitStudentWork,
+      deleteFreePlayWorks,
       updateProfile,
       setRobotIp,
     ]
