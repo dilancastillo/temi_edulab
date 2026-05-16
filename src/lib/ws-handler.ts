@@ -17,6 +17,11 @@ type IncomingMessage_ =
 export function handleWsConnection(ws: WebSocket, _req: IncomingMessage): void {
   let robotId: string | null = null;
 
+  // Respond to pings to keep the connection alive
+  ws.on("ping", (data) => {
+    ws.pong(data);
+  });
+
   ws.once("message", (data) => {
     let msg: IncomingMessage_;
     try {

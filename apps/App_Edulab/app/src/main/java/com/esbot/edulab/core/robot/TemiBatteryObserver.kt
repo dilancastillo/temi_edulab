@@ -12,7 +12,8 @@ private const val TAG = "TemiBattery"
 
 @Singleton
 class TemiBatteryObserver @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val robotWebSocketClient: RobotWebSocketClient
 ) : BatteryStatusProvider {
 
     private val _batteryPercentage = MutableStateFlow<Int?>(null)
@@ -50,7 +51,13 @@ class TemiBatteryObserver @Inject constructor(
                     "onRobotReady" -> {
                         val isReady = args?.getOrNull(0) as? Boolean ?: false
                         Log.d(TAG, "onRobotReady — isReady: $isReady")
-                        if (isReady) readInitialBattery(r, rClass)
+                        if (isReady) {
+                            readInitialBattery(r, rClass)
+                            // Re-register WebSocket with the correct robotId now that SDK is ready
+                            val correctId = robotWebSocketClient.resolveRobotId()
+                            Log.d(TAG, "onRobotReady — re-registrando WebSocket con robotId='$correctId'")
+                            robotWebSocketClient.reconnectWithId(correctId)
+                        }
                         null
                     }
                     else -> null

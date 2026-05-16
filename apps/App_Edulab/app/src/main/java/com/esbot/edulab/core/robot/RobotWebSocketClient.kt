@@ -51,6 +51,36 @@ class RobotWebSocketClient @Inject constructor(
     }
 
     /**
+     * Reconnects with a specific robotId — used when the SDK becomes ready
+     * and we need to re-register with the correct serial number.
+     */
+    fun reconnectWithId(id: String) {
+        webSocket?.close(1000, "Re-registering with correct robotId")
+        webSocket = null
+        val request = Request.Builder()
+            .url(testUrl ?: SERVER_URL)
+            .build()
+        webSocket = client.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(ws: WebSocket, response: Response) {
+                Log.d(TAG, "WebSocket reconectado. Registrando robotId='$id'")
+                ws.send(buildRegisterMsg(id))
+            }
+            override fun onMessage(ws: WebSocket, text: String) {
+                Log.d(TAG, "Mensaje recibido: $text")
+                handleMessage(text)
+            }
+            override fun onClosed(ws: WebSocket, code: Int, reason: String) {
+                Log.d(TAG, "WebSocket cerrado: code=$code reason=$reason")
+                scheduleReconnect()
+            }
+            override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
+                Log.e(TAG, "WebSocket fallo: ${t.message}", t)
+                scheduleReconnect()
+            }
+        })
+    }
+
+    /**
      * Connects to a custom URL. Used in tests to inject a MockWebServer URL.
      * @param url The WebSocket URL to connect to.
      * @param overrideRobotId Optional robotId override (for testing specific robotId values).
