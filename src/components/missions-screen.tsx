@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
-import { FREE_PLAY_ASSIGNMENT_ID } from "@/components/student-free-play-screen";
+import { FREE_PLAY_ASSIGNMENT_ID } from "@/lib/free-play";
 import type { Assignment } from "@/lib/types";
 
 export function MissionsScreen() {

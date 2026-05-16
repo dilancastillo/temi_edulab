@@ -4,8 +4,7 @@ import { useState, useRef } from "react";
 import { BlocklyWorkspace } from "@/components/blockly-workspace";
 import { useDemoStore } from "@/components/auth-store-provider";
 
-export const FREE_PLAY_ASSIGNMENT_ID = "free-play";
-export const FREE_PLAY_MISSION_ID = "free-play";
+import { FREE_PLAY_ASSIGNMENT_ID, FREE_PLAY_MISSION_ID } from "@/lib/free-play";
 
 export function StudentFreePlayScreen() {
   const { saveStudentWork, studentSession, studentWorks } = useDemoStore();
