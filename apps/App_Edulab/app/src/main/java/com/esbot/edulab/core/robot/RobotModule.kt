@@ -15,8 +15,9 @@ object RobotModule {
     @Provides
     @Singleton
     fun provideBatteryStatusProvider(
-        @ApplicationContext context: Context
-    ): BatteryStatusProvider = TemiBatteryObserver(context)
+        @ApplicationContext context: Context,
+        robotWebSocketClient: RobotWebSocketClient
+    ): BatteryStatusProvider = TemiBatteryObserver(context, robotWebSocketClient)
 
     @Provides
     @Singleton

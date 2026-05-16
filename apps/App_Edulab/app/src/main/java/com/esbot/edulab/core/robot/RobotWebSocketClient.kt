@@ -36,13 +36,13 @@ class RobotWebSocketClient @Inject constructor(
         .build()
 
     private var webSocket: WebSocket? = null
-    private val robotId: String by lazy { resolveRobotId() }
+    private var resolvedRobotId: String? = null
 
     @Volatile private var executing: Boolean = false
     @Volatile private var testUrl: String? = null
 
     fun start() {
-        connect()
+        Log.d(TAG, "start() — esperando onRobotReady para conectar WebSocket")
     }
 
     fun stop() {
@@ -55,6 +55,7 @@ class RobotWebSocketClient @Inject constructor(
      * and we need to re-register with the correct serial number.
      */
     fun reconnectWithId(id: String) {
+        resolvedRobotId = id
         webSocket?.close(1000, "Re-registering with correct robotId")
         webSocket = null
         val request = Request.Builder()
@@ -88,7 +89,7 @@ class RobotWebSocketClient @Inject constructor(
     @JvmOverloads
     fun connectToUrl(url: String, overrideRobotId: String? = null) {
         testUrl = url
-        val effectiveRobotId = overrideRobotId ?: robotId
+        val effectiveRobotId = overrideRobotId ?: resolvedRobotId ?: resolveRobotId()
         val request = Request.Builder()
             .url(url)
             .build()
@@ -117,14 +118,15 @@ class RobotWebSocketClient @Inject constructor(
     }
 
     fun connect() {
+        val effectiveId = resolvedRobotId ?: resolveRobotId()
         val request = Request.Builder()
             .url(SERVER_URL)
             .build()
 
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(ws: WebSocket, response: Response) {
-                Log.d(TAG, "WebSocket conectado. Registrando robotId='$robotId'")
-                ws.send(buildRegisterMsg(robotId))
+                Log.d(TAG, "WebSocket conectado. Registrando robotId='$effectiveId'")
+                ws.send(buildRegisterMsg(effectiveId))
             }
 
             override fun onMessage(ws: WebSocket, text: String) {
@@ -223,14 +225,23 @@ class RobotWebSocketClient @Inject constructor(
         try {
             Handler(Looper.getMainLooper()).postDelayed({
                 val url = testUrl
-                if (url != null) connectToUrl(url) else connect()
+                val id = resolvedRobotId
+                when {
+                    url != null -> connectToUrl(url)
+                    id != null -> reconnectWithId(id)
+                    else -> connect()
+                }
             }, RECONNECT_DELAY_MS)
         } catch (e: Exception) {
-            // Fallback for JVM unit test environments where Looper is not available
             val scheduler = Executors.newSingleThreadScheduledExecutor()
             scheduler.schedule({
                 val url = testUrl
-                if (url != null) connectToUrl(url) else connect()
+                val id = resolvedRobotId
+                when {
+                    url != null -> connectToUrl(url)
+                    id != null -> reconnectWithId(id)
+                    else -> connect()
+                }
                 scheduler.shutdown()
             }, RECONNECT_DELAY_MS, TimeUnit.MILLISECONDS)
         }
