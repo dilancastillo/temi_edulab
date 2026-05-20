@@ -72,6 +72,8 @@ class RobotWebSocketClient @Inject constructor(
             }
             override fun onClosed(ws: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "WebSocket cerrado: code=$code reason=$reason")
+                // No reconectar si fue cerrado intencionalmente para re-registrar
+                if (reason == "Re-registering with correct robotId") return
                 scheduleReconnect()
             }
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
