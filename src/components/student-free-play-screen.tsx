@@ -3,7 +3,6 @@
 
 import { useRef, useState } from "react";
 import { BlocklyWorkspace } from "@/components/blockly-workspace";
-import { ExecuteButton } from "@/components/execute-button";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { FREE_PLAY_ASSIGNMENT_ID, FREE_PLAY_MISSION_ID } from "@/lib/types";
 
@@ -56,7 +55,6 @@ export function StudentFreePlayScreen() {
         }}
         readOnly={false}
       />
-      <ExecuteButton workspaceState={workspaceState} sequence={sequence} />
     </div>
   );
 }
