@@ -196,12 +196,14 @@ export function StudentsScreen() {
                 const mission = missions.find((candidate) => candidate.id === displayMissionId);
 
                 // Calcular progreso por misión usando studentWorks
-                const missionAssignment = missionId !== "all"
+                const missionAssignment = missionId !== "all" && missionId !== FREE_PLAY_MISSION_ID
                   ? assignments.find((a) => a.missionId === missionId && a.courseId === student.courseId && a.status === "active")
                   : activeAssignment;
-                const studentWork = missionAssignment
-                  ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === missionAssignment.id)
-                  : null;
+                const studentWork = missionId === FREE_PLAY_MISSION_ID
+                  ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === FREE_PLAY_ASSIGNMENT_ID)
+                  : missionAssignment
+                    ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === missionAssignment.id)
+                    : null;
                 const missionProgress: typeof student.progress = studentWork?.status === "submitted"
                   ? "Revisar"
                   : missionId !== "all" && missionAssignment
