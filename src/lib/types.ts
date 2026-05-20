@@ -25,6 +25,7 @@ export type TeacherProfile = {
   email: string;
   biography: string;
   avatarUrl?: string;
+  robotId?: string;
 };
 
 export type Session = {

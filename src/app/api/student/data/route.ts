@@ -10,10 +10,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Faltan parámetros." }, { status: 400 });
   }
 
-  const [studentRes, assignmentsRes, worksRes] = await Promise.all([
+  const [studentRes, assignmentsRes, worksRes, teacherRes] = await Promise.all([
     pool.query("SELECT * FROM students WHERE id = $1", [studentId]),
     pool.query("SELECT * FROM assignments WHERE teacher_id = $1 AND status = 'active'", [teacherId]),
     pool.query("SELECT * FROM student_works WHERE student_id = $1", [studentId]),
+    pool.query("SELECT robot_id FROM teachers WHERE id = $1", [teacherId]),
   ]);
 
   return NextResponse.json({
@@ -21,5 +22,6 @@ export async function GET(req: NextRequest) {
     student: studentRes.rows[0] ?? null,
     assignments: assignmentsRes.rows,
     studentWorks: worksRes.rows,
+    robotId: (teacherRes.rows[0]?.robot_id as string | null) ?? null,
   });
 }

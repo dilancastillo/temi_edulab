@@ -10,7 +10,7 @@ import { getRobotId, setRobotId } from "@/lib/robot-adapter";
 import type { ProfileInput } from "@/lib/types";
 
 export function SettingsScreen() {
-  const { profile, updateProfile, robotIp, setRobotIp } = useDemoStore();
+  const { profile, updateProfile, robotIp, setRobotIp, teacherId } = useDemoStore();
   const [isEditing, setIsEditing] = useState(false);
   const [ipInput, setIpInput] = useState(robotIp);
   const [ipSaved, setIpSaved] = useState(false);
@@ -44,6 +44,14 @@ export function SettingsScreen() {
     setRobotIdSaved(true);
     setTimeout(() => setRobotIdSaved(false), 2000);
     checkRobotStatus(trimmed);
+    // Persistir en BD para que los estudiantes usen el robot correcto
+    if (teacherId) {
+      void fetch("/api/teacher/update-robot-id", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherId, robotId: trimmed }),
+      });
+    }
   }
 
   function handleSaveIp(e: React.FormEvent) {

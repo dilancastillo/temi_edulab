@@ -119,8 +119,8 @@ export async function fetchProfile(teacherId: string): Promise<TeacherProfile | 
 
 export async function upsertProfile(profile: TeacherProfile): Promise<void> {
   await pool.query(
-    `UPDATE teachers SET full_name = $1, biography = $2, avatar_url = $3 WHERE id = $4`,
-    [profile.fullName, profile.biography, profile.avatarUrl ?? null, profile.teacherId]
+    `UPDATE teachers SET full_name = $1, biography = $2, avatar_url = $3, robot_id = $4 WHERE id = $5`,
+    [profile.fullName, profile.biography, profile.avatarUrl ?? null, profile.robotId ?? null, profile.teacherId]
   );
 }
 
@@ -184,5 +184,6 @@ function rowToProfile(row: Record<string, unknown>): TeacherProfile {
     email: row.email as string,
     biography: (row.biography as string) ?? "",
     avatarUrl: row.avatar_url as string | undefined,
+    robotId: row.robot_id as string | undefined,
   };
 }
