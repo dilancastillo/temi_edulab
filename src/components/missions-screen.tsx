@@ -5,12 +5,16 @@ import { useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
+import { FREE_PLAY_ASSIGNMENT_ID } from "@/lib/types";
 import type { Assignment } from "@/lib/types";
 
 export function MissionsScreen() {
-  const { archiveAssignment, assignments, courses, deleteAssignment, missions } = useDemoStore();
+  const { archiveAssignment, assignments, courses, deleteAssignment, missions, studentWorks, deleteFreePlayProgress } = useDemoStore();
   const [showArchived, setShowArchived] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = useState<Assignment | null>(null);
+  const [confirmDeleteFreePlay, setConfirmDeleteFreePlay] = useState(false);
+
+  const hasFreePlayProgress = studentWorks.some((w) => w.assignmentId === FREE_PLAY_ASSIGNMENT_ID);
 
   const visibleAssignments = useMemo(
     () => assignments.filter((assignment) => (showArchived ? assignment.status === "archived" : assignment.status === "active")),
@@ -76,6 +80,26 @@ export function MissionsScreen() {
             </article>
           );
         })}
+
+        {!showArchived && hasFreePlayProgress ? (
+          <article className="assignment-card assignment-card-wide">
+            <span className="mission-symbol mission-symbol-indigo" aria-hidden="true">
+              <span style={{ fontSize: "1.5rem" }}>🎮</span>
+            </span>
+            <div>
+              <h2>Juego libre</h2>
+              <p className="muted">Exploración libre de bloques — sin código ni curso</p>
+            </div>
+            <div className="assignment-actions assignment-actions-right">
+              <Link className="button button-secondary" href="/profesor/estudiantes?mision=free-play&curso=all">
+                Ver progreso
+              </Link>
+              <button className="button button-danger-outline" onClick={() => setConfirmDeleteFreePlay(true)} type="button">
+                Eliminar
+              </button>
+            </div>
+          </article>
+        ) : null}
       </section>
 
       {assignmentToDelete ? (
@@ -93,6 +117,20 @@ export function MissionsScreen() {
             setAssignmentToDelete(null);
           }}
           title="Eliminar misión"
+          tone="danger"
+        />
+      ) : null}
+
+      {confirmDeleteFreePlay ? (
+        <ConfirmDialog
+          body={<p>Se eliminará el progreso de juego libre de todos los estudiantes. Esta acción no se puede deshacer.</p>}
+          confirmLabel="Eliminar progreso"
+          onCancel={() => setConfirmDeleteFreePlay(false)}
+          onConfirm={() => {
+            void deleteFreePlayProgress();
+            setConfirmDeleteFreePlay(false);
+          }}
+          title="Eliminar juego libre"
           tone="danger"
         />
       ) : null}

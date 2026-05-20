@@ -22,6 +22,7 @@ import type {
   StudentWork,
   TeacherProfile,
 } from "@/lib/types";
+import { FREE_PLAY_ASSIGNMENT_ID, FREE_PLAY_MISSION_ID } from "@/lib/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,9 @@ export type AuthStore = {
 
   // Robot
   setRobotIp: (ip: string) => void;
+
+  // Juego libre
+  deleteFreePlayProgress: () => Promise<void>;
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -743,6 +747,16 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     try { window.localStorage.setItem("esbot.robotIp.v1", JSON.stringify(ip)); } catch { /* ignore */ }
   }, []);
 
+  const deleteFreePlayProgress = useCallback(async (): Promise<void> => {
+    if (!teacherId) return;
+    setStudentWorks((current) => current.filter((w) => w.assignmentId !== FREE_PLAY_ASSIGNMENT_ID));
+    await fetch("/api/teacher/delete-free-play", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId }),
+    });
+  }, [teacherId]);
+
   // ── 5.13: Context value ───────────────────────────────────────────────────────
 
   const value = useMemo<AuthStore>(
@@ -775,6 +789,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       submitStudentWork,
       updateProfile,
       setRobotIp,
+      deleteFreePlayProgress,
     }),
     [
       isReady,
@@ -802,6 +817,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       submitStudentWork,
       updateProfile,
       setRobotIp,
+      deleteFreePlayProgress,
     ]
   );
 

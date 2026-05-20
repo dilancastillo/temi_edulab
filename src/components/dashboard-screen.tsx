@@ -4,16 +4,18 @@ import Link from "next/link";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
+import { FREE_PLAY_ASSIGNMENT_ID } from "@/lib/types";
 
 const ITEMS_PER_PAGE = 3;
 
 export function DashboardScreen() {
-  const { assignments, courses, missions, students } = useDemoStore();
+  const { assignments, courses, missions, students, studentWorks } = useDemoStore();
   const activeAssignments = assignments.filter((assignment) => assignment.status === "active");
   const studentsToReview = students.filter((student) => student.progress === "Revisar").length;
   const gradedStudents = students.filter((student) => student.progress === "Calificado").length;
-  const robotReadiness = Math.round((activeAssignments.length / Math.max(missions.length, 1)) * 100);
-  
+
+  const hasFreePlayProgress = studentWorks.some((w) => w.assignmentId === FREE_PLAY_ASSIGNMENT_ID);
+
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(activeAssignments.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -89,6 +91,22 @@ export function DashboardScreen() {
             );
           })}
         </div>
+        {hasFreePlayProgress ? (
+          <article className="assignment-card" style={{ marginTop: "0.75rem" }}>
+            <span className="mission-symbol mission-symbol-indigo" aria-hidden="true">
+              <span style={{ fontSize: "1.5rem" }}>🎮</span>
+            </span>
+            <div>
+              <h3>Juego libre</h3>
+              <p className="muted">Exploración libre de bloques</p>
+            </div>
+            <div className="assignment-actions">
+              <Link className="button button-secondary" href={`/profesor/estudiantes?mision=free-play&curso=all`}>
+                Ver progreso
+              </Link>
+            </div>
+          </article>
+        ) : null}
         {totalPages > 1 && (
           <div className="pagination-footer">
             <span className="pagination-info">

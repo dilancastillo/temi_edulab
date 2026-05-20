@@ -9,6 +9,7 @@ import { useDemoStore } from "@/components/auth-store-provider";
 import { getInitials, parseStudentsCsv } from "@/lib/csv";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
 import type { Course, Student, StudentInput } from "@/lib/types";
+import { FREE_PLAY_ASSIGNMENT_ID, FREE_PLAY_MISSION_ID } from "@/lib/types";
 import { ExecuteButton } from "@/components/execute-button";
 import { extractCommandsFromWorkspace, extractShowImageBlocks } from "@/lib/robot-adapter";
 
@@ -34,6 +35,22 @@ export function StudentsScreen() {
   const filteredStudents = useMemo(() => {
     const normalisedQuery = query.trim().toLowerCase();
 
+    // Para juego libre: mostrar estudiantes que tienen progreso en free-play
+    if (missionId === FREE_PLAY_MISSION_ID) {
+      const studentIdsWithFreePlay = new Set(
+        studentWorks
+          .filter((w) => w.assignmentId === FREE_PLAY_ASSIGNMENT_ID)
+          .map((w) => w.studentId)
+      );
+      return students.filter((student) => {
+        const matchesQuery =
+          !normalisedQuery ||
+          student.fullName.toLowerCase().includes(normalisedQuery) ||
+          student.email.toLowerCase().includes(normalisedQuery);
+        return matchesQuery && studentIdsWithFreePlay.has(student.id);
+      });
+    }
+
     // Para el filtro de misión: buscar qué cursos tienen esa misión asignada
     const courseIdsWithMission = missionId === "all"
       ? null
@@ -53,7 +70,7 @@ export function StudentsScreen() {
       const matchesMission = courseIdsWithMission === null || courseIdsWithMission.has(student.courseId);
       return matchesQuery && matchesCourse && matchesProgress && matchesMission;
     });
-  }, [assignments, courseId, missionId, progress, query, students]);
+  }, [assignments, courseId, missionId, progress, query, students, studentWorks]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
   const boundedPage = Math.min(page, totalPages);
@@ -141,6 +158,7 @@ export function StudentsScreen() {
             value={missionId}
           >
             <option value="all">Todas</option>
+            <option value={FREE_PLAY_MISSION_ID}>Juego libre</option>
             {missions.map((mission) => (
               <option key={mission.id} value={mission.id}>
                 {mission.title}
