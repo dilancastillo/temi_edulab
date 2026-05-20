@@ -581,7 +581,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
 
     // Usar API route para persistir (funciona tanto para docente como estudiante)
     // Incluir el id para que Supabase pueda hacer upsert por PK correctamente
-    void fetch("/api/student/save-work", {
+    await fetch("/api/student/save-work", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
