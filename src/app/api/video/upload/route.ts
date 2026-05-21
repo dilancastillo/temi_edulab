@@ -3,6 +3,8 @@ import pool from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
+export const dynamic = 'force-dynamic';
+
 const MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "videos");
 
