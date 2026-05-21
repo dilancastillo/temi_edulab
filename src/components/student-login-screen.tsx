@@ -79,7 +79,7 @@ export function StudentLoginScreen() {
               <input
                 autoComplete="current-password"
                 id="student-password"
-                minLength={8}
+                minLength={6}
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 type="password"
