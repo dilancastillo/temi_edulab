@@ -110,7 +110,7 @@ export function StudentMissionScreen() {
         <aside className="mission-instructions" aria-labelledby="mission-steps-title">
           <h2 id="mission-steps-title">{mission.title}</h2>
           <p>Arrastra los bloques en el orden correcto. Conéctalos debajo de &ldquo;cuando inicia&rdquo;.</p>
-          {assignment.instructions ? <p>{assignment.instructions}</p> : null}
+          {assignment.instructions ? <p><strong>Instrucciones de tu profesor:</strong> {assignment.instructions}</p> : null}
           <ol className="step-list">
             {missionSteps.map((step, index) => (
               <li className={index < evaluation.completedSteps ? "step-done" : ""} key={`${step.type}-${index}`}>
