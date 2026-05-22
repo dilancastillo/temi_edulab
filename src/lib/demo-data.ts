@@ -89,6 +89,50 @@ export const demoMissions: Mission[] = [
     ]
   },
   {
+    id: "mission-nurse-alert",
+    title: "Temi Asistente de Salud",
+    summary: "Temi es el asistente de salud de la clínica. Mientras no hay emergencias, recorre las zonas educando y tranquilizando a los pacientes. Pero cuando el termómetro inteligente detecta una subida de temperatura, le envía una señal a Temi. Él interrumpe su ronda, va donde la enfermera para reportar el caso y luego se dirige a la camilla del paciente para acompañarlo. Tu misión es programar estas dos rutinas para que Temi reaccione a tiempo ante una emergencia médica.",
+    category: "Control",
+    ageBand: "11-14",
+    durationMinutes: 45,
+    outcomes: ["Bucles", "Eventos MQTT", "Secuencias", "Pensamiento computacional"],
+    status: "published",
+    coverTone: "slate",
+    allowedCategories: ["Movimiento", "Hablar", "Mostrar" ,"Control"],
+    steps: [
+    {
+      type: "temi_start",
+      label: "¡Temi entra en servicio!",
+      helper: "Todo programa necesita un bloque de inicio."
+    },
+    {
+      type: "temi_while_mqtt",
+      label: "Ronda de espera",
+      helper: "Temi recorre las zonas hasta recibir la señal del termómetro. Escribe el topic 'termometro' y agrega los bloques de movimiento y voz adentro."
+    },
+    {
+      type: "temi_move",
+      label: "Ir donde la enfermera",
+      helper: "Cuando el termómetro envía la señal, Temi sale del bucle y se dirige a la enfermera."
+    },
+    {
+      type: "temi_say",
+      label: "Reportar la alerta",
+      helper: "Temi le avisa a la enfermera qué paciente tuvo una subida de temperatura."
+    },
+    {
+      type: "temi_move",
+      label: "Ir a la camilla",
+      helper: "Después de avisar, Temi se dirige al paciente para acompañarlo."
+    },
+    {
+      type: "temi_say",
+      label: "Acompañar al paciente",
+      helper: "Temi tranquiliza al paciente mientras llega la enfermera."
+    }
+  ]
+  },
+  {
     id: "mission-foundations",
     title: "Fundamentos",
     summary: "Crea tus primeras acciones y entiende como funcionan los bloques interactivos.",
