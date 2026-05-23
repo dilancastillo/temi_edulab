@@ -307,7 +307,7 @@ export function CreateMissionModal({ onClose }: Readonly<CreateMissionModalProps
               {errors.outcomes}
             </span>
           ) : null}
-          <button type="button" className="button button-secondary" onClick={addOutcome}>
+          <button type="button" className="button button-secondary" onClick={addOutcome} style={{ marginTop: "0.5rem" }}>
             Agregar resultado
           </button>
         </section>
@@ -367,7 +367,7 @@ export function CreateMissionModal({ onClose }: Readonly<CreateMissionModalProps
               {errors.steps}
             </span>
           ) : null}
-          <button type="button" className="button button-secondary" onClick={addStep}>
+          <button type="button" className="button button-secondary" onClick={addStep} style={{ marginTop: "0.5rem" }}>
             Agregar paso
           </button>
         </section>
