@@ -18,7 +18,7 @@ const ageFilters = ["Todas", "7-10", "11-14", "15-18"] as const;
 type CategoryFilter = (typeof categoryFilters)[number]["value"];
 
 export function LibraryScreen() {
-  const { assignMission, assignments, courses, missions, teacherId } = useDemoStore();
+  const { assignMission, assignments, courses, missions, teacherId, deleteMission } = useDemoStore();
   const [category, setCategory] = useState<CategoryFilter>("Todas");
   const [ageBand, setAgeBand] = useState<(typeof ageFilters)[number]>("Todas");
   const [previewMission, setPreviewMission] = useState<Mission | null>(null);
@@ -104,7 +104,7 @@ export function LibraryScreen() {
         ))}
       </section>
 
-      {previewMission ? <MissionPreview mission={previewMission} onAssign={setAssignmentMission} onClose={() => setPreviewMission(null)} /> : null}
+      {previewMission ? <MissionPreview mission={previewMission} onAssign={setAssignmentMission} onClose={() => setPreviewMission(null)} onDelete={(m) => { void deleteMission(m.id); setPreviewMission(null); }} /> : null}
       {assignmentMission ? (
         <AssignMissionModal
           courses={courses}
@@ -128,8 +128,9 @@ export function LibraryScreen() {
 function MissionPreview({
   mission,
   onAssign,
-  onClose
-}: Readonly<{ mission: Mission; onAssign: (mission: Mission) => void; onClose: () => void }>) {
+  onClose,
+  onDelete
+}: Readonly<{ mission: Mission; onAssign: (mission: Mission) => void; onClose: () => void; onDelete?: (mission: Mission) => void }>) {
   return (
     <Modal onClose={onClose} title={`Vista previa: ${mission.title}`}>
       <div className="preview-layout">
@@ -155,6 +156,11 @@ function MissionPreview({
         </div>
       </div>
       <div className="modal-actions">
+        {onDelete && mission.teacherId ? (
+          <button className="button button-danger" onClick={() => onDelete(mission)} type="button">
+            Eliminar
+          </button>
+        ) : null}
         <button className="button button-ghost" onClick={onClose} type="button">
           Cerrar
         </button>
