@@ -106,8 +106,7 @@ export function MissionsScreen() {
         <ConfirmDialog
           body={
             <p>
-              Esta acción quitará <strong>{assignmentToDelete.missionCode}</strong> del listado demo. En producción se
-              conservaría auditoría y entregas históricas.
+              Esta acción eliminará la misión <strong>{assignmentToDelete.missionCode}</strong> permanentemente. Los estudiantes que tengan esta misión asignada perderán el acceso a ella.
             </p>
           }
           confirmLabel="Eliminar misión"
