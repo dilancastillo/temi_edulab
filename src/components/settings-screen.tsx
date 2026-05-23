@@ -109,7 +109,7 @@ export function SettingsScreen() {
 
       <section aria-labelledby="robot-id-title" className="profile-card">
         <div className="section-heading">
-          <h2 id="robot-id-title">Conexión al robot Temi</h2>
+          <h2 id="robot-id-title">Conexión al robot Esbot</h2>
           <span
             aria-label={robotConnected === null ? "Estado desconocido" : robotConnected ? "Conectado" : "Desconectado"}
             style={{
@@ -135,7 +135,7 @@ export function SettingsScreen() {
           </span>
         </div>
         <p style={{ color: "var(--color-text-muted)", marginBottom: "1rem", fontSize: "0.875rem" }}>
-          Ingresa el ID del robot (visible en la app Android). El estado se actualiza cada 10 segundos.
+          Ingresa el ID del robot (visible en la app EduLabApp). El estado se actualiza cada 10 segundos.
         </p>
         <form className="form-stack" onSubmit={handleSaveRobotId} style={{ maxWidth: 400 }}>
           <label className="field" htmlFor="robot-id">
