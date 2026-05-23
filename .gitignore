@@ -19,3 +19,4 @@ pdf-page.png
 **/local.properties
 **/.cxx/
 .kiro/
+src/lib/migrations/001_create_missions_table.sql

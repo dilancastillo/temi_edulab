@@ -12,6 +12,7 @@ import type {
   Assignment,
   AuthResult,
   Course,
+  CreateMissionInput,
   ImportedStudent,
   Institution,
   Mission,
@@ -73,6 +74,9 @@ export type AuthStore = {
   assignMission: (input: AssignMissionInput) => Promise<void>;
   archiveAssignment: (assignmentId: string) => Promise<void>;
   deleteAssignment: (assignmentId: string) => Promise<void>;
+
+  // Misiones personalizadas
+  createMission: (input: CreateMissionInput) => Promise<{ ok: boolean; message?: string }>;
 
   // Trabajos
   saveStudentWork: (input: SaveStudentWorkInput) => Promise<void>;
@@ -142,6 +146,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   const [session, setSession] = useState<SupabaseSession | null>(null);
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [studentSession, setStudentSession] = useState<{ studentId: string; displayName: string } | null>(null);
+  const [missions, setMissions] = useState<Mission[]>(demoMissions);
   const [students, setStudents] = useState<Student[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [studentWorks, setStudentWorks] = useState<StudentWork[]>([]);
@@ -163,12 +168,14 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         assignments?: Assignment[];
         studentWorks?: StudentWork[];
         profile?: TeacherProfile | null;
+        missions?: Mission[];
       };
       if (data.ok) {
         setStudents(data.students ?? []);
         setAssignments(data.assignments ?? []);
         setStudentWorks(data.studentWorks ?? []);
         setProfile(data.profile ?? buildDefaultProfile(uid, userEmail));
+        setMissions([...demoMissions, ...(data.missions ?? [])]);
       }
     } catch { /* ignore */ }
     setTeacherId(uid);
@@ -533,6 +540,37 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     });
   }, [teacherId, assignments]);
 
+  // ── Misiones personalizadas ───────────────────────────────────────────────────
+
+  const createMission = useCallback(async (input: CreateMissionInput): Promise<{ ok: boolean; message?: string }> => {
+    if (!teacherId) return { ok: false, message: "No hay sesión activa." };
+    const newMission: Mission = {
+      id: createId("mission"),
+      teacherId,
+      status: "draft",
+      title: input.title,
+      summary: input.summary,
+      category: input.category,
+      ageBand: input.ageBand,
+      durationMinutes: input.durationMinutes,
+      outcomes: input.outcomes,
+      steps: input.steps,
+      allowedCategories: input.allowedCategories,
+      coverTone: input.coverTone,
+    };
+    const res = await fetch("/api/teacher/create-mission", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newMission),
+    });
+    const data = await res.json() as { ok: boolean; message?: string };
+    if (data.ok) {
+      setMissions((prev) => [...prev, newMission]);
+      return { ok: true };
+    }
+    return { ok: false, message: data.message ?? "Error al guardar la misión." };
+  }, [teacherId]);
+
   // ── 5.11: Student work operations ────────────────────────────────────────────
 
   const saveStudentWork = useCallback(async (input: SaveStudentWorkInput): Promise<void> => {
@@ -768,7 +806,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       profile,
       institution: demoInstitution,
       courses: demoCourses,
-      missions: demoMissions,
+      missions,
       students,
       assignments,
       studentWorks,
@@ -785,6 +823,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       assignMission,
       archiveAssignment,
       deleteAssignment,
+      createMission,
       saveStudentWork,
       submitStudentWork,
       updateProfile,
@@ -797,6 +836,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       teacherId,
       studentSession,
       profile,
+      missions,
       students,
       assignments,
       studentWorks,
@@ -813,6 +853,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       assignMission,
       archiveAssignment,
       deleteAssignment,
+      createMission,
       saveStudentWork,
       submitStudentWork,
       updateProfile,

@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Modal } from "@/components/modal";
+import { CreateMissionModal } from "@/components/create-mission-modal";
 import { useDemoStore } from "@/components/auth-store-provider";
 import type { Mission } from "@/lib/types";
 
@@ -17,11 +18,12 @@ const ageFilters = ["Todas", "7-10", "11-14", "15-18"] as const;
 type CategoryFilter = (typeof categoryFilters)[number]["value"];
 
 export function LibraryScreen() {
-  const { assignMission, assignments, courses, missions } = useDemoStore();
+  const { assignMission, assignments, courses, missions, teacherId } = useDemoStore();
   const [category, setCategory] = useState<CategoryFilter>("Todas");
   const [ageBand, setAgeBand] = useState<(typeof ageFilters)[number]>("Todas");
   const [previewMission, setPreviewMission] = useState<Mission | null>(null);
   const [assignmentMission, setAssignmentMission] = useState<Mission | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const filteredMissions = useMemo(
     () =>
@@ -68,6 +70,14 @@ export function LibraryScreen() {
             ))}
           </select>
         </label>
+        <button
+          className="button button-primary"
+          disabled={!teacherId}
+          onClick={() => setShowCreateModal(true)}
+          type="button"
+        >
+          Crear misión
+        </button>
       </section>
 
       <section aria-label="Misiones disponibles" className="mission-grid">
@@ -78,6 +88,7 @@ export function LibraryScreen() {
                 <img src={`/icon_${mission.category.toLowerCase()}.png`} alt="" />
               </span>
               <span className="age-pill">{mission.ageBand} años</span>
+              {mission.teacherId ? <span className="age-pill">Personalizada</span> : null}
             </div>
             <h2>{mission.title}</h2>
             <p>{mission.summary}</p>
@@ -109,6 +120,7 @@ export function LibraryScreen() {
           }}
         />
       ) : null}
+      {showCreateModal ? <CreateMissionModal onClose={() => setShowCreateModal(false)} /> : null}
     </div>
   );
 }

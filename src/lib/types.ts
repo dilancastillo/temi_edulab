@@ -66,6 +66,7 @@ export type MissionAgeBand = "7-10" | "9-10" | "11-14" | "15-18";
 
 export type Mission = {
   id: string;
+  teacherId?: string;
   title: string;
   summary: string;
   category: MissionCategory;
@@ -76,6 +77,18 @@ export type Mission = {
   coverTone: "blue" | "green" | "yellow" | "red" | "indigo" | "slate";
   steps?: MissionStep[];
   allowedCategories?: ("Movimiento" | "Hablar" | "Mostrar" | "Audio" | "Condición" | "Control")[];
+};
+
+export type CreateMissionInput = {
+  title: string;
+  summary: string;
+  category: MissionCategory;
+  ageBand: MissionAgeBand;
+  durationMinutes: number;
+  outcomes: string[];
+  steps: MissionStep[];
+  allowedCategories: Mission["allowedCategories"];
+  coverTone: Mission["coverTone"];
 };
 
 export type AssignmentStatus = "active" | "archived";

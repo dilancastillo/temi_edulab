@@ -1,6 +1,6 @@
 import "server-only";
 import pool from "@/lib/db";
-import type { Assignment, Student, StudentWork, TeacherProfile } from "@/lib/types";
+import type { Assignment, Mission, Student, StudentWork, TeacherProfile } from "@/lib/types";
 
 // ─── Students ────────────────────────────────────────────────────────────────
 
@@ -124,6 +124,38 @@ export async function upsertProfile(profile: TeacherProfile): Promise<void> {
   );
 }
 
+// ─── Custom Missions ──────────────────────────────────────────────────────────
+
+export async function fetchCustomMissions(teacherId: string): Promise<Mission[]> {
+  const { rows } = await pool.query(
+    "SELECT * FROM missions WHERE teacher_id = $1 ORDER BY created_at DESC",
+    [teacherId]
+  );
+  return rows.map(rowToMission);
+}
+
+export async function insertMission(mission: Mission): Promise<void> {
+  await pool.query(
+    `INSERT INTO missions (id, teacher_id, title, summary, category, age_band, duration_minutes, outcomes, steps, allowed_categories, status, cover_tone, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+    [
+      mission.id,
+      mission.teacherId ?? null,
+      mission.title,
+      mission.summary,
+      mission.category,
+      mission.ageBand,
+      mission.durationMinutes,
+      JSON.stringify(mission.outcomes),
+      JSON.stringify(mission.steps ?? []),
+      JSON.stringify(mission.allowedCategories ?? []),
+      mission.status,
+      mission.coverTone,
+      new Date().toISOString(),
+    ]
+  );
+}
+
 // ─── Row mappers ─────────────────────────────────────────────────────────────
 
 function rowToStudent(row: Record<string, unknown>): Student {
@@ -185,5 +217,28 @@ function rowToProfile(row: Record<string, unknown>): TeacherProfile {
     biography: (row.biography as string) ?? "",
     avatarUrl: row.avatar_url as string | undefined,
     robotId: row.robot_id as string | undefined,
+  };
+}
+
+function rowToMission(row: Record<string, unknown>): Mission {
+  return {
+    id: row.id as string,
+    teacherId: row.teacher_id as string | undefined,
+    title: row.title as string,
+    summary: row.summary as string,
+    category: row.category as Mission["category"],
+    ageBand: row.age_band as Mission["ageBand"],
+    durationMinutes: row.duration_minutes as number,
+    outcomes: typeof row.outcomes === "string"
+      ? JSON.parse(row.outcomes)
+      : (row.outcomes as string[]),
+    steps: typeof row.steps === "string"
+      ? JSON.parse(row.steps)
+      : (row.steps as Mission["steps"]),
+    allowedCategories: typeof row.allowed_categories === "string"
+      ? JSON.parse(row.allowed_categories)
+      : (row.allowed_categories as Mission["allowedCategories"]),
+    status: row.status as Mission["status"],
+    coverTone: row.cover_tone as Mission["coverTone"],
   };
 }
