@@ -10,7 +10,7 @@ const ITEMS_PER_PAGE = 3;
 
 export function DashboardScreen() {
   const { assignments, courses, missions, students, studentWorks } = useDemoStore();
-  const activeAssignments = assignments.filter((assignment) => assignment.status === "active");
+  const activeAssignments = assignments.filter((assignment) => assignment.status === "active" && missions.some((m) => m.id === assignment.missionId) && courses.some((c) => c.id === assignment.courseId));
   const studentsToReview = students.filter((student) => student.progress === "Revisar").length;
   const gradedStudents = students.filter((student) => student.progress === "Calificado").length;
 
