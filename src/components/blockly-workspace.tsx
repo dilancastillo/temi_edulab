@@ -39,7 +39,7 @@ const toolbox = {
       name: "Mostrar",
       colour: "#c8891f",
       contents: [
-        { kind: "block", type: "temi_show" },
+        //{ kind: "block", type: "temi_show" },
         { kind: "block", type: "temi_show_image" },
         { kind: "block", type: "temi_show_video" }
       ]
@@ -64,7 +64,7 @@ const toolbox = {
         { kind: "block", type: "temi_repeat" },
         { kind: "block", type: "temi_while_count" },
         { kind: "block", type: "temi_while_timer" },
-        { kind: "block", type: "temi_while_listen" },
+        //{ kind: "block", type: "temi_while_listen" },
         { kind: "block", type: "temi_while_mqtt" }
       ]
     }
@@ -75,7 +75,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
   if (Blockly.Blocks.temi_start) return;
 
   const dropdownOptions: [string, string][] =
-    locations.length > 0 ? locations.map((l) => [l, l]) : [["Sala Principal", "Sala Principal"]];
+    locations.length > 0 ? locations.map((l) => [l, l]) : [["Sin Ubicaciones", "Sin Ubicaciones"]];
 
   Blockly.common.defineBlocksWithJsonArray([
     {
@@ -135,10 +135,10 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       previousStatement: null,
       nextStatement: null,
       colour: 285,
-      tooltip: "Temi dice un texto. Puedes ajustar género, velocidad, tono, idioma y si muestra animación facial.",
+      tooltip: "Temi dice un texto. velocidad: Min 0.5 - Max 2.0, Tono: Min -10 - Max 10",
       helpUrl: ""
     },
-    {
+    /*{
       type: "temi_show",
       message0: "mostrar señal %1",
       args0: [
@@ -157,7 +157,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       colour: 40,
       tooltip: "Muestra una señal en la pantalla",
       helpUrl: ""
-    },
+    },*/
     {
       type: "temi_show_image",
       message0: "mostrar imagen 🖼",
@@ -199,7 +199,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     {
       type: "temi_repeat",
       message0: "repetir %1 veces",
-      args0: [{ type: "field_number", name: "TIMES", value: 2, min: 1, max: 10, precision: 1 }],
+      args0: [{ type: "field_number", name: "TIMES", value: 2, min: 1, max: 5, precision: 1 }],
       message1: "%1",
       args1: [{ type: "input_statement", name: "DO" }],
       previousStatement: null,
@@ -211,7 +211,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     {
       type: "temi_while_count",
       message0: "repetir mientras contador < %1",
-      args0: [{ type: "field_number", name: "LIMIT", value: 5, min: 1, max: 50, precision: 1 }],
+      args0: [{ type: "field_number", name: "LIMIT", value: 5, min: 1, max: 10, precision: 1 }],
       message1: "%1",
       args1: [{ type: "input_statement", name: "DO" }],
       previousStatement: null,
@@ -223,7 +223,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     {
       type: "temi_while_timer",
       message0: "repetir mientras tiempo < %1 segundos",
-      args0: [{ type: "field_number", name: "SECONDS", value: 30, min: 1, max: 300, precision: 1 }],
+      args0: [{ type: "field_number", name: "SECONDS", value: 30, min: 1, max: 90, precision: 1 }],
       message1: "%1",
       args1: [{ type: "input_statement", name: "DO" }],
       previousStatement: null,
@@ -232,7 +232,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       tooltip: "Repite los bloques internos mientras el tiempo transcurrido sea menor que N segundos",
       helpUrl: ""
     },
-    {
+    /*{
       type: "temi_while_listen",
       message0: "repetir hasta escuchar %1",
       args0: [{ type: "field_input", name: "STOP_WORD", text: "listo" }],
@@ -243,7 +243,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       colour: 120,
       tooltip: "Repite los bloques internos hasta que el robot escuche la palabra de parada (máx. 5 veces)",
       helpUrl: ""
-    },
+    },*/
     {
       type: "temi_while_mqtt",
       message0: "repetir hasta mensaje MQTT en topic %1",
