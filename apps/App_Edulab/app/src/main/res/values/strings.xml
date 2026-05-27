@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">EduLabApp</string>
+    <string name="app_name">Mblock</string>
     <string name="status_connected">Connected</string>
     <string name="status_disconnected">Disconnected</string>
     <string name="language_label">EN</string>

@@ -8,6 +8,8 @@
     <uses-permission android:name="com.robotemi.permission.NAVIGATION" />
     <uses-permission android:name="com.robotemi.permission.SEQUENCE" />
     <uses-permission android:name="com.robotemi.permission.SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
         android:name=".EduLabApplication"

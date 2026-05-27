@@ -96,7 +96,14 @@ class RobotReflectionRunner @Inject constructor(
             val rClass = Class.forName("com.robotemi.sdk.Robot")
             val robot = rClass.getMethod("getInstance").invoke(null)
                 ?: return Result.failure(IllegalStateException("Robot instance not available"))
+            val locations = try {
+                @Suppress("UNCHECKED_CAST")
+                rClass.getMethod("getLocations").invoke(robot) as? List<String> ?: emptyList()
+            } catch (e: Exception) { emptyList() }
 
+            if (locations.isNotEmpty() && !locations.any { it.equals(location, ignoreCase = true) }) {
+                return Result.failure(RuntimeException("Ubicación '$location' no encontrada"))
+            }
             val latch = CountDownLatch(1)
             var navError: String? = null
 

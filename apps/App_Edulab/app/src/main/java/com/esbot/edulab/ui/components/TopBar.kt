@@ -75,9 +75,9 @@ fun EsbotTopBar(
         if (robotId.isNotBlank()) {
             Spacer(modifier = Modifier.width(20.dp))
             Text(
-                text = "Robot ID: $robotId",
+                text = "$robotId",
                 fontWeight = FontWeight.Normal,
-                fontSize = 16.sp,
+                fontSize = 22.sp,
                 color = Color(0xFF555555)
             )
         }
@@ -93,7 +93,7 @@ fun EsbotTopBar(
         Spacer(modifier = Modifier.width(28.dp))
 
         Text(
-            text = "Esbot EduLab",
+            text = "Esbot mBlock",
             fontWeight = FontWeight.Bold,
             color = Color(0xFF1A237E),
             fontSize = 22.sp

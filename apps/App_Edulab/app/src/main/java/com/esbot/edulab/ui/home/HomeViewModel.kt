@@ -19,6 +19,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 data class HomeUiState(
     val isConnected: Boolean = false,
@@ -31,6 +33,7 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val networkStatusProvider: NetworkStatusProvider,
     private val batteryStatusProvider: BatteryStatusProvider,
     private val locationServer: LocationServer,
@@ -62,8 +65,13 @@ class HomeViewModel @Inject constructor(
         robotWebSocketClient.start()
         // Resolve robotId and store in UI state
         viewModelScope.launch {
-            val id = robotWebSocketClient.resolveRobotId()
-            _uiState.update { it.copy(robotId = id) }
+            val ip = getWifiIpAddress()
+            val ssid = getWifiSsid()
+            val display = buildString {
+                if (ip != null) append("IP: $ip")
+                if (ssid != null) append("   Wifi: $ssid")
+            }
+            _uiState.update { it.copy(robotId = display) }
         }
         // Mark as loaded after a short delay to show loading indicator
         viewModelScope.launch {
@@ -100,5 +108,30 @@ class HomeViewModel @Inject constructor(
         super.onCleared()
         locationServer.stop()
         robotWebSocketClient.stop()
+    }
+    private fun getWifiIpAddress(): String? {
+        return try {
+            val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
+            for (intf in interfaces) {
+                if (!intf.name.contains("wlan", ignoreCase = true)) continue
+                for (addr in intf.inetAddresses) {
+                    if (!addr.isLoopbackAddress && addr is java.net.Inet4Address) {
+                        return addr.hostAddress
+                    }
+                }
+            }
+            null
+        } catch (e: Exception) {
+            null
+        }
+    }
+    private fun getWifiSsid(): String? {
+        return try {
+            val wifiManager = context.applicationContext
+                .getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            val ssid = wifiManager.connectionInfo.ssid
+            if (ssid == "<unknown ssid>" || ssid == null) null
+            else ssid.trim('"')
+        } catch (e: Exception) { null }
     }
 }

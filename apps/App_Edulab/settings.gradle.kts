@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "EduLabApp"
+rootProject.name = "Mblock"
 include(":app")
  
