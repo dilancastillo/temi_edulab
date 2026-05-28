@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.esbot.edulab"
+        applicationId = "com.esbot.edulab.mblock"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
