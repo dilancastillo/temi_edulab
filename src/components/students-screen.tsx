@@ -611,7 +611,7 @@ function SequencePreviewModal({
       return { iconSrc: null, icon: "⏱️", label: `Repetir durante ${block.fields["SECONDS"] ?? "1"} minutos`, base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_wait") {
-      return { iconSrc: null, icon: "⏳", label: `Esperar ${block.fields["MINUTES"] ?? "1"} minutos`, base64: null, key: i, depth: block.depth };
+      return { iconSrc: null, icon: "⏳", label: `Esperar ${block.fields["MINUTES"] ?? "30"} segundos`, base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_while_listen") {
       return { iconSrc: null, icon: "👂", label: `Repetir hasta escuchar: "${block.fields["STOP_WORD"] ?? "listo"}"`, base64: null, key: i, depth: block.depth };

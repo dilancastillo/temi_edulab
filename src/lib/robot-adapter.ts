@@ -308,8 +308,8 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         walk(innerBlock, innerCommands);
         acc.push({ type: "WhileTimer", seconds, commands: innerCommands });
       } else if (b["type"] === "temi_wait") {
-        const minutes = Math.max(1, Math.min(5, parseInt(fields?.["MINUTES"] ?? "1", 10)));
-        acc.push({ type: "Wait", seconds: minutes * 60 });
+        const seconds = Math.max(1, Math.min(120, parseInt(fields?.["MINUTES"] ?? "30", 10)));
+        acc.push({ type: "Wait", seconds });
       } else if (b["type"] === "temi_while_listen") {
         const rawWord = (fields?.["STOP_WORD"] ?? "").trim();
         const stopWord = rawWord.length > 0 ? rawWord : "listo";

@@ -248,12 +248,12 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     },
     {
       type: "temi_wait",
-      message0: "esperar %1 minutos",
-      args0: [{ type: "field_number", name: "MINUTES", value: 1, min: 1, max: 5, precision: 1 }],
+      message0: "esperar %1 segundos",
+      args0: [{ type: "field_number", name: "MINUTES", value: 30, min: 1, max: 120, precision: 1 }],
       previousStatement: null,
       nextStatement: null,
       colour: 120,
-      tooltip: "Pausa la ejecución durante N minutos (máx. 5 min)",
+      tooltip: "Pausa la ejecución durante N segundos (máx. 120 seg)",
       helpUrl: ""
     },
     {

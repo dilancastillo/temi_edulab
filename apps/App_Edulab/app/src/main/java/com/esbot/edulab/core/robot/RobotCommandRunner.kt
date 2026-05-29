@@ -30,6 +30,7 @@ sealed class RobotCommand {
         val commands: List<RobotCommand>
     ) : RobotCommand()
     data class Wait(val seconds: Int) : RobotCommand()
+}
 
 data class ConditionOption(
     val keyword: String,
