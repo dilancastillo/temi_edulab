@@ -8,12 +8,14 @@ vi.mock("@/lib/robot-adapter", async (importOriginal) => {
   return {
     ...actual,
     executeRobotCommands: vi.fn(),
+    cancelRobotExecution: vi.fn(),
   };
 });
 
-import { executeRobotCommands } from "@/lib/robot-adapter";
+import { cancelRobotExecution, executeRobotCommands } from "@/lib/robot-adapter";
 
 const mockExecute = vi.mocked(executeRobotCommands);
+const mockCancel = vi.mocked(cancelRobotExecution);
 
 // Workspace con bloque temi_move
 const workspaceWithTemiMove = {
@@ -111,15 +113,46 @@ describe("ExecuteButton", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByRole("button", { name: /ejecutar en robot/i }));
 
-    expect(screen.getByRole("button")).toHaveTextContent("Ejecutando...");
-    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button", { name: /ejecutando.../i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /pausar/i })).toBeInTheDocument();
 
     // Resolver para limpiar
     resolve({ ok: true, message: "OK" });
     await waitFor(() => {
-      expect(screen.getByRole("button")).toHaveTextContent("Ejecutar en robot");
+      expect(screen.getByRole("button", { name: /ejecutar en robot/i })).toHaveTextContent("Ejecutar en robot");
+    });
+  });
+
+  it("muestra botón Pausar mientras la ejecución está en curso y llama al cancelador", async () => {
+    let resolveExecute!: (v: { ok: boolean; message: string }) => void;
+    mockExecute.mockReturnValue(new Promise((r) => { resolveExecute = r; }));
+    mockCancel.mockResolvedValue({ ok: true, message: "Cancelado" });
+
+    render(
+      <ExecuteButton
+        workspaceState={workspaceWithTemiMove}
+        sequence={["temi_start", "temi_move"]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /ejecutar en robot/i }));
+
+    const pauseButton = screen.getByRole("button", { name: /pausar/i });
+    expect(pauseButton).toBeInTheDocument();
+    expect(pauseButton).not.toBeDisabled();
+
+    fireEvent.click(pauseButton);
+
+    await waitFor(() => {
+      expect(mockCancel).toHaveBeenCalledOnce();
+      expect(screen.getByText("Cancelado")).toBeInTheDocument();
+    });
+
+    resolveExecute({ ok: true, message: "OK" });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /ejecutar en robot/i })).toHaveTextContent("Ejecutar en robot");
     });
   });
 

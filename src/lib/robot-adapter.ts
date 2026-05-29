@@ -182,6 +182,23 @@ export async function executeRobotCommands(
   }
 }
 
+export async function cancelRobotExecution(): Promise<RobotRunResult> {
+  try {
+    const response = await fetch(`/api/robot/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ robotId: getRobotId() }),
+    });
+    const data = (await response.json()) as RobotRunResult;
+    if (response.ok) {
+      return { ok: true, message: data.message ?? "Cancelado" };
+    }
+    return { ok: false, message: data.message ?? `Error ${response.status}` };
+  } catch {
+    return { ok: false, message: "Robot no disponible o tiempo de espera agotado" };
+  }
+}
+
 // 1.3 Extraer el campo LOCATION del bloque temi_move del workspace serializado de Blockly
 export function extractLocationFromWorkspace(workspaceState: unknown): string | null {
   return extractFieldFromBlock(workspaceState, "temi_move", "LOCATION");

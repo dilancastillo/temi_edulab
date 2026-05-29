@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
+  cancelRobotExecution,
   extractCommandsFromWorkspace,
   executeRobotCommands,
 } from "@/lib/robot-adapter";
@@ -16,23 +17,54 @@ interface ExecuteButtonProps {
 
 export function ExecuteButton({ workspaceState, sequence, disabled, label = "Ejecutar en robot", inline = false }: ExecuteButtonProps) {
   const [loading, setLoading] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const executionRef = useRef({ id: 0, canceled: false });
 
-  const isDisabled = disabled || loading;
+  const hasExecutableCommand = sequence.includes("temi_move");
+  const isDisabled = disabled || !hasExecutableCommand || loading || canceling;
 
   async function handleClick() {
     setMessage(null);
+
+    const commands = extractCommandsFromWorkspace(workspaceState);
+    if (commands.length === 0) {
+      setMessage({ text: "No hay bloques ejecutables en el programa", ok: false });
+      return;
+    }
+
+    const executionId = executionRef.current.id + 1;
+    executionRef.current = { id: executionId, canceled: false };
     setLoading(true);
+    setCanceling(false);
+
     try {
-      const commands = extractCommandsFromWorkspace(workspaceState);
-      if (commands.length === 0) {
-        setMessage({ text: "No hay bloques ejecutables en el programa", ok: false });
-        return;
-      }
       const result = await executeRobotCommands(commands);
+      if (executionRef.current.id !== executionId || executionRef.current.canceled) return;
       setMessage({ text: result.message, ok: result.ok });
     } finally {
-      setLoading(false);
+      if (executionRef.current.id === executionId) {
+        setLoading(false);
+        setCanceling(false);
+      }
+    }
+  }
+
+  async function handlePause() {
+    if (!loading || canceling) return;
+
+    executionRef.current.canceled = true;
+    setCanceling(true);
+    setMessage(null);
+
+    try {
+      const result = await cancelRobotExecution();
+      setMessage({ text: result.message, ok: result.ok });
+      if (result.ok) {
+        setLoading(false);
+      }
+    } finally {
+      setCanceling(false);
     }
   }
 
@@ -46,6 +78,21 @@ export function ExecuteButton({ workspaceState, sequence, disabled, label = "Eje
       >
         {loading ? "Ejecutando..." : label}
       </button>
+      {loading && !canceling ? (
+        <button
+          className="button button-secondary"
+          onClick={handlePause}
+          disabled={canceling}
+          type="button"
+        >
+          Pausar
+        </button>
+      ) : null}
+      {canceling ? (
+        <button className="button button-secondary" disabled type="button">
+          Cancelando...
+        </button>
+      ) : null}
       {message && (
         <span
           className={message.ok ? "success-message" : "form-error"}
