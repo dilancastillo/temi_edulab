@@ -4,6 +4,8 @@ export type ProgramStep = {
   type: ProgramBlockType;
   label: string;
   helper: string;
+  /** If set, this step must appear inside a block of this type (e.g. inside temi_repeat) */
+  parentType?: ProgramBlockType;
 };
 
 export type BlockWithFields = {
@@ -61,32 +63,99 @@ export function extractNavigateStep(block: BlockWithFields): NavigateStep | null
   return { type: "Navigate", primaryValue: location };
 }
 
+/**
+ * Flattens a Blockly workspaceState into a list of { type, parentType } entries,
+ * where parentType is the type of the containing block (if any).
+ */
+function flattenWorkspace(workspaceState: unknown): Array<{ type: string; parentType?: string }> {
+  try {
+    if (!workspaceState || typeof workspaceState !== "object") return [];
+    const ws = workspaceState as Record<string, unknown>;
+    const topBlocks = (ws["blocks"] as Record<string, unknown>)?.["blocks"];
+    if (!Array.isArray(topBlocks)) return [];
+
+    const result: Array<{ type: string; parentType?: string }> = [];
+
+    function walk(block: unknown, parentType?: string): void {
+      if (!block || typeof block !== "object") return;
+      const b = block as Record<string, unknown>;
+      const type = b["type"] as string;
+      result.push({ type, parentType });
+      // Recurse into child statement inputs (DO, ELSE, etc.)
+      const inputs = b["inputs"] as Record<string, unknown> | undefined;
+      if (inputs) {
+        for (const inputKey of Object.keys(inputs)) {
+          const inputBlock = (inputs[inputKey] as Record<string, unknown>)?.["block"];
+          if (inputBlock) walk(inputBlock, type);
+        }
+      }
+      // Continue to next sibling (same parent)
+      const next = (b["next"] as Record<string, unknown>)?.["block"];
+      if (next) walk(next, parentType);
+    }
+
+    for (const block of topBlocks) walk(block);
+    return result;
+  } catch { return []; }
+}
+
 export function evaluateOrderSteps(
   sequence: string[] | BlockWithFields[],
-  program = orderStepsProgram
+  program = orderStepsProgram,
+  workspaceState?: unknown
 ): ProgramEvaluation {
-  let completedSteps = 0;
+  // If any step has a parentType, use workspace-based evaluation
+  const hasNestedSteps = program.some((s) => s.parentType);
 
+  if (hasNestedSteps && workspaceState !== undefined) {
+    const flat = flattenWorkspace(workspaceState);
+    let completedSteps = 0;
+
+    for (const expectedStep of program) {
+      // Find a matching block in the flat list that hasn't been consumed yet
+      const matchIndex = flat.findIndex((entry, idx) => {
+        if (idx < completedSteps) return false; // rough consumption tracking
+        const typeMatch = entry.type === expectedStep.type;
+        const parentMatch = expectedStep.parentType
+          ? entry.parentType === expectedStep.parentType
+          : entry.parentType === undefined || entry.parentType === null;
+        return typeMatch && parentMatch;
+      });
+
+      if (matchIndex === -1) break;
+      completedSteps += 1;
+    }
+
+    const nextStep = program[completedSteps];
+    if (completedSteps === program.length) {
+      return { completedSteps, totalSteps: program.length, isComplete: true, message: "Secuencia completa. Ya puedes enviar tu misión." };
+    }
+    return {
+      completedSteps,
+      totalSteps: program.length,
+      isComplete: false,
+      nextStep,
+      message: nextStep
+        ? nextStep.parentType
+          ? `Siguiente bloque: ${nextStep.label} (dentro de un bloque ${nextStep.parentType}).`
+          : `Siguiente bloque: ${nextStep.label}.`
+        : "Revisa el orden de los bloques."
+    };
+  }
+
+  // Fallback: flat sequence evaluation (original behavior)
+  let completedSteps = 0;
   for (const expectedStep of program) {
     const item = sequence[completedSteps];
     const blockType = typeof item === "string" ? item : item?.type;
-    if (blockType !== expectedStep.type) {
-      break;
-    }
+    if (blockType !== expectedStep.type) break;
     completedSteps += 1;
   }
 
   const nextStep = program[completedSteps];
-
   if (completedSteps === program.length) {
-    return {
-      completedSteps,
-      totalSteps: program.length,
-      isComplete: true,
-      message: "Secuencia completa. Ya puedes enviar tu misión."
-    };
+    return { completedSteps, totalSteps: program.length, isComplete: true, message: "Secuencia completa. Ya puedes enviar tu misión." };
   }
-
   return {
     completedSteps,
     totalSteps: program.length,

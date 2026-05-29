@@ -34,7 +34,7 @@ export function StudentMissionScreen() {
   const savedWorkspaceRef = useRef<unknown>(work?.workspaceState ?? null);
 
   const missionSteps = mission?.steps ?? orderStepsProgram;
-  const evaluation = useMemo(() => evaluateOrderSteps(sequence, missionSteps), [sequence, missionSteps]);
+  const evaluation = useMemo(() => evaluateOrderSteps(sequence, missionSteps, workspaceState), [sequence, missionSteps, workspaceState]);
   const isSubmitted = work?.status === "submitted";
 
   if (!student || !assignment || !mission) {

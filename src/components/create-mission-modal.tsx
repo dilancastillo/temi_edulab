@@ -100,9 +100,19 @@ export function CreateMissionModal({ onClose }: Readonly<CreateMissionModalProps
 
   function updateStep(index: number, field: keyof ProgramStep, value: string) {
     setSteps((prev) =>
-      prev.map((s, i) =>
-        i === index ? { ...s, [field]: value } : s
-      )
+      prev.map((s, i) => {
+        if (i !== index) return s;
+        if (field === "parentType") {
+          const updated = { ...s };
+          if (value === "") {
+            delete updated.parentType;
+          } else {
+            updated.parentType = value as ProgramBlockType;
+          }
+          return updated;
+        }
+        return { ...s, [field]: value };
+      })
     );
   }
 
@@ -328,6 +338,19 @@ export function CreateMissionModal({ onClose }: Readonly<CreateMissionModalProps
                     <option key={t} value={t}>
                       {t}
                     </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field" style={{ flex: "0 0 auto", minWidth: "10rem" }}>
+                <label htmlFor={`cm-step-parent-${index}`}>Va dentro de</label>
+                <select
+                  id={`cm-step-parent-${index}`}
+                  value={step.parentType ?? ""}
+                  onChange={(e) => updateStep(index, "parentType", e.target.value)}
+                >
+                  <option value="">— Nivel raíz —</option>
+                  {BLOCK_TYPES.filter((t) => ["temi_repeat", "temi_while_count", "temi_while_timer", "temi_while_listen", "temi_while_mqtt", "temi_condition"].includes(t)).map((t) => (
+                    <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
               </div>
