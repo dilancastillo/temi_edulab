@@ -376,6 +376,9 @@ class RobotWebSocketClient @Inject constructor(
                     topic = obj.get("topic").asString,
                     commands = parseCommands(obj.getAsJsonArray("commands"))
                 )
+                "wait", "Wait" -> RobotCommand.Wait(
+                    seconds = obj.get("seconds").asInt
+                )
                 else -> {
                     Log.w(TAG, "Tipo de comando desconocido: $type")
                     null

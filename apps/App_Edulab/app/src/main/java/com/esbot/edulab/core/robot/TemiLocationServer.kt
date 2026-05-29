@@ -368,6 +368,12 @@ class TemiLocationServer @Inject constructor(
                             Log.w(TAG, "  ✗ WhileListen: no se pudieron parsear comandos internos")
                         }
                     }
+                    "Wait" -> {
+                        val secondsMatch = Regex(""""seconds"\s*:\s*(\d+)""").find(context)
+                        val seconds = secondsMatch?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 60
+                        commands.add(RobotCommand.Wait(seconds))
+                        Log.d(TAG, "  ✓ Wait: seconds=$seconds")
+                    }
                     else -> Log.d(TAG, "  ⊘ Tipo desconocido ignorado: $type")
                 }
                 searchStart = typeMatch.range.last + 1

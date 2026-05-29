@@ -67,6 +67,7 @@ const toolbox = {
         { kind: "block", type: "temi_repeat" },
         { kind: "block", type: "temi_while_count" },
         { kind: "block", type: "temi_while_timer" },
+        { kind: "block", type: "temi_wait" },
         { kind: "block", type: "temi_while_listen" },
         { kind: "block", type: "temi_while_mqtt" }
       ]
@@ -235,14 +236,24 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     },
     {
       type: "temi_while_timer",
-      message0: "repetir mientras tiempo < %1 segundos",
-      args0: [{ type: "field_number", name: "SECONDS", value: 30, min: 1, max: 90, precision: 1 }],
+      message0: "repetir mientras tiempo < %1 minutos",
+      args0: [{ type: "field_number", name: "SECONDS", value: 1, min: 1, max: 5, precision: 1 }],
       message1: "%1",
       args1: [{ type: "input_statement", name: "DO" }],
       previousStatement: null,
       nextStatement: null,
       colour: 120,
-      tooltip: "Repite los bloques internos mientras el tiempo transcurrido sea menor que N segundos",
+      tooltip: "Repite los bloques internos mientras el tiempo transcurrido sea menor que N minutos (máx. 5 min)",
+      helpUrl: ""
+    },
+    {
+      type: "temi_wait",
+      message0: "esperar %1 minutos",
+      args0: [{ type: "field_number", name: "MINUTES", value: 1, min: 1, max: 5, precision: 1 }],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 120,
+      tooltip: "Pausa la ejecución durante N minutos (máx. 5 min)",
       helpUrl: ""
     },
     {

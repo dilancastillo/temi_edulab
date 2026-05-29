@@ -82,6 +82,13 @@ class RobotReflectionRunner @Inject constructor(
                 Result.success(Unit)
             }
             is RobotCommand.WhileMqtt -> whileMqttAndWait(command.topic, command.commands)
+            is RobotCommand.Wait -> {
+                if (command.seconds < 1) return Result.success(Unit)
+                Log.d(TAG, "Wait: pausando ${command.seconds}s")
+                Thread.sleep(command.seconds * 1000L)
+                Log.d(TAG, "Wait: completado")
+                Result.success(Unit)
+            }
         }
     }
 

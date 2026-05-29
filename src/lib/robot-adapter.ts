@@ -121,6 +121,11 @@ export type WhileTimerCommand = {
   commands: RobotExecuteCommand[];
 };
 
+export type WaitCommand = {
+  type: "Wait";
+  seconds: number;
+};
+
 export type WhileListenCommand = {
   type: "WhileListen";
   stopWord: string;
@@ -134,7 +139,7 @@ export type WhileMqttCommand = {
   commands: RobotExecuteCommand[];
 };
 
-export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | AskCaptureCommand | RepeatCommand | WhileCountCommand | WhileTimerCommand | WhileListenCommand | WhileMqttCommand;
+export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | AskCaptureCommand | RepeatCommand | WhileCountCommand | WhileTimerCommand | WaitCommand | WhileListenCommand | WhileMqttCommand;
 
 export async function uploadVideo(file: File): Promise<{ ok: boolean; videoUrl?: string; message?: string }> {
   try {
@@ -295,12 +300,16 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         walk(innerBlock, innerCommands);
         for (let i = 0; i < limit; i++) acc.push(...innerCommands);
       } else if (b["type"] === "temi_while_timer") {
-        const seconds = Math.max(1, Math.min(300, parseInt(fields?.["SECONDS"] ?? "30", 10)));
+        const minutes = Math.max(1, Math.min(5, parseInt(fields?.["SECONDS"] ?? "1", 10)));
+        const seconds = minutes * 60;
         const doInput = (b["inputs"] as Record<string, unknown>)?.["DO"];
         const innerBlock = (doInput as Record<string, unknown>)?.["block"];
         const innerCommands: RobotExecuteCommand[] = [];
         walk(innerBlock, innerCommands);
         acc.push({ type: "WhileTimer", seconds, commands: innerCommands });
+      } else if (b["type"] === "temi_wait") {
+        const minutes = Math.max(1, Math.min(5, parseInt(fields?.["MINUTES"] ?? "1", 10)));
+        acc.push({ type: "Wait", seconds: minutes * 60 });
       } else if (b["type"] === "temi_while_listen") {
         const rawWord = (fields?.["STOP_WORD"] ?? "").trim();
         const stopWord = rawWord.length > 0 ? rawWord : "listo";
