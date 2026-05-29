@@ -21,7 +21,7 @@ export function ExecuteButton({ workspaceState, sequence, disabled, label = "Eje
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const executionRef = useRef({ id: 0, canceled: false });
 
-  const hasExecutableCommand = sequence.includes("temi_move");
+  const hasExecutableCommand = extractCommandsFromWorkspace(workspaceState).length > 0;
   const isDisabled = disabled || !hasExecutableCommand || loading || canceling;
 
   async function handleClick() {

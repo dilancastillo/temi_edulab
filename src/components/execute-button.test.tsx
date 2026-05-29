@@ -35,7 +35,7 @@ describe("ExecuteButton", () => {
     vi.clearAllMocks();
   });
 
-  it("está deshabilitado cuando sequence no contiene 'temi_move'", () => {
+  it("está deshabilitado cuando no hay comandos ejecutables", () => {
     render(
       <ExecuteButton
         workspaceState={workspaceEmpty}
@@ -44,6 +44,27 @@ describe("ExecuteButton", () => {
     );
     const button = screen.getByRole("button", { name: /ejecutar en robot/i });
     expect(button).toBeDisabled();
+  });
+
+  it("está habilitado cuando el workspace tiene un comando ejecutable sin temi_move", () => {
+    const workspaceWithSay = {
+      blocks: {
+        blocks: [
+          { type: "temi_say", fields: { TEXT: "Hola" } },
+        ],
+      },
+    };
+
+    mockExecute.mockResolvedValue({ ok: true, message: "Say dispatched" });
+
+    render(
+      <ExecuteButton
+        workspaceState={workspaceWithSay}
+        sequence={["temi_start", "temi_say"]}
+      />
+    );
+    const button = screen.getByRole("button", { name: /ejecutar en robot/i });
+    expect(button).not.toBeDisabled();
   });
 
   it("está habilitado cuando sequence contiene 'temi_move'", () => {
