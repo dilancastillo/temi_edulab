@@ -549,7 +549,7 @@ function SequencePreviewModal({
 }>) {
   const imageBlocks = extractShowImageBlocks(workspaceState);
 
-  // Build full sequence including temi_start
+  // Build full sequence including temi_start, recursing into child blocks
   const allSteps = (() => {
     try {
       if (!workspaceState || typeof workspaceState !== "object") return [];
@@ -557,14 +557,23 @@ function SequencePreviewModal({
       const topBlocks = (ws["blocks"] as Record<string, unknown>)?.["blocks"];
       if (!Array.isArray(topBlocks)) return [];
 
-      const result: Array<{ type: string; fields: Record<string, string> }> = [];
+      const result: Array<{ type: string; fields: Record<string, string>; depth: number }> = [];
 
-      function walk(block: unknown): void {
+      function walk(block: unknown, depth = 0): void {
         if (!block || typeof block !== "object") return;
         const b = block as Record<string, unknown>;
-        result.push({ type: b["type"] as string, fields: (b["fields"] as Record<string, string>) ?? {} });
+        result.push({ type: b["type"] as string, fields: (b["fields"] as Record<string, string>) ?? {}, depth });
+        // Recurse into child statement blocks (DO, ELSE, etc.)
+        const inputs = b["inputs"] as Record<string, unknown> | undefined;
+        if (inputs) {
+          for (const inputKey of Object.keys(inputs)) {
+            const inputBlock = (inputs[inputKey] as Record<string, unknown>)?.["block"];
+            if (inputBlock) walk(inputBlock, depth + 1);
+          }
+        }
+        // Continue to next sibling
         const next = (b["next"] as Record<string, unknown>)?.["block"];
-        if (next) walk(next);
+        if (next) walk(next, depth);
       }
 
       for (const block of topBlocks) walk(block);
@@ -575,36 +584,42 @@ function SequencePreviewModal({
   let imgCounter = 0;
   const steps = allSteps.map((block, i) => {
     if (block.type === "temi_start") {
-      return { iconSrc: null, icon: "🏁", label: "Cuando inicia", base64: null, key: i };
+      return { iconSrc: null, icon: "🏁", label: "Cuando inicia", base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_move") {
-      return { iconSrc: "/ubicacion.png", icon: null, label: `Ir a: ${block.fields["LOCATION"] ?? ""}`, base64: null, key: i };
+      return { iconSrc: "/ubicacion.png", icon: null, label: `Ir a: ${block.fields["LOCATION"] ?? ""}`, base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_say") {
-      return { iconSrc: null, icon: "💬", label: `Decir: "${block.fields["TEXT"] ?? ""}"`, base64: null, key: i };
+      return { iconSrc: null, icon: "💬", label: `Decir: "${block.fields["TEXT"] ?? ""}"`, base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_show_image") {
       imgCounter++;
       const imgNum = imgCounter;
       const imgBlock = imageBlocks[imgNum - 1];
-      return { iconSrc: "/imagen.png", icon: null, label: `Mostrar imagen ${imgNum}`, base64: imgBlock?.base64 ?? null, key: i };
+      return { iconSrc: "/imagen.png", icon: null, label: `Mostrar imagen ${imgNum}`, base64: imgBlock?.base64 ?? null, key: i, depth: block.depth };
+    }
+    if (block.type === "temi_show_video") {
+      return { iconSrc: null, icon: "📹", label: "Reproducir video", base64: null, key: i, depth: block.depth };
+    }
+    if (block.type === "temi_condition") {
+      return { iconSrc: null, icon: "❓", label: `Condición: "${block.fields["QUESTION"] ?? ""}"`, base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_while_mqtt") {
-      return { iconSrc: null, icon: "📡", label: `Repetir hasta MQTT en topic: ${block.fields["TOPIC"] ?? "robot/stop"}`, base64: null, key: i };
+      return { iconSrc: null, icon: "📡", label: `Repetir hasta MQTT en topic: ${block.fields["TOPIC"] ?? "robot/stop"}`, base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_while_timer") {
-      return { iconSrc: null, icon: "⏱️", label: `Repetir durante ${block.fields["SECONDS"] ?? "30"} segundos`, base64: null, key: i };
+      return { iconSrc: null, icon: "⏱️", label: `Repetir durante ${block.fields["SECONDS"] ?? "30"} segundos`, base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_while_listen") {
-      return { iconSrc: null, icon: "👂", label: `Repetir hasta escuchar: "${block.fields["STOP_WORD"] ?? "listo"}"`, base64: null, key: i };
+      return { iconSrc: null, icon: "👂", label: `Repetir hasta escuchar: "${block.fields["STOP_WORD"] ?? "listo"}"`, base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_while_count") {
-      return { iconSrc: null, icon: "🔢", label: `Repetir mientras contador < ${block.fields["LIMIT"] ?? "5"}`, base64: null, key: i };
+      return { iconSrc: null, icon: "🔢", label: `Repetir mientras contador < ${block.fields["LIMIT"] ?? "5"}`, base64: null, key: i, depth: block.depth };
     }
     if (block.type === "temi_repeat") {
-      return { iconSrc: null, icon: "🔁", label: `Repetir ${block.fields["TIMES"] ?? "2"} veces`, base64: null, key: i };
+      return { iconSrc: null, icon: "🔁", label: `Repetir ${block.fields["TIMES"] ?? "2"} veces`, base64: null, key: i, depth: block.depth };
     }
-    return { iconSrc: null, icon: "📹", label: block.type, base64: null, key: i };
+    return { iconSrc: null, icon: "⬜", label: block.type, base64: null, key: i, depth: block.depth };
   });
 
   return (
@@ -616,7 +631,7 @@ function SequencePreviewModal({
       ) : (
         <ol style={{ listStyle: "none", padding: 0, margin: "1rem 0", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {steps.map((step) => (
-            <li key={step.key} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem 0.75rem", background: "var(--color-surface)", borderRadius: "var(--radius)", border: "1px solid var(--color-border)" }}>
+            <li key={step.key} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem 0.75rem", background: "var(--color-surface)", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", marginLeft: `${step.depth * 1.5}rem` }}>
               {step.iconSrc
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img alt="" src={step.iconSrc} style={{ width: 24, height: 24, objectFit: "contain" }} />
