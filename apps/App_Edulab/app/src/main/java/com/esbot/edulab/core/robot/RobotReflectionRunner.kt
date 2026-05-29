@@ -32,6 +32,7 @@ class RobotReflectionRunner @Inject constructor(
             is RobotCommand.ShowImage -> showImageAndWait(command.imageUrl, command.durationMs)
             is RobotCommand.ShowVideo -> showVideoAndWait(command.videoUrl)
             is RobotCommand.AskCondition -> askConditionAndWait(command.question, command.options)
+            is RobotCommand.AskCapture -> askCaptureAndWait(command.question)
             is RobotCommand.Repeat -> {
                 if (command.times < 1) return Result.success(Unit)
                 repeat(command.times) {
@@ -571,6 +572,74 @@ class RobotReflectionRunner @Inject constructor(
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "askConditionAndWait falló: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    private fun askCaptureAndWait(question: String): Result<Unit> {
+        return try {
+            val rClass = Class.forName("com.robotemi.sdk.Robot")
+            val robot = rClass.getMethod("getInstance").invoke(null)
+                ?: return Result.failure(IllegalStateException("Robot instance not available"))
+
+            val latch = CountDownLatch(1)
+            lastAnswer = null
+
+            val asrListenerClass = Class.forName("com.robotemi.sdk.Robot\$AsrListener")
+            val asrListener = java.lang.reflect.Proxy.newProxyInstance(
+                asrListenerClass.classLoader,
+                arrayOf(asrListenerClass)
+            ) { proxy, method, args ->
+                when (method.name) {
+                    "equals" -> proxy === args?.getOrNull(0)
+                    "hashCode" -> System.identityHashCode(proxy)
+                    "toString" -> "AsrListener@${System.identityHashCode(proxy)}"
+                    "onAsrResult" -> {
+                        val asrText = args?.getOrNull(0)?.toString()?.trim() ?: ""
+                        Log.d(TAG, "ASR result for AskCapture: '$asrText'")
+                        lastAnswer = asrText
+                        latch.countDown()
+                        null
+                    }
+                    else -> null
+                }
+            }
+
+            rClass.getMethod("addAsrListener", asrListenerClass).invoke(robot, asrListener)
+            Log.d(TAG, "AsrListener registrado para AskCapture")
+
+            try {
+                rClass.getMethod("askQuestion", String::class.java).invoke(robot, question)
+                Log.d(TAG, "askQuestion('$question') invocado para AskCapture")
+            } catch (e: Exception) {
+                Log.e(TAG, "askQuestion() falló para AskCapture: ${e.message}", e)
+                rClass.getMethod("removeAsrListener", asrListenerClass).invoke(robot, asrListener)
+                return Result.failure(e)
+            }
+
+            val heard = latch.await(15L, TimeUnit.SECONDS)
+
+            try {
+                rClass.getMethod("removeAsrListener", asrListenerClass).invoke(robot, asrListener)
+            } catch (e: Exception) {
+                Log.w(TAG, "removeAsrListener falló para AskCapture: ${e.message}")
+            }
+
+            try {
+                rClass.getMethod("finishConversation").invoke(robot)
+                Log.d(TAG, "finishConversation() invocado para AskCapture")
+            } catch (e: Exception) {
+                Log.w(TAG, "finishConversation() falló para AskCapture: ${e.message}")
+            }
+
+            if (!heard) {
+                Log.d(TAG, "AskCapture timeout (15s)")
+            } else {
+                Log.d(TAG, "AskCapture result guardado: '${lastAnswer}'")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "askCaptureAndWait falló: ${e.message}", e)
             Result.failure(e)
         }
     }

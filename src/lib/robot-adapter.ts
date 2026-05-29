@@ -98,6 +98,11 @@ export type AskConditionCommand = {
   options: ConditionOption[];
 };
 
+export type AskCaptureCommand = {
+  type: "AskCapture";
+  question: string;
+};
+
 export type RepeatCommand = {
   type: "Repeat";
   times: number;
@@ -129,7 +134,7 @@ export type WhileMqttCommand = {
   commands: RobotExecuteCommand[];
 };
 
-export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | RepeatCommand | WhileCountCommand | WhileTimerCommand | WhileListenCommand | WhileMqttCommand;
+export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | AskCaptureCommand | RepeatCommand | WhileCountCommand | WhileTimerCommand | WhileListenCommand | WhileMqttCommand;
 
 export async function uploadVideo(file: File): Promise<{ ok: boolean; videoUrl?: string; message?: string }> {
   try {
@@ -222,6 +227,9 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         const language = fields?.["LANGUAGE"];
         const showAnimation = fields?.["SHOW_ANIMATION"] === "true";
         if (text) acc.push({ type: "Say", text, gender, speed, pitch, language, showAnimation });
+      } else if (b["type"] === "temi_ask") {
+        const question = fields?.["QUESTION"];
+        if (question) acc.push({ type: "AskCapture", question });
       } else if (b["type"] === "temi_show_image") {
         const imageUrl = fields?.["IMAGE_URL"];
         if (imageUrl) acc.push({ type: "ShowImage", imageUrl });
@@ -283,7 +291,7 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         const innerBlock = (doInput as Record<string, unknown>)?.["block"];
         const innerCommands: RobotExecuteCommand[] = [];
         walk(innerBlock, innerCommands);
-        acc.push({ type: "WhileListen", stopWord, maxIterations: 5, commands: innerCommands });
+        acc.push({ type: "WhileListen", stopWord, maxIterations: 10, commands: innerCommands });
       } else if (b["type"] === "temi_while_mqtt") {
         const topic = (fields?.["TOPIC"] ?? "robot/stop").trim() || "robot/stop";
         const doInput = (b["inputs"] as Record<string, unknown>)?.["DO"];

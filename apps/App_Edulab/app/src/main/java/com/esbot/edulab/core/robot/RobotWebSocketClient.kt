@@ -332,6 +332,9 @@ class RobotWebSocketClient @Inject constructor(
                         options = options
                     )
                 }
+                "askCapture", "AskCapture" -> RobotCommand.AskCapture(
+                    question = obj.get("question").asString
+                )
                 "repeat", "Repeat" -> RobotCommand.Repeat(
                     times = obj.get("times").asInt,
                     commands = parseCommands(obj.getAsJsonArray("commands"))

@@ -16,6 +16,7 @@ sealed class RobotCommand {
         val question: String,
         val options: List<ConditionOption>
     ) : RobotCommand()
+    data class AskCapture(val question: String) : RobotCommand()
     data class Repeat(val times: Int, val commands: List<RobotCommand>) : RobotCommand()
     data class WhileCount(val limit: Int, val commands: List<RobotCommand>) : RobotCommand()
     data class WhileTimer(val seconds: Int, val commands: List<RobotCommand>) : RobotCommand()

@@ -302,7 +302,7 @@ class TemiLocationServer @Inject constructor(
                         }
                     }
                     "AskCondition" -> {
-                        val questionMatch = Regex(""""question"\s*:\s*"([^"]+)"""").find(context)
+                        val questionMatch = Regex("\"question\"\\s*:\\s*\"([^\"]+)\"").find(context)
                         val question = questionMatch?.groupValues?.getOrNull(1)
                         if (!question.isNullOrEmpty()) {
                             val condOptions = parseConditionOptions(context)
@@ -312,6 +312,14 @@ class TemiLocationServer @Inject constructor(
                             } else {
                                 Log.w(TAG, "  ✗ AskCondition: insuficientes opciones (${condOptions.size})")
                             }
+                        }
+                    }
+                    "AskCapture", "askCapture" -> {
+                        val questionMatch = Regex("\"question\"\\s*:\\s*\"([^\"]+)\"").find(context)
+                        val question = questionMatch?.groupValues?.getOrNull(1)
+                        if (!question.isNullOrEmpty()) {
+                            commands.add(RobotCommand.AskCapture(question))
+                            Log.d(TAG, "  ✓ AskCapture: '$question'")
                         }
                     }
                     "Repeat" -> {
@@ -630,6 +638,13 @@ class TemiLocationServer @Inject constructor(
                                 } else null
                             } else null
                         } else null
+                    } else null
+                }
+                "AskCapture", "askCapture" -> {
+                    val questionMatch = Regex("\"question\"\\s*:\\s*\"([^\"]+)\"").find(actionContent)
+                    val question = questionMatch?.groupValues?.getOrNull(1)
+                    if (!question.isNullOrEmpty()) {
+                        RobotCommand.AskCapture(question)
                     } else null
                 }
                 else -> null

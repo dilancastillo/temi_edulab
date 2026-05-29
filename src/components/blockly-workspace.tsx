@@ -54,7 +54,10 @@ const toolbox = {
       kind: "category",
       name: "Condición",
       colour: "#c84b1f",
-      contents: [{ kind: "block", type: "temi_condition" }]
+      contents: [
+        { kind: "block", type: "temi_condition" },
+        { kind: "block", type: "temi_ask" }
+      ]
     },
     {
       kind: "category",
@@ -64,7 +67,7 @@ const toolbox = {
         { kind: "block", type: "temi_repeat" },
         { kind: "block", type: "temi_while_count" },
         { kind: "block", type: "temi_while_timer" },
-        //{ kind: "block", type: "temi_while_listen" },
+        { kind: "block", type: "temi_while_listen" },
         { kind: "block", type: "temi_while_mqtt" }
       ]
     }
@@ -136,6 +139,16 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       nextStatement: null,
       colour: 285,
       tooltip: "Temi dice un texto. velocidad: Min 0.5 - Max 2.0, Tono: Min -10 - Max 10",
+      helpUrl: ""
+    },
+    {
+      type: "temi_ask",
+      message0: "preguntar %1",
+      args0: [{ type: "field_input", name: "QUESTION", text: "¿Qué respondió el usuario?" }],
+      previousStatement: null,
+      nextStatement: null,
+      colour: 20,
+      tooltip: "Pregunta abierta y guarda la respuesta del usuario",
       helpUrl: ""
     },
     /*{
@@ -232,7 +245,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       tooltip: "Repite los bloques internos mientras el tiempo transcurrido sea menor que N segundos",
       helpUrl: ""
     },
-    /*{
+    {
       type: "temi_while_listen",
       message0: "repetir hasta escuchar %1",
       args0: [{ type: "field_input", name: "STOP_WORD", text: "listo" }],
@@ -243,7 +256,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       colour: 120,
       tooltip: "Repite los bloques internos hasta que el robot escuche la palabra de parada (máx. 5 veces)",
       helpUrl: ""
-    },*/
+    },
     {
       type: "temi_while_mqtt",
       message0: "repetir hasta mensaje MQTT en topic %1",
