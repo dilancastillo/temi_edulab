@@ -24,8 +24,13 @@ class RobotReflectionRunner @Inject constructor(
 
     // Shared execution context — updated by askConditionAndWait after each ASR result
     @Volatile private var lastAnswer: String? = null
+    @Volatile private var cancelRequested: Boolean = false
 
     override fun run(command: RobotCommand): Result<Unit> {
+        if (cancelRequested) {
+            Log.d(TAG, "Execution cancelled before running command: $command")
+            return Result.failure(RuntimeException("Cancelled"))
+        }
         return when (command) {
             is RobotCommand.Navigate -> navigateAndWait(command.location)
             is RobotCommand.Say -> speakAndWait(command.text, command.gender, command.speed, command.pitch, command.language, command.showAnimation)
@@ -81,11 +86,30 @@ class RobotReflectionRunner @Inject constructor(
     }
 
     override fun runSequence(commands: List<RobotCommand>): Result<Unit> {
+        if (cancelRequested) {
+            Log.d(TAG, "Execution cancelled before runSequence")
+            return Result.failure(RuntimeException("Cancelled"))
+        }
+
         for (command in commands) {
+            if (cancelRequested) {
+                Log.d(TAG, "Execution cancelled during runSequence")
+                return Result.failure(RuntimeException("Cancelled"))
+            }
             val result = run(command)
             if (result.isFailure) return result
         }
         return Result.success(Unit)
+    }
+
+    override fun requestCancel() {
+        cancelRequested = true
+        Log.d(TAG, "requestCancel() called — cancelRequested=true")
+    }
+
+    override fun resetCancel() {
+        cancelRequested = false
+        Log.d(TAG, "resetCancel() called — cancelRequested=false")
     }
 
     // -------------------------------------------------------------------------

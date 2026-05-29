@@ -228,5 +228,8 @@ class TemiLocationServerExecuteTest {
                 Result.success(Unit)
             }
         }
+
+        override fun requestCancel() = Unit
+        override fun resetCancel() = Unit
     }
 }

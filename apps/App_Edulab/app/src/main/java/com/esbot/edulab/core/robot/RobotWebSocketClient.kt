@@ -39,6 +39,7 @@ class RobotWebSocketClient @Inject constructor(
     private var resolvedRobotId: String? = null
 
     @Volatile private var executing: Boolean = false
+    @Volatile private var cancelRequested: Boolean = false
     @Volatile private var testUrl: String? = null
 
     fun start() {
@@ -169,6 +170,10 @@ class RobotWebSocketClient @Inject constructor(
                     val requestId = json.get("requestId").asString
                     handleLocations(requestId)
                 }
+                "cancel" -> {
+                    val requestId = json.get("requestId").asString
+                    handleCancel(requestId)
+                }
                 else -> Log.w(TAG, "Tipo de mensaje desconocido: $type")
             }
         } catch (e: Exception) {
@@ -182,6 +187,9 @@ class RobotWebSocketClient @Inject constructor(
             sendResponse(requestId, ok = false, message = "Robot ocupado")
             return
         }
+
+        cancelRequested = false
+        commandRunner.resetCancel() // reset any previous cancel state if runner supports it
 
         Thread {
             executing = true
@@ -197,6 +205,18 @@ class RobotWebSocketClient @Inject constructor(
                 executing = false
             }
         }.start()
+    }
+
+    private fun handleCancel(requestId: String) {
+        Log.d(TAG, "Cancel request received: requestId=$requestId executing=$executing")
+        if (!executing) {
+            sendResponse(requestId, ok = false, message = "No hay ejecución activa")
+            return
+        }
+
+        cancelRequested = true
+        commandRunner.requestCancel()
+        sendResponse(requestId, ok = true, message = "Cancelado")
     }
 
     private fun handleLocations(requestId: String) {

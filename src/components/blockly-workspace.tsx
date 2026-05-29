@@ -259,7 +259,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     },
     {
       type: "temi_while_mqtt",
-      message0: "repetir hasta mensaje MQTT en topic %1",
+      message0: "repetir hasta que el mensaje del sensor sea %1",
       args0: [{ type: "field_input", name: "TOPIC", text: "robot/stop" }],
       message1: "%1",
       args1: [{ type: "input_statement", name: "DO" }],

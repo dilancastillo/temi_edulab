@@ -85,6 +85,13 @@ class RobotWebSocketClientTest {
         return obj.toString()
     }
 
+    private fun buildCancelMsg(requestId: String): String {
+        val obj = JsonObject()
+        obj.addProperty("type", "cancel")
+        obj.addProperty("requestId", requestId)
+        return obj.toString()
+    }
+
     private fun parseJson(text: String): JsonObject =
         JsonParser.parseString(text).asJsonObject
 
@@ -369,6 +376,49 @@ class RobotWebSocketClientTest {
         }
     }
 
+    @Test
+    fun `cancel message from server is accepted and responded immediately`() {
+        val cancelResponseLatch = CountDownLatch(1)
+        var responseRequestId: String? = null
+        var responseOk: Boolean? = null
+
+        mockServer.enqueue(
+            MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    val msg = parseJson(text)
+                    when (msg.get("type")?.asString) {
+                        "register" -> {
+                            Thread {
+                                Thread.sleep(50)
+                                webSocket.send(buildCommandMsg("exec-1", "Hola"))
+                                Thread.sleep(50)
+                                webSocket.send(buildCancelMsg("cancel-1"))
+                            }.start()
+                        }
+                        "response" -> {
+                            if (msg.get("requestId")?.asString == "cancel-1") {
+                                responseRequestId = msg.get("requestId")?.asString
+                                responseOk = msg.get("ok")?.asBoolean
+                                cancelResponseLatch.countDown()
+                            }
+                        }
+                    }
+                }
+            })
+        )
+
+        val slowRunner = SlowCommandRunner(delayMs = 500)
+        val client = RobotWebSocketClient(slowRunner)
+        client.connectToUrl(wsUrl())
+
+        val received = cancelResponseLatch.await(3, TimeUnit.SECONDS)
+        client.stop()
+
+        assertTrue("Should receive a cancel response", received)
+        assertEquals("cancel-1", responseRequestId)
+        assertTrue("Cancel response should be ok", responseOk ?: false)
+    }
+
     // -------------------------------------------------------------------------
     // 9.2 Example Tests
     // -------------------------------------------------------------------------
@@ -532,6 +582,14 @@ class RobotWebSocketClientTest {
                 Result.success(Unit)
             }
         }
+
+        override fun requestCancel() {
+            // No-op for fake runner
+        }
+
+        override fun resetCancel() {
+            // No-op for fake runner
+        }
     }
 
     private class SlowCommandRunner(private val delayMs: Long) : RobotCommandRunner {
@@ -543,6 +601,14 @@ class RobotWebSocketClientTest {
         override fun runSequence(commands: List<RobotCommand>): Result<Unit> {
             Thread.sleep(delayMs)
             return Result.success(Unit)
+        }
+
+        override fun requestCancel() {
+            // No-op for slow runner
+        }
+
+        override fun resetCancel() {
+            // No-op for slow runner
         }
     }
 }

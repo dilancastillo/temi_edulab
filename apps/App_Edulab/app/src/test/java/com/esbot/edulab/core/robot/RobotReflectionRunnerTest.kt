@@ -79,6 +79,9 @@ class RobotReflectionRunnerTest {
                 }
                 return Result.success(Unit)
             }
+
+            override fun requestCancel() = Unit
+            override fun resetCancel() = Unit
         }
 
         val result = runnerWithNullRobot.run(RobotCommand.Navigate("Sala Principal"))

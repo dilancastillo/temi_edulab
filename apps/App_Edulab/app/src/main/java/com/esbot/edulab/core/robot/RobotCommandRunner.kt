@@ -39,4 +39,6 @@ data class ConditionOption(
 interface RobotCommandRunner {
     fun run(command: RobotCommand): Result<Unit>
     fun runSequence(commands: List<RobotCommand>): Result<Unit>
+    fun requestCancel()
+    fun resetCancel()
 }

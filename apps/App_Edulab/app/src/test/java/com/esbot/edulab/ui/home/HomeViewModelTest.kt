@@ -53,6 +53,8 @@ class HomeViewModelTest {
     private fun fakeCommandRunner() = object : RobotCommandRunner {
         override fun run(command: com.esbot.edulab.core.robot.RobotCommand) = Result.success(Unit)
         override fun runSequence(commands: List<com.esbot.edulab.core.robot.RobotCommand>) = Result.success(Unit)
+        override fun requestCancel() = Unit
+        override fun resetCancel() = Unit
     }
 
     private fun makeViewModel(
