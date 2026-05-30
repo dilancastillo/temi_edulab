@@ -195,7 +195,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   const loadStudentData = useCallback(async (teacherId: string, studentId: string) => {
     try {
       const res = await fetch(`/api/student/data?teacherId=${teacherId}&studentId=${studentId}`);
-      const data = await res.json() as { ok: boolean; student?: Record<string, unknown>; assignments?: unknown[]; studentWorks?: unknown[]; robotId?: string | null };
+      const data = await res.json() as { ok: boolean; student?: Record<string, unknown>; assignments?: unknown[]; studentWorks?: unknown[]; robotId?: string | null; missions?: Mission[] };
       if (data.ok) {
         // Guardar el robotId del docente para que el estudiante use el robot correcto
         if (data.robotId) {
@@ -254,6 +254,10 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
               submittedAt: r.submitted_at ? new Date(r.submitted_at as string).toISOString() : undefined,
             };
           }));
+        }
+        // Cargar misiones custom del docente para que el estudiante pueda resolverlas
+        if (Array.isArray(data.missions)) {
+          setMissions([...demoMissions, ...data.missions]);
         }
       }
     } catch { /* silencioso */ }
