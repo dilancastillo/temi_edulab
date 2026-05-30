@@ -1,4 +1,4 @@
-export type ProgramBlockType = "temi_start" | "temi_move" | "temi_say" | "temi_show" | "temi_audio" | "temi_show_image" | "temi_show_video" | "temi_condition" | "temi_while_mqtt" | "temi_repeat" | "temi_while_count" | "temi_while_timer" | "temi_while_listen" | "temi_wait";
+export type ProgramBlockType = "temi_start" | "temi_move" | "temi_say" | "temi_show" | "temi_audio" | "temi_show_image" | "temi_show_video" | "temi_condition" | "temi_while_mqtt" | "temi_repeat" | "temi_while_count" | "temi_while_timer" | "temi_while_listen" | "temi_wait" | "temi_ask";
 
 export type ProgramStep = {
   type: ProgramBlockType;

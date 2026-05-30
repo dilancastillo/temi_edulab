@@ -28,6 +28,7 @@ const BLOCK_TYPES: ProgramBlockType[] = [
   "temi_while_timer",
   "temi_while_listen",
   "temi_wait",
+  "temi_ask",
 ];
 const ALLOWED_CATEGORY_OPTIONS: NonNullable<Mission["allowedCategories"]> = [
   "Movimiento",
