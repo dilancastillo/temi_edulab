@@ -71,9 +71,22 @@ class RobotReflectionRunner @Inject constructor(
                 var iterations = 0
                 while (iterations < command.maxIterations) {
                     val current = lastAnswer
-                    if (iterations > 0 && current != null &&
-                        current.trim().equals(command.stopWord.trim(), ignoreCase = true)) {
-                        break
+                    if (iterations > 0 && current != null) {
+                        fun normalize(s: String): String = s.trim().lowercase()
+                            .replace(Regex("[áàäâ]"), "a")
+                            .replace(Regex("[éèëê]"), "e")
+                            .replace(Regex("[íìïî]"), "i")
+                            .replace(Regex("[óòöô]"), "o")
+                            .replace(Regex("[úùüû]"), "u")
+                            .replace(Regex("[ñ]"), "n")
+                            .replace(Regex("[^a-z0-9\\s]"), "")
+                            .replace(Regex("\\s+"), " ")
+                            .trim()
+                        val normalizedAnswer = normalize(current)
+                        val normalizedStop = normalize(command.stopWord)
+                        if (normalizedAnswer == normalizedStop || normalizedAnswer.contains(normalizedStop)) {
+                            break
+                        }
                     }
                     val result = runSequence(command.commands)
                     if (result.isFailure) return result
