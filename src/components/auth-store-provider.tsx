@@ -257,7 +257,24 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         }
         // Cargar misiones custom del docente para que el estudiante pueda resolverlas
         if (Array.isArray(data.missions)) {
-          setMissions([...demoMissions, ...data.missions]);
+          const customMissions: Mission[] = data.missions.map((row) => {
+            const r = row as Record<string, unknown>;
+            return {
+              id: r.id as string,
+              teacherId: r.teacher_id as string | undefined,
+              title: r.title as string,
+              summary: r.summary as string,
+              category: r.category as Mission["category"],
+              ageBand: r.age_band as Mission["ageBand"],
+              durationMinutes: r.duration_minutes as number,
+              outcomes: typeof r.outcomes === "string" ? JSON.parse(r.outcomes) : (r.outcomes as string[]),
+              steps: typeof r.steps === "string" ? JSON.parse(r.steps) : (r.steps as Mission["steps"]),
+              allowedCategories: typeof r.allowed_categories === "string" ? JSON.parse(r.allowed_categories) : (r.allowed_categories as Mission["allowedCategories"]),
+              status: r.status as Mission["status"],
+              coverTone: r.cover_tone as Mission["coverTone"],
+            };
+          });
+          setMissions([...demoMissions, ...customMissions]);
         }
       }
     } catch { /* silencioso */ }
