@@ -77,6 +77,7 @@ export type AuthStore = {
 
   // Misiones personalizadas
   createMission: (input: CreateMissionInput) => Promise<{ ok: boolean; message?: string }>;
+  editMission: (mission: Mission) => Promise<{ ok: boolean; message?: string }>;
   deleteMission: (missionId: string) => Promise<void>;
 
   // Trabajos
@@ -593,6 +594,21 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     return { ok: false, message: data.message ?? "Error al guardar la misión." };
   }, [teacherId]);
 
+  const editMission = useCallback(async (mission: Mission): Promise<{ ok: boolean; message?: string }> => {
+    if (!teacherId) return { ok: false, message: "No hay sesión activa." };
+    const res = await fetch("/api/teacher/update-mission", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(mission),
+    });
+    const data = await res.json() as { ok: boolean; message?: string };
+    if (data.ok) {
+      setMissions((prev) => prev.map((m) => m.id === mission.id ? mission : m));
+      return { ok: true };
+    }
+    return { ok: false, message: data.message ?? "Error al actualizar la misión." };
+  }, [teacherId]);
+
   const deleteMission = useCallback(async (missionId: string): Promise<void> => {
     if (!teacherId) return;
     setMissions((prev) => prev.filter((m) => m.id !== missionId));
@@ -856,6 +872,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       archiveAssignment,
       deleteAssignment,
       createMission,
+      editMission,
       deleteMission,
       saveStudentWork,
       submitStudentWork,
@@ -887,6 +904,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       archiveAssignment,
       deleteAssignment,
       createMission,
+      editMission,
       deleteMission,
       saveStudentWork,
       submitStudentWork,

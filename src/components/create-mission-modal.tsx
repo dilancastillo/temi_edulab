@@ -8,6 +8,8 @@ import type { ProgramBlockType, ProgramStep } from "@/lib/mission-program";
 
 type CreateMissionModalProps = {
   onClose: () => void;
+  initialMission?: Mission;
+  activeAssignmentCount?: number;
 };
 
 const CATEGORIES: MissionCategory[] = ["Fundamentos", "Logica", "Control", "Robotica"];
@@ -48,28 +50,29 @@ type FormErrors = {
   submit?: string;
 };
 
-export function CreateMissionModal({ onClose }: Readonly<CreateMissionModalProps>) {
-  const { createMission } = useDemoStore();
+export function CreateMissionModal({ onClose, initialMission, activeAssignmentCount = 0 }: Readonly<CreateMissionModalProps>) {
+  const { createMission, editMission } = useDemoStore();
+  const isEditing = !!initialMission;
 
   // Basic fields
-  const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
-  const [category, setCategory] = useState<MissionCategory>("Fundamentos");
-  const [ageBand, setAgeBand] = useState<MissionAgeBand>("7-10");
-  const [duration, setDuration] = useState<number>(30);
-  const [coverTone, setCoverTone] = useState<Mission["coverTone"]>("blue");
+  const [title, setTitle] = useState(initialMission?.title ?? "");
+  const [summary, setSummary] = useState(initialMission?.summary ?? "");
+  const [category, setCategory] = useState<MissionCategory>(initialMission?.category ?? "Fundamentos");
+  const [ageBand, setAgeBand] = useState<MissionAgeBand>(initialMission?.ageBand ?? "7-10");
+  const [duration, setDuration] = useState<number>(initialMission?.durationMinutes ?? 30);
+  const [coverTone, setCoverTone] = useState<Mission["coverTone"]>(initialMission?.coverTone ?? "blue");
 
   // Outcomes
-  const [outcomes, setOutcomes] = useState<string[]>([""]);
+  const [outcomes, setOutcomes] = useState<string[]>(initialMission?.outcomes?.length ? initialMission.outcomes : [""]);
 
   // Steps
-  const [steps, setSteps] = useState<ProgramStep[]>([
-    { type: "temi_start", label: "", helper: "" },
-  ]);
+  const [steps, setSteps] = useState<ProgramStep[]>(
+    initialMission?.steps?.length ? initialMission.steps : [{ type: "temi_start", label: "", helper: "" }]
+  );
 
   // Allowed categories
   const [allowedCategories, setAllowedCategories] = useState<NonNullable<Mission["allowedCategories"]>>(
-    [...ALLOWED_CATEGORY_OPTIONS]
+    initialMission?.allowedCategories?.length ? initialMission.allowedCategories : [...ALLOWED_CATEGORY_OPTIONS]
   );
 
   // Errors
@@ -163,6 +166,27 @@ export function CreateMissionModal({ onClose }: Readonly<CreateMissionModalProps
 
     setErrors({});
 
+    if (isEditing && initialMission) {
+      const result = await editMission({
+        ...initialMission,
+        title: title.trim(),
+        summary: summary.trim(),
+        category,
+        ageBand,
+        durationMinutes: duration,
+        outcomes,
+        steps,
+        allowedCategories,
+        coverTone,
+      });
+      if (result.ok) {
+        onClose();
+      } else {
+        setErrors({ submit: result.message ?? "Error al actualizar la misión." });
+      }
+      return;
+    }
+
     const result = await createMission({
       title: title.trim(),
       summary: summary.trim(),
@@ -183,8 +207,15 @@ export function CreateMissionModal({ onClose }: Readonly<CreateMissionModalProps
   }
 
   return (
-    <Modal onClose={onClose} title="Crear misión">
+    <Modal onClose={onClose} title={isEditing ? "Editar misión" : "Crear misión"}>
       <form className="form-stack" onSubmit={handleSubmit} noValidate>
+
+        {/* ── Advertencia de asignaciones activas ── */}
+        {isEditing && activeAssignmentCount > 0 ? (
+          <p className="hint-card">
+            Esta misión está asignada a {activeAssignmentCount} curso{activeAssignmentCount > 1 ? "s" : ""}. Los cambios afectarán a los estudiantes que aún no han enviado su trabajo.
+          </p>
+        ) : null}
 
         {/* ── Título ── */}
         <div className="field">
@@ -423,7 +454,7 @@ export function CreateMissionModal({ onClose }: Readonly<CreateMissionModalProps
             Cancelar
           </button>
           <button type="submit" className="button button-primary">
-            Crear misión
+            {isEditing ? "Guardar cambios" : "Crear misión"}
           </button>
         </div>
       </form>

@@ -24,6 +24,7 @@ export function LibraryScreen() {
   const [previewMission, setPreviewMission] = useState<Mission | null>(null);
   const [assignmentMission, setAssignmentMission] = useState<Mission | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editMission, setEditMission] = useState<Mission | null>(null);
 
   const filteredMissions = useMemo(
     () =>
@@ -104,7 +105,7 @@ export function LibraryScreen() {
         ))}
       </section>
 
-      {previewMission ? <MissionPreview mission={previewMission} onAssign={setAssignmentMission} onClose={() => setPreviewMission(null)} onDelete={(m) => { void deleteMission(m.id); setPreviewMission(null); }} /> : null}
+      {previewMission ? <MissionPreview mission={previewMission} onAssign={setAssignmentMission} onClose={() => setPreviewMission(null)} onDelete={(m) => { void deleteMission(m.id); setPreviewMission(null); }} onEdit={(m) => { setEditMission(m); setPreviewMission(null); }} /> : null}
       {assignmentMission ? (
         <AssignMissionModal
           courses={courses}
@@ -121,6 +122,13 @@ export function LibraryScreen() {
         />
       ) : null}
       {showCreateModal ? <CreateMissionModal onClose={() => setShowCreateModal(false)} /> : null}
+      {editMission ? (
+        <CreateMissionModal
+          initialMission={editMission}
+          activeAssignmentCount={assignments.filter((a) => a.missionId === editMission.id && a.status === "active").length}
+          onClose={() => setEditMission(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -129,8 +137,9 @@ function MissionPreview({
   mission,
   onAssign,
   onClose,
-  onDelete
-}: Readonly<{ mission: Mission; onAssign: (mission: Mission) => void; onClose: () => void; onDelete?: (mission: Mission) => void }>) {
+  onDelete,
+  onEdit
+}: Readonly<{ mission: Mission; onAssign: (mission: Mission) => void; onClose: () => void; onDelete?: (mission: Mission) => void; onEdit?: (mission: Mission) => void }>) {
   return (
     <Modal onClose={onClose} title={`Vista previa: ${mission.title}`}>
       <div className="preview-layout">
@@ -159,6 +168,11 @@ function MissionPreview({
         {onDelete && mission.teacherId ? (
           <button className="button button-danger" onClick={() => onDelete(mission)} type="button">
             Eliminar
+          </button>
+        ) : null}
+        {onEdit && mission.teacherId ? (
+          <button className="button button-secondary" onClick={() => onEdit(mission)} type="button">
+            Editar
           </button>
         ) : null}
         <button className="button button-ghost" onClick={onClose} type="button">
