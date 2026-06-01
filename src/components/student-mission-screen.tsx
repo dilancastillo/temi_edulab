@@ -92,7 +92,7 @@ export function StudentMissionScreen() {
           <p className="muted">Código: {assignment.missionCode}</p>
         </div>
         <div className="editor-actions">
-          <button className="button button-secondary" disabled={isSubmitted} onClick={saveWork} type="button">
+          <button className="button button-secondary" onClick={saveWork} type="button">
             Guardar
           </button>
           <button
@@ -138,7 +138,7 @@ export function StudentMissionScreen() {
             const isDirty = JSON.stringify(nextState) !== JSON.stringify(savedWorkspaceRef.current);
             setUnsavedState(isDirty ? nextState : null);
           }}
-          readOnly={isSubmitted}
+          readOnly={false}
           allowedCategories={mission.allowedCategories}
           onWorkspaceReady={(fnImg, fnVid) => {
             updateImageBase64Ref.current = fnImg;
