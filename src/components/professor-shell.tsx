@@ -75,20 +75,20 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
       </aside>
       <main className="content-shell" id="main-content">
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "0.75rem", padding: "1rem 1.5rem 0", pointerEvents: "none" }} aria-hidden="true">
+          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.3 }}>
+            <strong style={{ fontSize: "0.75rem" }}>{profile?.fullName ?? "Docente"}</strong>
+            <small style={{ fontSize: "0.65rem", opacity: 0.65 }}>Docente</small>
+          </span>
           {profile?.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               alt={profile.fullName}
               src={profile.avatarUrl}
-              style={{ width: "2.25rem", height: "2.25rem", borderRadius: "50%", objectFit: "cover", flexShrink: 0, pointerEvents: "none" }}
+              style={{ width: "1.75rem", height: "1.75rem", borderRadius: "50%", objectFit: "cover", flexShrink: 0, pointerEvents: "none" }}
             />
           ) : (
-            <span className="avatar avatar-small">{(profile?.fullName ?? "??").slice(0, 2).toUpperCase()}</span>
+            <span className="avatar avatar-small" style={{ width: "1.75rem", height: "1.75rem", fontSize: "0.65rem" }}>{(profile?.fullName ?? "??").slice(0, 2).toUpperCase()}</span>
           )}
-          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.3 }}>
-            <strong style={{ fontSize: "0.875rem" }}>{profile?.fullName ?? "Docente"}</strong>
-            <small style={{ fontSize: "0.75rem", opacity: 0.65 }}>Docente</small>
-          </span>
         </div>
         {children}
         <p className="app-copyright">© 2026 All Rights Reserved.</p>
