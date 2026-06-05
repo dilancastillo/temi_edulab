@@ -73,6 +73,10 @@ class RobotWebSocketServer @Inject constructor(
             try {
                 val result = commandRunner.runSequence(commands)
                 if (result.isSuccess) {
+                    // Emitir evento arrived_ si algún comando fue Navigate
+                    commands.filterIsInstance<RobotCommand.Navigate>().forEach { nav ->
+                        broadcastArrived(nav.location)
+                    }
                     sendResponse(conn, requestId, ok = true, message = "Ejecutado")
                 } else {
                     sendResponse(conn, requestId, ok = false,
@@ -82,6 +86,7 @@ class RobotWebSocketServer @Inject constructor(
                 executing = false
             }
         }.start()
+
     }
 
     private fun handleLocations(conn: WebSocket, requestId: String) {
@@ -189,4 +194,16 @@ class RobotWebSocketServer @Inject constructor(
             null
         }
     }
+    fun broadcastArrived(location: String) {
+        val msg = JsonObject()
+        msg.addProperty("type", "event")
+        msg.addProperty("event", "arrived_${location.lowercase().trim()}")
+        try {
+            broadcast(msg.toString())
+            Log.d(TAG, "broadcastArrived: $location")
+        } catch (e: Exception) {
+            Log.e(TAG, "broadcastArrived falló: ${e.message}")
+        }
+    }
+
 }
