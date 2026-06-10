@@ -38,7 +38,8 @@ class RobotWebSocketClient @Inject constructor(
     private var webSocket: WebSocket? = null
     private var resolvedRobotId: String? = null
 
-    @Volatile private var executing: Boolean = false
+    private val _executing = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val executing: kotlinx.coroutines.flow.StateFlow<Boolean> = _executing
     @Volatile private var cancelRequested: Boolean = false
     @Volatile private var testUrl: String? = null
 
@@ -182,7 +183,7 @@ class RobotWebSocketClient @Inject constructor(
     }
 
     private fun handleExecute(requestId: String, commands: List<RobotCommand>) {
-        if (executing) {
+        if (_executing.value) {
             Log.d(TAG, "Robot ocupado, rechazando requestId=$requestId")
             sendResponse(requestId, ok = false, message = "Robot ocupado")
             return
@@ -192,7 +193,7 @@ class RobotWebSocketClient @Inject constructor(
         commandRunner.resetCancel() // reset any previous cancel state if runner supports it
 
         Thread {
-            executing = true
+            _executing.value = true
             try {
                 val result = commandRunner.runSequence(commands)
                 if (result.isSuccess) {
@@ -202,14 +203,14 @@ class RobotWebSocketClient @Inject constructor(
                     sendResponse(requestId, ok = false, message = errorMsg)
                 }
             } finally {
-                executing = false
+                _executing.value = false
             }
         }.start()
     }
 
     private fun handleCancel(requestId: String) {
-        Log.d(TAG, "Cancel request received: requestId=$requestId executing=$executing")
-        if (!executing) {
+        Log.d(TAG, "Cancel request received: requestId=$requestId executing=${_executing.value}")
+        if (!_executing.value) {
             sendResponse(requestId, ok = false, message = "No hay ejecución activa")
             return
         }
