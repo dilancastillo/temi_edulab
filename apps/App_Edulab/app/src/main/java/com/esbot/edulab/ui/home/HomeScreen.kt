@@ -5,6 +5,8 @@ import android.net.Uri
 import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.esbot.edulab.R
 import com.esbot.edulab.ui.theme.EduLabAppTheme
 
 @Composable
@@ -53,6 +56,41 @@ fun HomeScreen(
             viewModel = viewModel
         )
 
+        // Idle animation overlay — shown while waiting for commands
+        if (uiState.showIdleAnimation && !uiState.isLoading) {
+            val context = LocalContext.current
+            val idlePlayer = remember {
+                ExoPlayer.Builder(context).build().apply {
+                    val uri = Uri.parse("android.resource://${context.packageName}/${R.raw.idle_animation}")
+                    setMediaItem(MediaItem.fromUri(uri))
+                    repeatMode = ExoPlayer.REPEAT_MODE_ALL
+                    prepare()
+                    playWhenReady = true
+                }
+            }
+            DisposableEffect(Unit) {
+                onDispose { idlePlayer.release() }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { viewModel.onIdleAnimationTapped() }
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            player = idlePlayer
+                            useController = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
         // Loading indicator
         if (uiState.isLoading) {
             Box(
@@ -73,7 +111,9 @@ fun HomeScreen(
             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             if (bitmap != null) {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black),
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
