@@ -75,6 +75,9 @@ class RobotReflectionRunner @Inject constructor(
                 }
                 Result.success(Unit)
             }
+            is RobotCommand.SkidJoy -> skidJoyNow(command.x, command.y, command.smart)
+            is RobotCommand.TurnBy -> turnByNow(command.degrees, command.speed)
+            is RobotCommand.StopMovement -> stopMovementNow()
             is RobotCommand.WhileMqtt -> whileMqttAndWait(command.topic, command.commands)
         }
     }
@@ -637,5 +640,76 @@ class RobotReflectionRunner @Inject constructor(
         }
         client.connect(options)
         return client
+    }
+    private fun getRobot(): Pair<Class<*>, Any>? {
+        return try {
+            val rClass = Class.forName("com.robotemi.sdk.Robot")
+            val robot = rClass.getMethod("getInstance").invoke(null) ?: return null
+            Pair(rClass, robot)
+        } catch (e: Exception) {
+            Log.e(TAG, "getRobot falló: ${e.message}")
+            null
+        }
+    }
+
+    private fun skidJoyNow(x: Float, y: Float, smart: Boolean): Result<Unit> {
+        return try {
+            val (rClass, robot) = getRobot()
+                ?: return Result.failure(IllegalStateException("Robot instance not available"))
+            try {
+                // Firma con smart (SDK >= 0.10.79)
+                rClass.getMethod("skidJoy",
+                    Float::class.javaPrimitiveType,
+                    Float::class.javaPrimitiveType,
+                    Boolean::class.javaPrimitiveType
+                ).invoke(robot, x, y, smart)
+            } catch (e: NoSuchMethodException) {
+                // Fallback firma básica
+                rClass.getMethod("skidJoy",
+                    Float::class.javaPrimitiveType,
+                    Float::class.javaPrimitiveType
+                ).invoke(robot, x, y)
+            }
+            Log.d(TAG, "skidJoy(x=$x, y=$y, smart=$smart) invocado")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "skidJoyNow falló: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    private fun turnByNow(degrees: Int, speed: Float): Result<Unit> {
+        return try {
+            val (rClass, robot) = getRobot()
+                ?: return Result.failure(IllegalStateException("Robot instance not available"))
+            try {
+                // Firma con speed (SDK >= 0.10.77)
+                rClass.getMethod("turnBy",
+                    Int::class.javaPrimitiveType,
+                    Float::class.javaPrimitiveType
+                ).invoke(robot, degrees, speed)
+            } catch (e: NoSuchMethodException) {
+                rClass.getMethod("turnBy", Int::class.javaPrimitiveType)
+                    .invoke(robot, degrees)
+            }
+            Log.d(TAG, "turnBy(degrees=$degrees, speed=$speed) invocado")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "turnByNow falló: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    private fun stopMovementNow(): Result<Unit> {
+        return try {
+            val (rClass, robot) = getRobot()
+                ?: return Result.failure(IllegalStateException("Robot instance not available"))
+            rClass.getMethod("stopMovement").invoke(robot)
+            Log.d(TAG, "stopMovement() invocado")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "stopMovementNow falló: ${e.message}", e)
+            Result.failure(e)
+        }
     }
 }

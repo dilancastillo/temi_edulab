@@ -28,6 +28,9 @@ sealed class RobotCommand {
         val topic: String,
         val commands: List<RobotCommand>
     ) : RobotCommand()
+    data class SkidJoy(val x: Float, val y: Float, val smart: Boolean = false) : RobotCommand()
+    data class TurnBy(val degrees: Int, val speed: Float = 1.0f) : RobotCommand()
+    object StopMovement : RobotCommand()
 }
 
 data class ConditionOption(

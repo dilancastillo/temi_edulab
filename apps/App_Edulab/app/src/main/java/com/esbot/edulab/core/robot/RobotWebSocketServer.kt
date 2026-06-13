@@ -48,6 +48,18 @@ class RobotWebSocketServer @Inject constructor(
                     val requestId = json.get("requestId").asString
                     handleLocations(conn, requestId)
                 }
+                "move" -> {
+                    val requestId = json.get("requestId").asString
+                    val command = parseCommand(json.getAsJsonObject("command"))
+                    if (command != null) {
+                        val result = commandRunner.run(command)  // síncrono y rápido: no bloquea
+                        sendResponse(conn, requestId,
+                            ok = result.isSuccess,
+                            message = if (result.isSuccess) "OK" else result.exceptionOrNull()?.message ?: "Error")
+                    } else {
+                        sendResponse(conn, requestId, ok = false, message = "Comando inválido")
+                    }
+                }
                 else -> Log.w(TAG, "Tipo desconocido")
             }
         } catch (e: Exception) {
@@ -176,6 +188,17 @@ class RobotWebSocketServer @Inject constructor(
                     topic = obj.get("topic").asString,
                     commands = parseCommands(obj.getAsJsonArray("commands"))
                 )
+                "skidJoy", "SkidJoy" -> RobotCommand.SkidJoy(
+                    x = obj.get("x").asFloat,
+                    y = obj.get("y")?.asFloat ?: 0f,
+                    smart = obj.get("smart")?.asBoolean ?: false
+                )
+                "turnBy", "TurnBy" -> RobotCommand.TurnBy(
+                    degrees = obj.get("degrees").asInt,
+                    speed = obj.get("speed")?.asFloat ?: 1.0f
+                )
+                "stopMovement", "StopMovement" -> RobotCommand.StopMovement
+
                 "askCondition", "AskCondition" -> {
                     val options = obj.getAsJsonArray("options").map { optEl ->
                         val opt = optEl.asJsonObject
