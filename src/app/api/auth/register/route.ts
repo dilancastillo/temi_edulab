@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { sendEmail } from "@/lib/mailer";
 
 function generateId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -41,6 +42,26 @@ export async function POST(req: NextRequest) {
        VALUES ($1, $2, $3, $4, $5)`,
       [id, email.trim().toLowerCase(), passwordHash, fullName.trim(), institutionId ?? ""]
     );
+
+    // Notifica por email con credenciales (solo para demos internas)
+    try {
+      await sendEmail(
+        process.env.GMAIL_USER ?? "",
+        `Nuevo profesor registrado: ${fullName}`,
+        `
+          <h2>Nuevo profesor registrado en EduLab</h2>
+          <p><strong>Nombre:</strong> ${fullName}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Contraseña:</strong> ${password}</p>
+          <p><strong>Institution ID:</strong> ${institutionId ?? "Sin especificar"}</p>
+          <hr>
+          <p>URL de login: <a href="https://edulab.esbot.co/login">https://edulab.esbot.co/login</a></p>
+        `
+      );
+    } catch (emailError) {
+      console.error("Error enviando email de notificación:", emailError);
+      // No bloquea el registro si el email falla
+    }
 
     return NextResponse.json({ ok: true, teacherId: id });
   } catch (e) {
