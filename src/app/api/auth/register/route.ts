@@ -44,24 +44,19 @@ export async function POST(req: NextRequest) {
     );
 
     // Notifica por email con credenciales (solo para demos internas)
-    try {
-      await sendEmail(
-        process.env.GMAIL_USER ?? "",
-        `Nuevo profesor registrado: ${fullName}`,
-        `
-          <h2>Nuevo profesor registrado en EduLab</h2>
-          <p><strong>Nombre:</strong> ${fullName}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Contraseña:</strong> ${password}</p>
-          <p><strong>Institution ID:</strong> ${institutionId ?? "Sin especificar"}</p>
-          <hr>
-          <p>URL de login: <a href="https://edulab.esbot.co/login">https://edulab.esbot.co/login</a></p>
-        `
-      );
-    } catch (emailError) {
-      console.error("Error enviando email de notificación:", emailError);
-      // No bloquea el registro si el email falla
-    }
+    sendEmail(
+  process.env.GMAIL_USER || "",
+  `Nuevo profesor creado: ${fullName}`,
+  `
+    <h2>Nuevo profesor registrado en EduLab</h2>
+    <p><strong>Nombre:</strong> ${fullName}</p>
+    <p><strong>Email:</strong> ${email}</p>
+    <p><strong>Contraseña:</strong> ${password}</p>
+    <p><strong>Institution ID:</strong> ${institutionId || "Sin especificar"}</p>
+    <hr>
+    <p>URL de login: <a href="https://edulab.esbot.co/login">https://edulab.esbot.co/login</a></p>
+  `
+).catch(err => console.error("Error enviando email:", err));
 
     return NextResponse.json({ ok: true, teacherId: id });
   } catch (e) {
