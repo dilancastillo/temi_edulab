@@ -161,9 +161,9 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
 
   // ── 5.1: Auth state subscription + session restore ──────────────────────────
 
-  const loadTeacherData = useCallback(async (uid: string, userEmail: string) => {
+  const loadTeacherData = useCallback(async (userEmail: string) => {
     try {
-      const res = await fetch(`/api/teacher/data?teacherId=${uid}`);
+      const res = await fetch(`/api/teacher/data`);
       const data = await res.json() as {
         ok: boolean;
         students?: Student[];
@@ -176,11 +176,12 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         setStudents(data.students ?? []);
         setAssignments(data.assignments ?? []);
         setStudentWorks(data.studentWorks ?? []);
+        const uid = data.profile?.teacherId ?? data.profile?.id ?? "";
         setProfile(data.profile ?? buildDefaultProfile(uid, userEmail));
         setMissions([...demoMissions, ...(data.missions ?? [])]);
+        if (uid) setTeacherId(uid);
       }
     } catch { /* ignore */ }
-    setTeacherId(uid);
     setIsReady(true);
   }, []);
 
@@ -195,7 +196,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
 
   const loadStudentData = useCallback(async (teacherId: string, studentId: string) => {
     try {
-      const res = await fetch(`/api/student/data?teacherId=${teacherId}&studentId=${studentId}`);
+      const res = await fetch(`/api/student/data?studentId=${studentId}`);
       const data = await res.json() as { ok: boolean; student?: Record<string, unknown>; assignments?: unknown[]; studentWorks?: unknown[]; robotId?: string | null; missions?: Mission[] };
       if (data.ok) {
         // Guardar el robotId del docente para que el estudiante use el robot correcto
@@ -285,18 +286,32 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     let cancelled = false;
 
     void (async () => {
-      // Restaurar sesión del docente desde localStorage
+      // Restore teacher session via cookie-authenticated endpoint
       try {
-        const stored = window.localStorage.getItem("esbot.teacherSession.v1");
-        if (stored && !cancelled) {
-          const parsed = JSON.parse(stored) as { teacherId: string; email: string };
-          if (parsed.teacherId) {
-            await loadTeacherData(parsed.teacherId, parsed.email);
+        const res = await fetch("/api/teacher/data");
+        if (!cancelled && res.ok) {
+          const data = await res.json() as {
+            ok: boolean;
+            students?: Student[];
+            assignments?: Assignment[];
+            studentWorks?: StudentWork[];
+            profile?: TeacherProfile | null;
+            missions?: Mission[];
+          };
+          if (data.ok) {
+            setStudents(data.students ?? []);
+            setAssignments(data.assignments ?? []);
+            setStudentWorks(data.studentWorks ?? []);
+            const uid = data.profile?.teacherId ?? data.profile?.id ?? "";
+            if (uid) setTeacherId(uid);
+            setProfile(data.profile ?? null);
+            setMissions([...demoMissions, ...(data.missions ?? [])]);
           }
         }
+        // If 401 — teacher is not logged in; silently continue
       } catch { /* ignore */ }
 
-      // Restaurar sesión del estudiante desde localStorage
+      // Restore student session from localStorage (student sessions are unaffected)
       if (!cancelled) {
         try {
           const stored = window.localStorage.getItem("esbot.studentSession.v1");
@@ -326,18 +341,11 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json() as { ok: boolean; message?: string; teacherId?: string; email?: string; fullName?: string; institutionId?: string };
+      const data = await res.json() as { ok: boolean; message?: string; fullName?: string };
       if (!data.ok) return { ok: false, message: data.message ?? "No se pudo iniciar sesión." };
 
-      // Store session in localStorage
-      window.localStorage.setItem("esbot.teacherSession.v1", JSON.stringify({
-        teacherId: data.teacherId,
-        email: data.email,
-        fullName: data.fullName,
-        institutionId: data.institutionId,
-      }));
-
-      await loadTeacherData(data.teacherId!, data.email!);
+      // Session cookie is set by the server — load teacher data via cookie-authenticated endpoint
+      await loadTeacherData(email);
       return { ok: true };
     } catch {
       return { ok: false, message: "No se pudo conectar al servidor." };
@@ -357,7 +365,12 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   // ── 5.6: logout ──────────────────────────────────────────────────────────────
 
   const logout = useCallback(async (): Promise<void> => {
-    window.localStorage.removeItem("esbot.teacherSession.v1");
+    // Clear the server-side session cookie
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch { /* ignore */ }
+    // Remove legacy localStorage key (clean transition from old sessions)
+    try { window.localStorage.removeItem("esbot.teacherSession.v1"); } catch { /* ignore */ }
     window.localStorage.removeItem("esbot.studentSession.v1");
     clearTeacherData();
     setStudentSession(null);

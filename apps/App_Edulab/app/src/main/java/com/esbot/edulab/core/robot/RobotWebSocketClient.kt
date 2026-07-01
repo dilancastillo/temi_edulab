@@ -18,8 +18,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "RobotWebSocketClient"
-private const val SERVER_URL = "ws://87.99.152.162:3000/api/robot/ws"
-private const val SERVER_BASE_URL = "http://87.99.152.162:3000"
+private const val SERVER_URL = "wss://edulab.esbot.co/api/robot/ws"
+private const val SERVER_BASE_URL = "https://edulab.esbot.co"
 private const val RECONNECT_DELAY_MS = 5000L
 
 /** Converts a relative path like /uploads/images/foo.png to an absolute URL. */

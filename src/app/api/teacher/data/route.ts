@@ -6,14 +6,18 @@ import {
   fetchProfile,
   fetchCustomMissions,
 } from "@/lib/db-store";
+import { getSession } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const teacherId = searchParams.get("teacherId");
-
-  if (!teacherId) {
-    return NextResponse.json({ ok: false, message: "Falta teacherId." }, { status: 400 });
+  const session = await getSession(req);
+  if (!session) {
+    return NextResponse.json(
+      { ok: false, message: "No autorizado." },
+      { status: 401 }
+    );
   }
+
+  const teacherId = session.teacherId;
 
   const [students, assignments, studentWorks, profile, missions] = await Promise.all([
     fetchStudents(teacherId),

@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
+import { getSession } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
+  const session = await getSession(req);
+  if (!session) {
+    return NextResponse.json(
+      { ok: false, message: "No autorizado." },
+      { status: 401 }
+    );
+  }
+
+  const teacherId = session.teacherId;
+
   const { searchParams } = new URL(req.url);
-  const teacherId = searchParams.get("teacherId");
   const studentId = searchParams.get("studentId");
 
-  if (!teacherId || !studentId) {
+  if (!studentId) {
     return NextResponse.json({ ok: false, message: "Faltan parámetros." }, { status: 400 });
   }
 
