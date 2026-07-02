@@ -316,8 +316,11 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         try {
           const stored = window.localStorage.getItem("esbot.studentSession.v1");
           if (stored) {
-            const parsed = JSON.parse(stored) as { studentId: string; displayName: string; teacherId: string };
-            if (parsed.studentId && parsed.teacherId) {
+            const parsed = JSON.parse(stored) as { studentId: string; displayName: string; teacherId: string; expiresAt?: number };
+            // Check expiration — clear session if expired
+            if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+              window.localStorage.removeItem("esbot.studentSession.v1");
+            } else if (parsed.studentId && parsed.teacherId) {
               setStudentSession({ studentId: parsed.studentId, displayName: parsed.displayName });
               await loadStudentData(parsed.teacherId, parsed.studentId);
             }
@@ -808,7 +811,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         const data = await res.json() as { ok: boolean; message?: string; studentId?: string; displayName?: string; teacherId?: string };
         if (!data.ok) return { ok: false, message: data.message };
         setStudentSession({ studentId: data.studentId!, displayName: data.displayName! });
-        window.localStorage.setItem("esbot.studentSession.v1", JSON.stringify({ studentId: data.studentId, displayName: data.displayName, teacherId: data.teacherId }));
+        window.localStorage.setItem("esbot.studentSession.v1", JSON.stringify({ studentId: data.studentId, displayName: data.displayName, teacherId: data.teacherId, expiresAt: Date.now() + 2 * 60 * 60 * 1000 }));
         await loadStudentData(data.teacherId!, data.studentId!);
         return { ok: true };
       } catch {
@@ -829,7 +832,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         const data = await res.json() as { ok: boolean; message?: string; studentId?: string; displayName?: string; teacherId?: string };
         if (!data.ok) return { ok: false, message: data.message };
         setStudentSession({ studentId: data.studentId!, displayName: data.displayName! });
-        window.localStorage.setItem("esbot.studentSession.v1", JSON.stringify({ studentId: data.studentId, displayName: data.displayName, teacherId: data.teacherId }));
+        window.localStorage.setItem("esbot.studentSession.v1", JSON.stringify({ studentId: data.studentId, displayName: data.displayName, teacherId: data.teacherId, expiresAt: Date.now() + 2 * 60 * 60 * 1000 }));
         await loadStudentData(data.teacherId!, data.studentId!);
         return { ok: true };
       } catch {

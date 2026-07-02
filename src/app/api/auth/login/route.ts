@@ -111,24 +111,24 @@ export async function POST(req: NextRequest) {
     // Successful login — reset failure counter
     resetFailures(ip);
 
-    // Sign JWT
+    // Sign JWT — 2 hour expiration
     const token = await new SignJWT({
       teacherId: teacher.id,
       email: teacher.email,
       institutionId: teacher.institution_id,
     })
       .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime("24h")
+      .setExpirationTime("2h")
       .sign(secret);
 
-    // Build response with session cookie
+    // Build response with session cookie (7200 = 2 hours)
     const response = NextResponse.json({ ok: true, fullName: teacher.full_name });
     response.cookies.set("session", token, {
       httpOnly: true,
       sameSite: "lax",
       secure: true,
       path: "/",
-      maxAge: 86400,
+      maxAge: 7200,
     });
 
     return response;
