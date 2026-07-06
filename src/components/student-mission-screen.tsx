@@ -6,7 +6,6 @@ import { useMemo, useRef, useState } from "react";
 import { BlocklyWorkspace } from "@/components/blockly-workspace";
 import { ConfirmDialog } from "@/components/modal";
 import { ExecuteButton } from "@/components/execute-button";
-import { ImageUploadPanel } from "@/components/image-upload-panel";
 import { VideoUploadPanel } from "@/components/video-upload-panel";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { evaluateOrderSteps, orderStepsProgram } from "@/lib/mission-program";
@@ -145,16 +144,6 @@ export function StudentMissionScreen() {
             updateVideoUrlRef.current = fnVid;
           }}
         />
-        {sequence.includes("temi_show_image") && !isSubmitted && (
-          extractShowImageBlocks(workspaceState).map(({ id, base64, index }) => (
-            <ImageUploadPanel
-              key={id}
-              label={`Imagen ${index + 1}`}
-              currentBase64={base64}
-              onImageSelected={(b64) => updateImageBase64Ref.current?.(id, b64)}
-            />
-          ))
-        )}
         {sequence.includes("temi_show_video") && !isSubmitted && (
           extractVideoBlocks(workspaceState).map(({ id, videoUrl, index }) => (
             <VideoUploadPanel

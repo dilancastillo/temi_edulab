@@ -295,11 +295,11 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     this.setTooltip("Muestra una imagen en pantalla completa durante 7 segundos");
   };
 
-  // temi_show_video: hidden VIDEO_URL field + visible LABEL
+  // temi_show_video: hidden VIDEO_URL field + clickable LABEL (same pattern as temi_show_image)
   Blockly.Blocks["temi_show_video"].init = function (this: BlocklyType.Block) {
     this.appendDummyInput()
       .appendField("reproducir video")
-      .appendField(new Blockly.FieldLabel("(sin video)"), "LABEL");
+      .appendField(new Blockly.FieldLabel("📹 Cargar video"), "LABEL");
     this.appendDummyInput("VIDEO_FIELD")
       .appendField(new Blockly.FieldTextInput(""), "VIDEO_URL")
       .setVisible(false);
@@ -307,6 +307,58 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     this.setNextStatement(true);
     this.setColour(40);
     this.setTooltip("Reproduce un video en pantalla completa");
+
+    // Setup clickable label after block renders
+    const setupVideoClick = () => {
+      const labelField = this.getField("LABEL") as Blockly.FieldLabel | null;
+      const labelElement = (labelField as any)?.getTextElement?.() as HTMLElement | null;
+      if (labelElement && !labelElement.dataset.videoClickSetup) {
+        labelElement.dataset.videoClickSetup = "true";
+        labelElement.style.cursor = "pointer";
+        labelElement.style.textDecoration = "underline";
+        labelElement.style.fontWeight = "bold";
+        labelElement.style.color = "#FF9800";
+        labelElement.style.paddingLeft = "8px";
+        labelElement.style.paddingRight = "8px";
+        labelElement.style.userSelect = "none";
+
+        labelElement.onclick = (e: MouseEvent) => {
+          e.stopPropagation();
+          e.preventDefault();
+          const fileInput = document.createElement("input");
+          fileInput.type = "file";
+          fileInput.accept = "video/mp4,video/webm,video/*";
+
+          fileInput.onchange = async () => {
+            const file = fileInput.files?.[0];
+            if (!file) return;
+            labelElement.textContent = "⏳ Subiendo...";
+            labelElement.style.color = "#FF9800";
+            try {
+              const formData = new FormData();
+              formData.append("video", file);
+              const res = await fetch("/api/video/upload", { method: "POST", body: formData });
+              const data = await res.json() as { ok: boolean; videoUrl?: string; message?: string };
+              if (data.ok && data.videoUrl) {
+                this.setFieldValue(data.videoUrl, "VIDEO_URL");
+                labelElement.textContent = "✅ Video cargado";
+                labelElement.style.color = "#4CAF50";
+              } else {
+                labelElement.textContent = "❌ Error al subir";
+                labelElement.style.color = "#F44336";
+              }
+            } catch (err) {
+              console.error("Video upload error:", err);
+              labelElement.textContent = "❌ Error al subir";
+              labelElement.style.color = "#F44336";
+            }
+          };
+          fileInput.click();
+        };
+      }
+    };
+    setTimeout(setupVideoClick, 50);
+    setTimeout(setupVideoClick, 300);
   };
 
   // temi_condition: pregunta + N opciones dinámicas (2..5)
