@@ -3,18 +3,19 @@ import pool from "@/lib/db";
 import { getSession } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const studentId = searchParams.get("studentId");
+
+  // Prefer JWT session (teacher viewing student) — fall back to query param (student viewing own data)
   const session = await getSession(req);
-  if (!session) {
+  const teacherId = session?.teacherId ?? searchParams.get("teacherId");
+
+  if (!teacherId) {
     return NextResponse.json(
       { ok: false, message: "No autorizado." },
       { status: 401 }
     );
   }
-
-  const teacherId = session.teacherId;
-
-  const { searchParams } = new URL(req.url);
-  const studentId = searchParams.get("studentId");
 
   if (!studentId) {
     return NextResponse.json({ ok: false, message: "Faltan parámetros." }, { status: 400 });
