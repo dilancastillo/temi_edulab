@@ -196,7 +196,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
 
   const loadStudentData = useCallback(async (teacherId: string, studentId: string) => {
     try {
-      const res = await fetch(`/api/student/data?studentId=${studentId}`);
+      const res = await fetch(`/api/student/data?studentId=${studentId}&teacherId=${teacherId}`);
       const data = await res.json() as { ok: boolean; student?: Record<string, unknown>; assignments?: unknown[]; studentWorks?: unknown[]; robotId?: string | null; missions?: Mission[] };
       if (data.ok) {
         // Guardar el robotId del docente para que el estudiante use el robot correcto
