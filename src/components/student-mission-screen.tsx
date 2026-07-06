@@ -6,7 +6,6 @@ import { useMemo, useRef, useState } from "react";
 import { BlocklyWorkspace } from "@/components/blockly-workspace";
 import { ConfirmDialog } from "@/components/modal";
 import { ExecuteButton } from "@/components/execute-button";
-import { VideoUploadPanel } from "@/components/video-upload-panel";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { evaluateOrderSteps, orderStepsProgram } from "@/lib/mission-program";
 import { extractFieldFromBlock, extractShowImageBlocks, extractVideoBlocks } from "@/lib/robot-adapter";
@@ -144,16 +143,6 @@ export function StudentMissionScreen() {
             updateVideoUrlRef.current = fnVid;
           }}
         />
-        {sequence.includes("temi_show_video") && !isSubmitted && (
-          extractVideoBlocks(workspaceState).map(({ id, videoUrl, index }) => (
-            <VideoUploadPanel
-              key={id}
-              label={`Video ${index + 1}`}
-              currentVideoUrl={videoUrl}
-              onVideoUploaded={(url) => updateVideoUrlRef.current?.(id, url)}
-            />
-          ))
-        )}
       </section>
 
       {isConfirmingSubmit ? (
