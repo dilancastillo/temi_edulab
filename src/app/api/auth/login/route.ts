@@ -13,8 +13,8 @@ interface RateEntry {
 }
 
 const rateLimitMap = new Map<string, RateEntry>();
-const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_ATTEMPTS = 8;
+const WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 function getClientIp(req: NextRequest): string {
   return (
@@ -62,10 +62,10 @@ export async function POST(req: NextRequest) {
   // Rate-limit check before touching the DB
   if (isRateLimited(ip)) {
     return NextResponse.json(
-      { ok: false, message: "Demasiados intentos fallidos. Intenta de nuevo en 15 minutos." },
+      { ok: false, message: "Demasiados intentos fallidos. Intenta de nuevo en 5 minutos." },
       {
         status: 429,
-        headers: { "Retry-After": "900" },
+        headers: { "Retry-After": "300" },
       }
     );
   }
