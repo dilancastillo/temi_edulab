@@ -18,5 +18,4 @@ pdf-page.png
 **/build/
 **/local.properties
 **/.cxx/
-.kiro/
 .kotlin/errors/
