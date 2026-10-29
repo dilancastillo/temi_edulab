@@ -161,6 +161,51 @@ La contraseña debe tener al menos 8 caracteres. Los cursos y la institución (`
 
 ---
 
+## Evaluación de arquitectura
+
+Revisión de octubre de 2026 (commit `dde489f`). Resumen: buena base para un piloto con pocos colegios y robots; la app Android está mejor estructurada que la web; **no está lista para escalar** a muchas instituciones sin refactorizar.
+
+### Principios SOLID
+
+| Principio | Web | App Android |
+|---|---|---|
+| **S** Responsabilidad única | **No cumple.** `auth-store-provider.tsx` (947 líneas) maneja sesión, estudiantes, misiones, trabajos, perfil, robot, llamadas HTTP y mapeo de filas. `blockly-workspace.tsx` (833 líneas) mezcla definición de bloques, subida de archivos y manipulación del DOM. | **Parcial.** `RobotWebSocketClient` conecta, parsea, despacha y consulta el SDK; `RobotReflectionRunner` (747 líneas) concentra todos los comandos. |
+| **O** Abierto/cerrado | **No cumple.** Un bloque nuevo obliga a tocar unos 8 lugares (bloque, caja de herramientas, `robot-adapter`, tipos de `mission-program`, modal de misión, `RobotCommand`, parser y `when` del runner). | **Parcial.** Cada comando nuevo se agrega en el parser y en el `when`. |
+| **L** Sustitución | Cumple. | Cumple: las interfaces se sustituyen por versiones falsas en los tests. |
+| **I** Segregación de interfaces | **No cumple.** `AuthStore` tiene más de 30 miembros y todas las pantallas dependen de él. | Cumple: interfaces pequeñas (red, batería, ejecutor). |
+| **D** Inversión de dependencias | **No cumple.** Las rutas usan `pool.query` directo; no hay servicios ni repositorios consistentes. | **Parcial.** Hilt inyecta interfaces, pero el SDK de Temi se usa por reflexión aunque es dependencia compilada, sin tipos ni abstracción. |
+
+### Buenas prácticas
+
+**Bien:** TypeScript en toda la web; SQL parametrizado; bcrypt; JWT en cookie `httpOnly`; límite de intentos de login; encabezados de seguridad; protocolo con `requestId` y tiempos de espera; tests en web (Vitest) y Android; MVVM con `StateFlow` y Hilt en Android; specs de diseño (Kiro).
+
+**A mejorar:**
+- Autenticación inconsistente: muchas rutas confían en el `teacherId` que envía el cliente.
+- Sin validación de entradas con esquema (se usa `req.json() as Tipo`).
+- Protocolo web ↔ robot duplicado a mano en TypeScript y Kotlin, sin contrato compartido.
+- `ignoreBuildErrors: true` oculta errores de TypeScript al compilar.
+- Sin migraciones ni esquema completo de la base en el repositorio.
+- Multi-institución simulada: cursos e institución fijos en `demo-data.ts`.
+- IDs generados en el navegador con `Math.random`; actualizaciones optimistas sin reversión; `void fetch(...)` sin manejo de errores.
+- Código duplicado y sin uso (dos stores, dos servidores en el robot, manejadores de clic repetidos).
+- Android: `Thread {}`, `CountDownLatch` y `@Volatile` en lugar de corrutinas; URL del servidor fija en el código.
+
+### Escalabilidad
+
+| Aspecto | Estado actual | Límite |
+|---|---|---|
+| Conexiones de robots | Registro de conexiones y peticiones pendientes en memoria de un solo proceso. | No admite más de una instancia (cluster de PM2 o varios servidores) sin una capa compartida como Redis pub/sub. |
+| Ejecución en el robot | La petición HTTP queda abierta hasta 5 minutos esperando al robot. | Con muchas clases simultáneas se acumulan conexiones. |
+| Archivos | Disco local, dentro del repositorio. | No escala a varios servidores y no tiene respaldo. |
+| Subida de videos | Hasta 200 MB cargados completos en memoria. | Varias subidas simultáneas pueden agotar la RAM. |
+| Límite de intentos de login | En memoria. | Se reinicia al desplegar y no se comparte entre instancias. |
+| Base de datos | PostgreSQL local, pool de 10 conexiones. | Suficiente para la carga actual. |
+| Robots por docente | Uno; si está ocupado rechaza la orden. | Sin cola ni varios robots por docente. |
+
+Cuellos de botella para crecer, en orden: estado en memoria del WebSocket, archivos en disco local, cursos e instituciones fijos en código.
+
+---
+
 ## Mejoras pendientes
 
 Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`.
@@ -211,3 +256,19 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 - [ ] Decidir si se elimina `apps/robot-temi` o se documenta como prototipo.
 - [ ] Decidir si se elimina o actualiza el workflow de Azure.
 - [ ] Reiniciar el servidor de Hetzner en horario sin clases (tiene un reinicio de sistema pendiente).
+
+### 7. Servidor y dependencias
+- [ ] `npm audit` reporta 20 vulnerabilidades (3 críticas, 12 altas). Revisarlas primero en local; no ejecutar `npm audit fix --force` en producción.
+- [ ] Llegan peticiones de escáneres con `Next-Action: x` (errores `Failed to find Server Action "x"` en los logs). La app no usa Server Actions: bloquear el encabezado `Next-Action` en el proxy.
+- [ ] Quitar `ignoreBuildErrors: true` de `next.config.ts` y corregir los errores de TypeScript que aparezcan.
+- [ ] `package-lock.json` queda modificado en el servidor después de `npm install`. Usar `npm ci` en producción o subir el lock actualizado para evitar conflictos en el próximo `git pull`.
+
+### 8. Hoja de ruta de arquitectura
+- [ ] Capa de seguridad común: función que verifique la sesión en todas las rutas y validación de entradas con zod.
+- [ ] Registro central de bloques: cada bloque definido una sola vez (forma, generador de código y comando) y un esquema del protocolo del que se generen los tipos de TypeScript y las clases de Kotlin. Base para la vista de código en Kotlin.
+- [ ] Dividir `auth-store-provider.tsx` en módulos por dominio (estudiantes, misiones, trabajos, perfil) y mover la lógica a servicios y repositorios en el servidor.
+- [ ] Android: reemplazar la reflexión por una interfaz tipada sobre el SDK (`TemiGateway`) con versión falsa para tests, y migrar hilos y latches a corrutinas.
+- [ ] Ejecución asíncrona: `execute` responde con un ID de tarea y el resultado se notifica al navegador por WebSocket o SSE.
+- [ ] Archivos en almacenamiento de objetos (S3 o Hetzner Object Storage) y subida por partes.
+- [ ] Instituciones y cursos en la base de datos en lugar de `demo-data.ts`.
+- [ ] Cuando se necesite más de una instancia: Redis para el registro de robots, las peticiones pendientes y el límite de intentos de login.
