@@ -15,9 +15,9 @@ import io.kotest.property.checkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -30,7 +30,12 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    // UnconfinedTestDispatcher ejecuta los collectors del ViewModel en el momento, así que
+    // uiState refleja cada emisión sin tener que adelantar el reloj.
+    // Los tests usan runBlocking y no runTest a propósito: runTest adelanta el reloj virtual
+    // hasta que no quede nada pendiente, y el ciclo infinito que actualiza la hora en
+    // HomeViewModel (delay(60_000)) nunca deja de reprogramarse, por lo que el test no terminaba.
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setUp() {
@@ -72,13 +77,13 @@ class HomeViewModelTest {
     // --- Tests existentes de conectividad ---
 
     @Test
-    fun `uiState isConnected es false por defecto`() = runTest {
+    fun `uiState isConnected es false por defecto`() = runBlocking<Unit> {
         val viewModel = makeViewModel(network = FakeNetworkStatusProvider(initial = false))
         assertFalse(viewModel.uiState.first().isConnected)
     }
 
     @Test
-    fun `uiState isConnected refleja cambio de false a true`() = runTest {
+    fun `uiState isConnected refleja cambio de false a true`() = runBlocking<Unit> {
         val fakeNetwork = FakeNetworkStatusProvider(initial = false)
         val viewModel = makeViewModel(network = fakeNetwork)
         fakeNetwork.emit(true)
@@ -86,7 +91,13 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `uiState currentTime no es vacio al inicializar`() = runTest {
+    fun `robotId esta vacio hasta que el robot se registra (no muestra unknown al abrir)`() = runBlocking<Unit> {
+        val viewModel = makeViewModel()
+        assertEquals("", viewModel.uiState.first().robotId)
+    }
+
+    @Test
+    fun `uiState currentTime no es vacio al inicializar`() = runBlocking<Unit> {
         val viewModel = makeViewModel()
         assertTrue(viewModel.uiState.first().currentTime.isNotEmpty())
     }
@@ -94,7 +105,7 @@ class HomeViewModelTest {
     // --- Tests unitarios de batería ---
 
     @Test
-    fun `HomeUiState tiene batteryPercentage null e isCharging false por defecto`() = runTest {
+    fun `HomeUiState tiene batteryPercentage null e isCharging false por defecto`() = runBlocking<Unit> {
         val viewModel = makeViewModel()
         val state = viewModel.uiState.first()
         assertNull(state.batteryPercentage)
@@ -102,7 +113,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `emitir 50 y true actualiza ambos campos`() = runTest {
+    fun `emitir 50 y true actualiza ambos campos`() = runBlocking<Unit> {
         val fakeBattery = FakeBatteryStatusProvider()
         val viewModel = makeViewModel(battery = fakeBattery)
         fakeBattery.emitPercentage(50)
@@ -113,7 +124,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `emitir 0 false caso borde minimo`() = runTest {
+    fun `emitir 0 false caso borde minimo`() = runBlocking<Unit> {
         val fakeBattery = FakeBatteryStatusProvider()
         val viewModel = makeViewModel(battery = fakeBattery)
         fakeBattery.emitPercentage(0)
@@ -123,7 +134,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `emitir 100 true caso borde maximo`() = runTest {
+    fun `emitir 100 true caso borde maximo`() = runBlocking<Unit> {
         val fakeBattery = FakeBatteryStatusProvider()
         val viewModel = makeViewModel(battery = fakeBattery)
         fakeBattery.emitPercentage(100)
@@ -133,7 +144,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `emitir null mantiene batteryPercentage como null`() = runTest {
+    fun `emitir null mantiene batteryPercentage como null`() = runBlocking<Unit> {
         val fakeBattery = FakeBatteryStatusProvider(initialPercentage = null)
         val viewModel = makeViewModel(battery = fakeBattery)
         fakeBattery.emitPercentage(null)
@@ -141,7 +152,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `actualizaciones de bateria no afectan isConnected ni currentTime`() = runTest {
+    fun `actualizaciones de bateria no afectan isConnected ni currentTime`() = runBlocking<Unit> {
         val fakeNetwork = FakeNetworkStatusProvider(initial = true)
         val fakeBattery = FakeBatteryStatusProvider()
         val viewModel = makeViewModel(network = fakeNetwork, battery = fakeBattery)
@@ -155,7 +166,7 @@ class HomeViewModelTest {
     // --- Tests de propiedades ---
 
     @Test
-    fun `Property 1 valores validos de bateria se reflejan en el estado`() = runTest {
+    fun `Property 1 valores validos de bateria se reflejan en el estado`() = runBlocking<Unit> {
         // Feature: temi-battery-solid-refactor, Property 1: valores válidos se reflejan
         // Validates: Requirements 4.2, 4.3, 6.2, 6.3
         checkAll(Arb.int(0..100), Arb.boolean()) { percentage, charging ->
@@ -169,7 +180,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `Property 2 valores fuera de rango no actualizan batteryPercentage`() = runTest {
+    fun `Property 2 valores fuera de rango no actualizan batteryPercentage`() = runBlocking<Unit> {
         // Feature: temi-battery-solid-refactor, Property 2: valores fuera de rango ignorados
         // Validates: Requirement 2.11
         checkAll(
@@ -192,7 +203,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `Property 3 batteryPercentage null se propaga sin excepcion`() = runTest {
+    fun `Property 3 batteryPercentage null se propaga sin excepcion`() = runBlocking<Unit> {
         // Feature: temi-battery-solid-refactor, Property 3: null se propaga sin excepción
         // Validates: Requirements 4.5, 6.5
         checkAll(Arb.boolean()) { charging ->
@@ -206,7 +217,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `Property 5 secuencia de emisiones refleja el ultimo valor`() = runTest {
+    fun `Property 5 secuencia de emisiones refleja el ultimo valor`() = runBlocking<Unit> {
         // Feature: temi-battery-solid-refactor, Property 5: Secuencia de emisiones refleja el último valor
         // Validates: Requirements 4.2, 6.2
         checkAll(Arb.list(Arb.int(0..100), 1..10)) { values ->

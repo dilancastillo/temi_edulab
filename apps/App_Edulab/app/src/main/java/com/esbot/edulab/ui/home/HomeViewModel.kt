@@ -77,10 +77,12 @@ class HomeViewModel @Inject constructor(
     init {
         locationServer.start()
         robotWebSocketClient.start()
-        // Resolve robotId and store in UI state
+        // Show the robotId the robot actually registered with. It is only known after
+        // onRobotReady (the SDK serial is not available at startup), so observe it.
         viewModelScope.launch {
-            val id = robotWebSocketClient.resolveRobotId()
-            _uiState.update { it.copy(robotId = id) }
+            robotWebSocketClient.robotId.collect { id ->
+                _uiState.update { it.copy(robotId = id.orEmpty()) }
+            }
         }
         // Mark as loaded after a short delay to show loading indicator
         viewModelScope.launch {

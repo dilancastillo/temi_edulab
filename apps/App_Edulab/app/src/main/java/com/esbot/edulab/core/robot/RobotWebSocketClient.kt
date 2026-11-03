@@ -40,6 +40,11 @@ class RobotWebSocketClient @Inject constructor(
 
     private val _executing = kotlinx.coroutines.flow.MutableStateFlow(false)
     val executing: kotlinx.coroutines.flow.StateFlow<Boolean> = _executing
+
+    // robotId con el que el robot se registró en el servidor. Es null hasta que el SDK
+    // está listo (onRobotReady), porque antes getSerialNumber() aún no responde.
+    private val _robotId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val robotId: kotlinx.coroutines.flow.StateFlow<String?> = _robotId
     @Volatile private var cancelRequested: Boolean = false
     @Volatile private var testUrl: String? = null
 
@@ -58,6 +63,7 @@ class RobotWebSocketClient @Inject constructor(
      */
     fun reconnectWithId(id: String) {
         resolvedRobotId = id
+        _robotId.value = id
         webSocket?.close(1000, "Re-registering with correct robotId")
         webSocket = null
         val request = Request.Builder()
@@ -280,7 +286,7 @@ class RobotWebSocketClient @Inject constructor(
                 serial
             } else {
                 val buildSerial = try { Build.SERIAL } catch (e: Exception) { null }
-                buildSerial?.takeIf { it.isNotBlank() }?.also {
+                buildSerial?.takeIf { it.isNotBlank() && it != Build.UNKNOWN }?.also {
                     Log.d(TAG, "robotId resuelto via Build.SERIAL: $it")
                 } ?: "temi-1".also {
                     Log.d(TAG, "robotId fallback: temi-1")
@@ -289,7 +295,7 @@ class RobotWebSocketClient @Inject constructor(
         } catch (e: Exception) {
             Log.w(TAG, "resolveRobotId: SDK no disponible (${e.message}), usando Build.SERIAL")
             val buildSerial = try { Build.SERIAL } catch (ex: Exception) { null }
-            buildSerial?.takeIf { it.isNotBlank() }?.also {
+            buildSerial?.takeIf { it.isNotBlank() && it != Build.UNKNOWN }?.also {
                 Log.d(TAG, "robotId resuelto via Build.SERIAL: $it")
             } ?: "temi-1".also {
                 Log.d(TAG, "robotId fallback: temi-1")
