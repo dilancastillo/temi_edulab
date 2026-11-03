@@ -22,6 +22,9 @@ export function useUnsavedChanges() {
 export function UnsavedChangesProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const unsavedStateRef = useRef<unknown | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  // Resumen de la secuencia sin guardar, calculado al pedir la navegación
+  // (no se puede leer el ref durante el render).
+  const [steps, setSteps] = useState<Array<{ icon: string; label: string }>>([]);
 
   const setUnsavedState = useCallback((state: unknown | null) => {
     unsavedStateRef.current = state;
@@ -31,6 +34,7 @@ export function UnsavedChangesProvider({ children }: Readonly<{ children: React.
     if (unsavedStateRef.current === null) {
       onConfirm();
     } else {
+      setSteps(buildSteps(unsavedStateRef.current));
       setPendingNavigation(() => onConfirm);
     }
   }, []);
@@ -45,9 +49,6 @@ export function UnsavedChangesProvider({ children }: Readonly<{ children: React.
   function handleCancel() {
     setPendingNavigation(null);
   }
-
-  // Build sequence summary from workspaceState
-  const steps = buildSteps(unsavedStateRef.current);
 
   return (
     <UnsavedChangesContext.Provider value={{ setUnsavedState, requestNavigation }}>

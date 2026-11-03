@@ -18,4 +18,6 @@ pdf-page.png
 **/build/
 **/local.properties
 **/.cxx/
-.kotlin/errors/
+.kotlin/
+# Archivos subidos por los usuarios (imágenes y videos de los bloques): datos, no código.
+public/uploads/

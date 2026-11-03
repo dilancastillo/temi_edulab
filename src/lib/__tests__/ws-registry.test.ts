@@ -3,6 +3,12 @@ import * as fc from "fast-check";
 import { connectionRegistry, pendingRequests } from "../ws-registry.js";
 import { handleWsConnection } from "../ws-handler.js";
 
+// El servidor rechaza a propósito un robotId vacío o de solo espacios
+// (ver el test "empty robotId closes connection with code 4001"),
+// así que las propiedades de registro solo generan IDs válidos.
+const validRobotId = (maxLength: number) =>
+  fc.string({ minLength: 1, maxLength }).filter((s) => s.trim().length > 0);
+
 // Mock WebSocket factory
 function makeMockWs() {
   const listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
@@ -40,7 +46,7 @@ describe("ws-registry property tests", () => {
   // Feature: robot-server-proxy, Property 2: El registro almacena correctamente el robotId
   it("Property 2: registry stores robotId after RegisterMessage", () => {
     fc.assert(
-      fc.property(fc.string({ minLength: 1, maxLength: 50 }), (robotId) => {
+      fc.property(validRobotId(50), (robotId) => {
         connectionRegistry.clear();
         const ws = makeMockWs();
         registerRobot(robotId, ws);
@@ -54,7 +60,7 @@ describe("ws-registry property tests", () => {
   // Feature: robot-server-proxy, Property 3: El reregistro reemplaza la conexión anterior
   it("Property 3: re-registration replaces previous connection", () => {
     fc.assert(
-      fc.property(fc.string({ minLength: 1, maxLength: 50 }), (robotId) => {
+      fc.property(validRobotId(50), (robotId) => {
         connectionRegistry.clear();
         const ws1 = makeMockWs();
         const ws2 = makeMockWs();
@@ -73,7 +79,7 @@ describe("ws-registry property tests", () => {
   // Feature: robot-server-proxy, Property 4: El cierre de conexión limpia el registry
   it("Property 4: closing connection removes robotId from registry", () => {
     fc.assert(
-      fc.property(fc.string({ minLength: 1, maxLength: 50 }), (robotId) => {
+      fc.property(validRobotId(50), (robotId) => {
         connectionRegistry.clear();
         const ws = makeMockWs();
         registerRobot(robotId, ws);
@@ -91,7 +97,7 @@ describe("ws-registry property tests", () => {
   it("Property 5: multiple distinct robotIds coexist in registry", () => {
     fc.assert(
       fc.property(
-        fc.uniqueArray(fc.string({ minLength: 1, maxLength: 30 }), {
+        fc.uniqueArray(validRobotId(30), {
           minLength: 2,
           maxLength: 10,
         }),

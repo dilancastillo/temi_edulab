@@ -82,7 +82,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Abre `http://localhost:3000`. Requiere un PostgreSQL accesible en `DATABASE_URL` con las tablas del proyecto.
+Abre `http://localhost:3000`. Requiere un PostgreSQL accesible en `DATABASE_URL` con las tablas del proyecto y las migraciones de `src/lib/migrations/` aplicadas en orden (`001_...`, `002_...`). Si la pantalla del estudiante muestra "Hola, estudiante" sin misiones, revisar que la base tenga todas las columnas (por ejemplo `teachers.robot_id`).
 
 > **Nota:** `npm run dev` fija `NODE_ENV=development`, y en ese modo `src/app/providers.tsx` usa `DemoStoreProvider`, mientras que las pantallas leen el store de `AuthStoreProvider`. Revisar antes de depender del modo dev (ver pendientes).
 
@@ -109,6 +109,21 @@ npm.cmd run test
 npm.cmd run build
 npm.cmd run test:e2e
 ```
+
+`typecheck`, `lint` (sin errores) y `test` deben pasar antes de subir cambios. El build ya **no** ignora errores de TypeScript: si hay un error de tipos, `npm run build` falla.
+
+### Convenciones
+
+Para no seguir agregando deuda técnica mientras se refactoriza (ver "Evaluación de arquitectura"):
+
+- **Tipos:** no usar `any`. Si una librería no expone un tipo (por ejemplo, partes internas de Blockly), encapsular el acceso en una función auxiliar tipada, como `getFieldTextElement` en `blockly-workspace.tsx`.
+- **Tamaño:** un archivo no debería pasar de 400 líneas (el lint avisa). Si un cambio lo hace crecer, dividirlo por responsabilidad en vez de agregar más.
+- **Una responsabilidad por módulo:** no agregar más funciones a `auth-store-provider.tsx` ni a `RobotReflectionRunner.kt`; lo nuevo va en módulos propios.
+- **Rutas API:** toda ruta nueva verifica la sesión con `getSession` y no confía en `teacherId` enviado por el cliente.
+- **Base de datos:** el acceso a PostgreSQL va en `src/lib/db-store.ts` (o repositorios por dominio), no con `pool.query` dentro de la ruta. Los cambios de esquema van como migración en `src/lib/migrations/`.
+- **Protocolo con el robot:** un comando nuevo se agrega a la vez en `robot-adapter.ts` (web) y en `RobotCommand` + `RobotWebSocketClient` (Android), y se documenta en la tabla "Bloques y comandos".
+- **Tests:** todo arreglo de un error incluye un test que lo reproduzca. Los tests de propiedades (fast-check) solo deben generar datos válidos según las reglas del servidor.
+- **Código sin uso:** se elimina en lugar de comentarlo; el historial queda en git.
 
 ---
 
@@ -183,7 +198,7 @@ Revisión de octubre de 2026 (commit `dde489f`). Resumen: buena base para un pil
 - Autenticación inconsistente: muchas rutas confían en el `teacherId` que envía el cliente.
 - Sin validación de entradas con esquema (se usa `req.json() as Tipo`).
 - Protocolo web ↔ robot duplicado a mano en TypeScript y Kotlin, sin contrato compartido.
-- `ignoreBuildErrors: true` oculta errores de TypeScript al compilar.
+- ~~`ignoreBuildErrors: true` oculta errores de TypeScript al compilar.~~ Resuelto en la Fase 0.
 - Sin migraciones ni esquema completo de la base en el repositorio.
 - Multi-institución simulada: cursos e institución fijos en `demo-data.ts`.
 - IDs generados en el navegador con `Math.random`; actualizaciones optimistas sin reversión; `void fetch(...)` sin manejo de errores.
@@ -222,7 +237,7 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 ### 2. Respaldos (prioridad alta)
 - [ ] No hay respaldo confirmado de la base `temi_edulab` ni de `public/uploads`. Configurar `pg_dump` diario y copia de `public/uploads`, guardados fuera del servidor.
 - [ ] Mover `public/uploads` fuera de la carpeta del repositorio (o agregarlo al `.gitignore`) para no perderlo con un `git clean` o un nuevo clon.
-- [ ] Guardar el esquema completo de la base en el repo (hoy solo está la migración de `missions`).
+- [ ] Guardar el esquema completo de la base en el repo. Hoy solo están las migraciones de `missions` (001) y `teachers.robot_id` (002); faltan las tablas `teachers`, `students`, `assignments`, `student_works`, `images` y `videos`. Lo ideal es sacar el esquema real de producción con `pg_dump --schema-only`.
 
 ### 3. Errores del robot (`RobotReflectionRunner.kt`)
 - [ ] Trata el estado `reposing` de `goTo` como error y corta todo el programa. Según el SDK es un estado transitorio.
@@ -235,8 +250,13 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 - [ ] La insignia "Conectado" indica internet, no la conexión con el servidor.
 - [ ] Llamar `robot.onStart(activityInfo)` en `onRobotReady` para aparecer en la barra superior de Temi.
 - [ ] Quitar `com.robotemi.permission.navigation` (no existe) y los `<uses-permission com.robotemi.*>` del manifest.
+- [x] El robot ID de la pantalla mostraba `unknown` al abrir la app. Ahora se muestra el ID con el que el robot se registra en el servidor, cuando el SDK está listo.
+- [x] `HomeViewModelTest` se quedaba colgado (`runTest` avanzaba sin fin el reloj virtual por el ciclo de la hora). Ahora usa `UnconfinedTestDispatcher` + `runBlocking`: 14 tests en ~4 s.
+- [ ] 6 tests de `RobotWebSocketClientTest` fallan desde abril de 2026: `tearDown` cierra `MockWebServer` con la conexión del cliente abierta ("Gave up waiting for queue to shut down") y la reconexión usa `Handler(Looper.getMainLooper())`, que no funciona en tests JVM. Cerrar el cliente en `tearDown` y no depender de `Looper` para reconectar.
+- [ ] Revisar los tests de `TemiLocationServerExecuteTest` y `RobotReflectionRunnerTest` que también fallan en la corrida completa.
 
 ### 4. Errores de la web
+- [x] La vista previa del programa de un estudiante (botón "Ver") no mostraba las miniaturas de las imágenes: buscaba `base64` y las imágenes ahora se guardan como URL. Corregido en la Fase 0.
 - [ ] `npm run dev` probablemente falla: en modo desarrollo se monta `DemoStoreProvider`, pero las pantallas usan `useAuthStore`.
 - [ ] El robot ID se revierte: al editar el perfil, `update-profile` reescribe `robot_id` con el valor viejo cargado en memoria.
 - [ ] El docente lee el robot ID de `localStorage`, no de su perfil; en otro navegador aparece `temi-1`.
@@ -252,7 +272,7 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 - [ ] Revisar la rama `mblock/test` (control del robot desde mBlock) antes de decidir el camino del editor de código.
 
 ### 6. Limpieza
-- [ ] Código sin uso: `src/lib/supabase-store.ts`, `src/lib/video-store.ts` y `/api/video/[id]`, `image-upload-panel.tsx`, `video-upload-panel.tsx`, `blockly-image-field.ts`, el campo de IP del robot y, en la app, `TemiLocationServer` (HTTP en el puerto 8765).
+- [ ] Código sin uso: `src/lib/supabase-store.ts`, `src/lib/video-store.ts` y `/api/video/[id]`, el campo de IP del robot y, en la app, `TemiLocationServer` (HTTP en el puerto 8765). (Ya eliminados en la Fase 0: `image-upload-panel.tsx`, `video-upload-panel.tsx`, `blockly-image-field.ts` y `scripts/setup-supabase-storage.ts`.)
 - [ ] Decidir si se elimina `apps/robot-temi` o se documenta como prototipo.
 - [ ] Decidir si se elimina o actualiza el workflow de Azure.
 - [ ] Reiniciar el servidor de Hetzner en horario sin clases (tiene un reinicio de sistema pendiente).
@@ -260,7 +280,7 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 ### 7. Servidor y dependencias
 - [ ] `npm audit` reporta 20 vulnerabilidades (3 críticas, 12 altas). Revisarlas primero en local; no ejecutar `npm audit fix --force` en producción.
 - [ ] Llegan peticiones de escáneres con `Next-Action: x` (errores `Failed to find Server Action "x"` en los logs). La app no usa Server Actions: bloquear el encabezado `Next-Action` en el proxy.
-- [ ] Quitar `ignoreBuildErrors: true` de `next.config.ts` y corregir los errores de TypeScript que aparezcan.
+- [x] Quitar `ignoreBuildErrors: true` de `next.config.ts` y corregir los errores de TypeScript (Fase 0: eran 9; además se corrigieron 15 errores de lint y 3 tests que fallaban).
 - [ ] `package-lock.json` queda modificado en el servidor después de `npm install`. Usar `npm ci` en producción o subir el lock actualizado para evitar conflictos en el próximo `git pull`.
 
 ### 8. Hoja de ruta de arquitectura

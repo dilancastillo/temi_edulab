@@ -332,6 +332,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
       courseId: input.courseId,
       fullName: input.fullName.trim(),
       email: input.email.trim().toLowerCase(),
+      password: input.password,
       progress: "En curso",
       avatarUrl: input.avatarUrl,
       createdAt: new Date().toISOString()
@@ -386,6 +387,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
         courseId: course.id,
         fullName: importedStudent.fullName,
         email: importedStudent.email,
+        password: "cambiar2026",
         progress: "En curso",
         createdAt: new Date().toISOString()
       });

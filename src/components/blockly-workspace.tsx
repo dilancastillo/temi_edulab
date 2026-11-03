@@ -75,6 +75,17 @@ const toolbox = {
   ]
 };
 
+// Blockly no expone en sus tipos públicos el elemento de texto de un campo
+// ni el generador de opciones de un dropdown; estos helpers los acceden con tipos.
+function getFieldTextElement(field: BlocklyType.Field | null | undefined): HTMLElement | null {
+  const withText = field as unknown as { getTextElement?: () => HTMLElement | null } | null | undefined;
+  return withText?.getTextElement?.() ?? null;
+}
+
+function setDropdownOptions(field: BlocklyType.Field, options: [string, string][]) {
+  (field as unknown as { menuGenerator_: [string, string][] }).menuGenerator_ = options;
+}
+
 function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
   if (Blockly.Blocks.temi_start) return;
 
@@ -310,8 +321,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
 
     // Setup clickable label after block renders
     const setupVideoClick = () => {
-      const labelField = this.getField("LABEL") as Blockly.FieldLabel | null;
-      const labelElement = (labelField as any)?.getTextElement?.() as HTMLElement | null;
+      const labelElement = getFieldTextElement(this.getField("LABEL"));
       if (labelElement && !labelElement.dataset.videoClickSetup) {
         labelElement.dataset.videoClickSetup = "true";
         labelElement.style.cursor = "pointer";
@@ -441,7 +451,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
           }
         }
       }
-      if (this.rendered) this.render();
+      if (this.rendered) (this as BlocklyType.BlockSvg).render();
     };
 
     // Listen for changes to OPTION_COUNT
@@ -471,9 +481,9 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
   const updateActionValueVisibility = (block: BlocklyType.Block, optionIndex: number) => {
     const actionType = block.getFieldValue(`ACTION_TYPE_${optionIndex}`);
     
-    const navField = block.getField(`ACTION_VALUE_NAVIGATE_${optionIndex}`) as any;
+    const navField = block.getField(`ACTION_VALUE_NAVIGATE_${optionIndex}`);
     const sayField = block.getField(`ACTION_VALUE_SAY_${optionIndex}`);
-    const imgField = block.getField(`ACTION_VALUE_SHOWIMAGE_${optionIndex}`) as any;
+    const imgField = block.getField(`ACTION_VALUE_SHOWIMAGE_${optionIndex}`);
     const hiddenField = block.getField(`ACTION_VALUE_HIDDEN_${optionIndex}`);
     
     // Hide all
@@ -492,7 +502,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
           : [["Sala Principal", "Sala Principal"]];
         
         // Update the dropdown's options
-        navField.menuGenerator_ = locationOptions;
+        setDropdownOptions(navField, locationOptions);
         
         // Set default value if not set
         const currentValue = block.getFieldValue(`ACTION_VALUE_NAVIGATE_${optionIndex}`) || locationOptions[0][1];
@@ -506,7 +516,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       
       // Setup click handler for image field - use a direct approach
       const setupImageClick = () => {
-        const labelElement = (imgField).getTextElement?.();
+        const labelElement = getFieldTextElement(imgField);
         if (labelElement && !labelElement.dataset.imageClickSetup) {
           labelElement.dataset.imageClickSetup = "true";
           labelElement.style.cursor = "pointer";
@@ -517,7 +527,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
           labelElement.style.paddingRight = "8px";
           labelElement.style.userSelect = "none";
           
-          labelElement.onclick = (e: any) => {
+          labelElement.onclick = (e: MouseEvent) => {
             e.stopPropagation();
             e.preventDefault();
             
@@ -563,7 +573,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
       setTimeout(setupImageClick, 50);
     }
     
-    if (block.rendered) block.render();
+    if (block.rendered) (block as BlocklyType.BlockSvg).render();
   };
 }
 
@@ -662,10 +672,7 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
         workspace.getAllBlocks(false)
           .filter((b) => b.type === "temi_show_image")
           .forEach((block) => {
-            const labelField = block.getField("LABEL") as any;
-            if (!labelField) return;
-            
-            const labelElement = labelField.getTextElement?.();
+            const labelElement = getFieldTextElement(block.getField("LABEL"));
             if (!labelElement) return;
             
             if (labelElement.dataset.imageClickSetup) return;
@@ -680,7 +687,7 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
             labelElement.style.userSelect = "none";
             labelElement.style.display = "inline-block";
             
-            const handleClick = async (e: any) => {
+            const handleClick = async (e: MouseEvent) => {
               e.stopPropagation();
               e.preventDefault();
               
@@ -762,8 +769,9 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
               if (base64 && base64.length > 0) {
                 const imgField = block.getField(`ACTION_VALUE_SHOWIMAGE_${i}`);
                 if (imgField) {
-                  (imgField as any).setValue("✅ Imagen seleccionada");
-                  (imgField as any).getTextElement().style.color = "#4CAF50";
+                  imgField.setValue("✅ Imagen seleccionada");
+                  const textElement = getFieldTextElement(imgField);
+                  if (textElement) textElement.style.color = "#4CAF50";
                 }
               }
             }
@@ -790,7 +798,7 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
                   block.setFieldValue(imageUrl, `ACTION_VALUE_${i}`);
                   const labelField = block.getField(`ACTION_VALUE_LABEL_${i}`);
                   if (labelField) {
-                    (labelField as any).setValue("(imagen ✅)");
+                    labelField.setValue("(imagen ✅)");
                   }
                   break;
                 }

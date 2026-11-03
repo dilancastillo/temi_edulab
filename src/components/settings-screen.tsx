@@ -21,19 +21,28 @@ export function SettingsScreen() {
   const [robotConnected, setRobotConnected] = useState<boolean | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  function checkRobotStatus(id: string) {
-    const trimmed = id.trim();
-    if (!trimmed) { setRobotConnected(null); return; }
-    fetch(`/api/robot/status?robotId=${encodeURIComponent(trimmed)}`)
+  // Solo actualiza el estado cuando llega la respuesta (nunca de forma síncrona),
+  // para poder llamarla desde un efecto.
+  function fetchRobotStatus(id: string) {
+    fetch(`/api/robot/status?robotId=${encodeURIComponent(id)}`)
       .then((r) => r.json())
       .then((data: { connected?: boolean }) => { setRobotConnected(data.connected ?? false); })
       .catch(() => { setRobotConnected(false); });
   }
 
+  function checkRobotStatus(id: string) {
+    const trimmed = id.trim();
+    if (!trimmed) { setRobotConnected(null); return; }
+    fetchRobotStatus(trimmed);
+  }
+
   useEffect(() => {
-    const currentId = getRobotId();
-    checkRobotStatus(currentId);
-    pollingRef.current = setInterval(() => { checkRobotStatus(getRobotId()); }, 10_000);
+    const poll = () => {
+      const id = getRobotId().trim();
+      if (id) fetchRobotStatus(id);
+    };
+    poll();
+    pollingRef.current = setInterval(poll, 10_000);
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, []);
 

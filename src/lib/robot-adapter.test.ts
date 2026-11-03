@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   extractLocationFromWorkspace,
   executeRobotCommands,
-  ROBOT_API_URL,
+  getRobotId,
 } from "./robot-adapter";
 
 // ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ describe("executeRobotCommands", () => {
     expect(result.message).toBe("Navigate dispatched");
   });
 
-  it("envía POST a /execute con el body correcto", async () => {
+  it("envía POST a /api/robot/execute con el robotId y los comandos", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -111,11 +111,11 @@ describe("executeRobotCommands", () => {
     await executeRobotCommands(commands);
 
     expect(fetch).toHaveBeenCalledWith(
-      `${ROBOT_API_URL}/execute`,
+      "/api/robot/execute",
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ commands }),
+        body: JSON.stringify({ robotId: getRobotId(), commands }),
       })
     );
   });
