@@ -24,6 +24,8 @@ import type {
   TeacherProfile,
 } from "@/lib/types";
 import { FREE_PLAY_ASSIGNMENT_ID, FREE_PLAY_MISSION_ID } from "@/lib/types";
+import { postJson, type ApiFailure } from "@/lib/api-client";
+import type { SaveResult } from "@/components/use-work-autosave";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,7 +62,8 @@ export type AuthStore = {
   // Auth
   loginWithPassword: (email: string, password: string) => Promise<AuthResult>;
   loginWithGoogle: (idToken: string) => Promise<AuthResult>;
-  logout: () => Promise<void>;
+  /** Cierra la sesión del docente (por defecto) o solo la del estudiante. */
+  logout: (scope?: "teacher" | "student") => Promise<void>;
 
   // Estudiantes
   loginStudentWithPassword: (email: string, password: string) => Promise<StudentLoginResult>;
@@ -80,9 +83,14 @@ export type AuthStore = {
   editMission: (mission: Mission) => Promise<{ ok: boolean; message?: string }>;
   deleteMission: (missionId: string) => Promise<void>;
 
-  // Trabajos
-  saveStudentWork: (input: SaveStudentWorkInput) => Promise<void>;
-  submitStudentWork: (input: SubmitStudentWorkInput) => Promise<void>;
+  // Trabajos: devuelven si el servidor confirmó el guardado (ok) o si no hubo conexión (offline).
+  saveStudentWork: (input: SaveStudentWorkInput) => Promise<SaveResult>;
+  submitStudentWork: (input: SubmitStudentWorkInput) => Promise<SaveResult>;
+
+  // Sincronización del docente: mensaje de la última acción que no se pudo guardar.
+  syncError: string | null;
+  clearSyncError: () => void;
+  refreshTeacherData: () => Promise<void>;
 
   // Perfil
   updateProfile: (input: ProfileInput) => Promise<void>;
@@ -185,6 +193,21 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     setIsReady(true);
   }, []);
 
+  // ── Sincronización: si una acción del docente no llega al servidor, se avisa y se
+  // recargan los datos reales, para no dejar en pantalla cambios que no se guardaron.
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const clearSyncError = useCallback(() => setSyncError(null), []);
+  const refreshTeacherData = useCallback(() => loadTeacherData(""), [loadTeacherData]);
+
+  const reportSyncFailure = useCallback((action: string, failure: ApiFailure) => {
+    setSyncError(
+      failure.offline
+        ? `${action}: no hay conexión a internet. El cambio no se guardó; vuelve a intentarlo cuando regrese la conexión.`
+        : `${action}: ${failure.message}`
+    );
+    void loadTeacherData("");
+  }, [loadTeacherData]);
+
   const clearTeacherData = useCallback(() => {
     setSession(null);
     setTeacherId(null);
@@ -285,9 +308,15 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   useEffect(() => {
     let cancelled = false;
 
+    // Docente y estudiante comparten las mismas listas en memoria (students, assignments…).
+    // Si se restauraran las dos sesiones, la del estudiante (que puede venir de otra pestaña,
+    // porque localStorage es compartido) reemplazaría el directorio del docente por un solo
+    // estudiante. Por eso cada área restaura solo la sesión que le corresponde.
+    const isStudentArea = window.location.pathname.startsWith("/estudiante");
+
     void (async () => {
       // Restore teacher session via cookie-authenticated endpoint
-      try {
+      if (!isStudentArea) try {
         const res = await fetch("/api/teacher/data");
         if (!cancelled && res.ok) {
           const data = await res.json() as {
@@ -311,8 +340,8 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         // If 401 — teacher is not logged in; silently continue
       } catch { /* ignore */ }
 
-      // Restore student session from localStorage (student sessions are unaffected)
-      if (!cancelled) {
+      // Restore student session from localStorage (solo en el área del estudiante)
+      if (!cancelled && isStudentArea) {
         try {
           const stored = window.localStorage.getItem("esbot.studentSession.v1");
           if (stored) {
@@ -367,16 +396,21 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
 
   // ── 5.6: logout ──────────────────────────────────────────────────────────────
 
-  const logout = useCallback(async (): Promise<void> => {
+  const logout = useCallback(async (scope: "teacher" | "student" = "teacher"): Promise<void> => {
+    // Cada rol cierra solo su sesión: si un estudiante sale en un navegador donde también
+    // hay un docente conectado, el docente no debe perder la suya (y al revés).
+    if (scope === "student") {
+      try { window.localStorage.removeItem("esbot.studentSession.v1"); } catch { /* ignore */ }
+      setStudentSession(null);
+      return;
+    }
     // Clear the server-side session cookie
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch { /* ignore */ }
     // Remove legacy localStorage key (clean transition from old sessions)
     try { window.localStorage.removeItem("esbot.teacherSession.v1"); } catch { /* ignore */ }
-    window.localStorage.removeItem("esbot.studentSession.v1");
     clearTeacherData();
-    setStudentSession(null);
   }, [clearTeacherData]);
 
   // ── 5.8: Student operations ──────────────────────────────────────────────────
@@ -395,13 +429,8 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       avatarUrl: input.avatarUrl,
       createdAt: new Date().toISOString(),
     };
-    const res = await fetch("/api/student/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newStudent),
-    });
-    const data = await res.json() as { ok: boolean; message?: string };
-    if (!data.ok) return { ok: false, message: data.message };
+    const result = await postJson("/api/student/create", newStudent);
+    if (!result.ok) return { ok: false, message: result.offline ? "Sin conexión a internet: el estudiante no se guardó." : result.message };
     setStudents((current) => [newStudent, ...current]);
     return { ok: true };
   }, [teacherId]);
@@ -438,13 +467,8 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     // Only send newPassword if the user typed one — avoids double-hashing
     if (input.password) payload["newPassword"] = input.password;
 
-    const res = await fetch("/api/student/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json() as { ok: boolean; message?: string };
-    if (!data.ok) return { ok: false, message: data.message };
+    const result = await postJson("/api/student/create", payload);
+    if (!result.ok) return { ok: false, message: result.offline ? "Sin conexión a internet: los cambios no se guardaron." : result.message };
 
     setStudents((s) => s.map((st) => st.id === studentId ? updated : st));
     return { ok: true };
@@ -453,12 +477,9 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   const deleteStudent = useCallback(async (studentId: string): Promise<void> => {
     if (!teacherId) return;
     setStudents((current) => current.filter((s) => s.id !== studentId));
-    await fetch("/api/teacher/delete-student", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: studentId }),
-    });
-  }, [teacherId]);
+    const result = await postJson("/api/teacher/delete-student", { id: studentId });
+    if (!result.ok) reportSyncFailure("No se pudo eliminar el estudiante", result);
+  }, [teacherId, reportSyncFailure]);
 
   const importStudents = useCallback(async (importedStudents: ImportedStudent[]): Promise<{ added: number; skipped: string[] }> => {
     if (!teacherId) return { added: 0, skipped: [] };
@@ -493,13 +514,15 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     }
 
     setStudents((current) => [...nextStudents, ...current]);
-    await Promise.all(nextStudents.map((s) => fetch("/api/student/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(s),
-    })));
-    return { added: nextStudents.length, skipped };
-  }, [teacherId, students]);
+    const results = await Promise.all(nextStudents.map((s) => postJson("/api/student/create", s)));
+    const failed = nextStudents.filter((_, index) => !results[index].ok);
+    if (failed.length > 0) {
+      const firstFailure = results.find((r) => !r.ok) as ApiFailure;
+      reportSyncFailure(`No se pudieron guardar ${failed.length} de ${nextStudents.length} estudiantes importados`, firstFailure);
+      skipped.push(...failed.map((s) => `${s.fullName}: no se pudo guardar (${firstFailure.offline ? "sin conexión" : firstFailure.message}).`));
+    }
+    return { added: nextStudents.length - failed.length, skipped };
+  }, [teacherId, students, reportSyncFailure]);
 
   // ── 5.10: Assignment operations ──────────────────────────────────────────────
 
@@ -525,39 +548,30 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       reviewCount: 0,
     };
     setAssignments((current) => [newAssignment, ...current]);
-    await fetch("/api/teacher/upsert-assignment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newAssignment),
-    });
+    const result = await postJson("/api/teacher/upsert-assignment", newAssignment);
+    if (!result.ok) {
+      reportSyncFailure("No se pudo asignar la misión", result);
+      return;
+    }
 
-    setStudents((current) =>
-      current.map((student) => {
-        if (student.courseId !== input.courseId) return student;
-        const updated = { ...student, currentMissionId: student.currentMissionId ?? input.missionId, progress: "En curso" as const };
-        void fetch("/api/student/update-progress", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: updated.id, progress: updated.progress, currentMissionId: updated.currentMissionId }),
-        });
-        return updated;
-      })
-    );
-  }, [teacherId, assignments, profile]);
+    const courseStudents = students
+      .filter((student) => student.courseId === input.courseId)
+      .map((student) => ({ ...student, currentMissionId: student.currentMissionId ?? input.missionId, progress: "En curso" as const }));
+    setStudents((current) => current.map((student) => courseStudents.find((s) => s.id === student.id) ?? student));
+    await Promise.all(courseStudents.map((s) =>
+      postJson("/api/student/update-progress", { id: s.id, progress: s.progress, currentMissionId: s.currentMissionId })
+    ));
+  }, [teacherId, assignments, profile, students, reportSyncFailure]);
 
   const archiveAssignment = useCallback(async (assignmentId: string): Promise<void> => {
     if (!teacherId) return;
-    setAssignments((current) => {
-      const updated = current.map((a) => a.id === assignmentId ? { ...a, status: "archived" as const } : a);
-      const a = updated.find((a) => a.id === assignmentId);
-      if (a) void fetch("/api/teacher/upsert-assignment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(a),
-      });
-      return updated;
-    });
-  }, [teacherId]);
+    const target = assignments.find((a) => a.id === assignmentId);
+    if (!target) return;
+    const archived = { ...target, status: "archived" as const };
+    setAssignments((current) => current.map((a) => a.id === assignmentId ? archived : a));
+    const result = await postJson("/api/teacher/upsert-assignment", archived);
+    if (!result.ok) reportSyncFailure("No se pudo archivar la misión", result);
+  }, [teacherId, assignments, reportSyncFailure]);
 
   const deleteAssignment = useCallback(async (assignmentId: string): Promise<void> => {
     if (!teacherId) return;
@@ -572,12 +586,9 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
           : s
       ));
     }
-    await fetch("/api/teacher/delete-assignment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: assignmentId }),
-    });
-  }, [teacherId, assignments]);
+    const result = await postJson("/api/teacher/delete-assignment", { id: assignmentId });
+    if (!result.ok) reportSyncFailure("No se pudo eliminar la misión asignada", result);
+  }, [teacherId, assignments, reportSyncFailure]);
 
   // ── Misiones personalizadas ───────────────────────────────────────────────────
 
@@ -594,50 +605,38 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       durationMinutes: input.durationMinutes,
       outcomes: input.outcomes,
       steps: input.steps,
+      solutionWorkspace: input.solutionWorkspace,
       allowedCategories: input.allowedCategories,
       coverTone: input.coverTone,
     };
-    const res = await fetch("/api/teacher/create-mission", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newMission),
-    });
-    const data = await res.json() as { ok: boolean; message?: string };
-    if (data.ok) {
+    const result = await postJson("/api/teacher/create-mission", newMission);
+    if (result.ok) {
       setMissions((prev) => [...prev, newMission]);
       return { ok: true };
     }
-    return { ok: false, message: data.message ?? "Error al guardar la misión." };
+    return { ok: false, message: result.offline ? "Sin conexión a internet: la misión no se guardó." : result.message };
   }, [teacherId]);
 
   const editMission = useCallback(async (mission: Mission): Promise<{ ok: boolean; message?: string }> => {
     if (!teacherId) return { ok: false, message: "No hay sesión activa." };
-    const res = await fetch("/api/teacher/update-mission", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mission),
-    });
-    const data = await res.json() as { ok: boolean; message?: string };
-    if (data.ok) {
+    const result = await postJson("/api/teacher/update-mission", mission);
+    if (result.ok) {
       setMissions((prev) => prev.map((m) => m.id === mission.id ? mission : m));
       return { ok: true };
     }
-    return { ok: false, message: data.message ?? "Error al actualizar la misión." };
+    return { ok: false, message: result.offline ? "Sin conexión a internet: los cambios no se guardaron." : result.message };
   }, [teacherId]);
 
   const deleteMission = useCallback(async (missionId: string): Promise<void> => {
     if (!teacherId) return;
     setMissions((prev) => prev.filter((m) => m.id !== missionId));
-    await fetch("/api/teacher/delete-mission", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: missionId }),
-    });
-  }, [teacherId]);
+    const result = await postJson("/api/teacher/delete-mission", { id: missionId });
+    if (!result.ok) reportSyncFailure("No se pudo eliminar la misión", result);
+  }, [teacherId, reportSyncFailure]);
 
   // ── 5.11: Student work operations ────────────────────────────────────────────
 
-  const saveStudentWork = useCallback(async (input: SaveStudentWorkInput): Promise<void> => {
+  const saveStudentWork = useCallback(async (input: SaveStudentWorkInput): Promise<SaveResult> => {
     // Obtener teacherId: del docente autenticado o de la sesión del estudiante
     const effectiveTeacherId = teacherId ?? (() => {
       try {
@@ -646,7 +645,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       } catch { /* ignore */ }
       return null;
     })();
-    if (!effectiveTeacherId) return;
+    if (!effectiveTeacherId) return { ok: false, message: "No hay sesión activa." };
 
     const updatedAt = new Date().toISOString();
 
@@ -675,33 +674,31 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
           updatedAt,
         };
 
+    // Persistir primero: el estado local solo se actualiza si el servidor confirma,
+    // para no mostrar como guardado algo que no llegó (la copia local la maneja useWorkAutosave).
+    const result = await postJson("/api/student/save-work", {
+      id: work.id,
+      teacherId: effectiveTeacherId,
+      institutionId: demoInstitution.id,
+      studentId: input.studentId,
+      assignmentId: input.assignmentId,
+      missionId: input.missionId,
+      workspaceState: input.workspaceState,
+      stepIndex: input.stepIndex,
+      updatedAt,
+      status: work.status,
+    });
+    if (!result.ok) return { ok: false, offline: result.offline, message: result.message };
+
     setStudentWorks((current) =>
-      existing
-        ? current.map((w) => w.id === existing.id ? work : w)
+      current.some((w) => w.id === work.id)
+        ? current.map((w) => w.id === work.id ? work : w)
         : [work, ...current]
     );
-
-    // Usar API route para persistir (funciona tanto para docente como estudiante)
-    // Incluir el id para que Supabase pueda hacer upsert por PK correctamente
-    await fetch("/api/student/save-work", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: work.id,
-        teacherId: effectiveTeacherId,
-        institutionId: demoInstitution.id,
-        studentId: input.studentId,
-        assignmentId: input.assignmentId,
-        missionId: input.missionId,
-        workspaceState: input.workspaceState,
-        stepIndex: input.stepIndex,
-        updatedAt,
-        status: work.status,
-      }),
-    });
+    return { ok: true };
   }, [teacherId]);
 
-  const submitStudentWork = useCallback(async (input: SubmitStudentWorkInput): Promise<void> => {
+  const submitStudentWork = useCallback(async (input: SubmitStudentWorkInput): Promise<SaveResult> => {
     const effectiveTeacherId = teacherId ?? (() => {
       try {
         const stored = window.localStorage.getItem("esbot.studentSession.v1");
@@ -709,22 +706,17 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       } catch { /* ignore */ }
       return null;
     })();
-    if (!effectiveTeacherId) return;
+    if (!effectiveTeacherId) return { ok: false, message: "No hay sesión activa." };
 
     const submittedAt = new Date().toISOString();
-    let workId: string | null = null;
-
-    setStudentWorks((current) => {
-      const existing = current.find((w) => w.studentId === input.studentId && w.assignmentId === input.assignmentId);
-      let work: StudentWork;
-      if (existing) {
-        workId = existing.id;
-        work = { ...existing, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "submitted", submittedAt, updatedAt: submittedAt };
-        return current.map((w) => w.id === existing.id ? work : w);
-      } else {
-        workId = createId("work");
-        work = {
-          id: workId,
+    const existing = studentWorksRef.current.find(
+      (w) => w.studentId === input.studentId && w.assignmentId === input.assignmentId
+    );
+    const alreadySubmitted = existing?.status === "submitted";
+    const work: StudentWork = existing
+      ? { ...existing, workspaceState: input.workspaceState, stepIndex: input.stepIndex, status: "submitted", submittedAt, updatedAt: submittedAt }
+      : {
+          id: createId("work"),
           teacherId: effectiveTeacherId,
           institutionId: demoInstitution.id,
           studentId: input.studentId,
@@ -736,69 +728,54 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
           submittedAt,
           updatedAt: submittedAt,
         };
-        return [work, ...current];
-      }
-    });
 
-    // Esperar a que save-work y update-progress persistan antes de que el componente haga router.refresh()
-    await Promise.all([
-      fetch("/api/student/save-work", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...input, id: workId, teacherId: effectiveTeacherId, institutionId: demoInstitution.id, updatedAt: submittedAt, submittedAt, status: "submitted" }),
-      }),
-      fetch("/api/student/update-progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: input.studentId, progress: "Revisar", currentMissionId: input.missionId }),
-      }),
+    // La entrega solo cuenta como enviada si el servidor confirma las dos escrituras.
+    // Si una falla, el estudiante puede reintentar: ambas son idempotentes.
+    const [saveResult, progressResult] = await Promise.all([
+      postJson("/api/student/save-work", { ...input, id: work.id, teacherId: effectiveTeacherId, institutionId: demoInstitution.id, updatedAt: submittedAt, submittedAt, status: "submitted" }),
+      postJson("/api/student/update-progress", { id: input.studentId, progress: "Revisar", currentMissionId: input.missionId }),
     ]);
+    const failure = !saveResult.ok ? saveResult : !progressResult.ok ? progressResult : null;
+    if (failure) return { ok: false, offline: failure.offline, message: failure.message };
 
+    setStudentWorks((current) =>
+      current.some((w) => w.id === work.id)
+        ? current.map((w) => w.id === work.id ? work : w)
+        : [work, ...current]
+    );
     setStudents((current) =>
-      current.map((student) => {
-        if (student.id !== input.studentId) return student;
-        return { ...student, progress: "Revisar" as const, currentMissionId: input.missionId };
-      })
+      current.map((student) =>
+        student.id === input.studentId
+          ? { ...student, progress: "Revisar" as const, currentMissionId: input.missionId }
+          : student
+      )
     );
 
-    setAssignments((current) =>
-      current.map((assignment) => {
-        if (assignment.id !== input.assignmentId) return assignment;
-        const alreadySubmitted = studentWorksRef.current.some(
-          (w) => w.studentId === input.studentId && w.assignmentId === input.assignmentId && w.status === "submitted"
-        );
-        const updated = { ...assignment, reviewCount: alreadySubmitted ? assignment.reviewCount : assignment.reviewCount + 1 };
-        void fetch("/api/teacher/upsert-assignment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updated),
-        });
-        return updated;
-      })
-    );
-  }, [teacherId]);
+    // El contador "por revisar" es informativo: si no se actualiza, la entrega igual quedó guardada.
+    const assignment = assignments.find((a) => a.id === input.assignmentId);
+    if (assignment && !alreadySubmitted) {
+      const updated = { ...assignment, reviewCount: assignment.reviewCount + 1 };
+      setAssignments((current) => current.map((a) => a.id === updated.id ? updated : a));
+      void postJson("/api/teacher/upsert-assignment", updated);
+    }
+    return { ok: true };
+  }, [teacherId, assignments]);
 
   // ── 5.12: Profile & student login ────────────────────────────────────────────
 
   const updateProfile = useCallback(async (input: ProfileInput): Promise<void> => {
-    if (!teacherId) return;
-    setProfile((current) => {
-      if (!current) return current;
-      const updated: TeacherProfile = {
-        ...current,
-        fullName: input.fullName.trim(),
-        email: input.email.trim().toLowerCase(),
-        biography: input.biography.trim(),
-        avatarUrl: input.avatarUrl,
-      };
-      void fetch("/api/teacher/update-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
-      });
-      return updated;
-    });
-  }, [teacherId]);
+    if (!teacherId || !profile) return;
+    const updated: TeacherProfile = {
+      ...profile,
+      fullName: input.fullName.trim(),
+      email: input.email.trim().toLowerCase(),
+      biography: input.biography.trim(),
+      avatarUrl: input.avatarUrl,
+    };
+    setProfile(updated);
+    const result = await postJson("/api/teacher/update-profile", updated);
+    if (!result.ok) reportSyncFailure("No se pudo guardar tu perfil", result);
+  }, [teacherId, profile, reportSyncFailure]);
 
   const loginStudentWithPassword = useCallback(
     async (email: string, password: string): Promise<StudentLoginResult> => {
@@ -852,12 +829,9 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   const deleteFreePlayProgress = useCallback(async (): Promise<void> => {
     if (!teacherId) return;
     setStudentWorks((current) => current.filter((w) => w.assignmentId !== FREE_PLAY_ASSIGNMENT_ID));
-    await fetch("/api/teacher/delete-free-play", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teacherId }),
-    });
-  }, [teacherId]);
+    const result = await postJson("/api/teacher/delete-free-play", { teacherId });
+    if (!result.ok) reportSyncFailure("No se pudo eliminar el progreso de juego libre", result);
+  }, [teacherId, reportSyncFailure]);
 
   // ── 5.13: Context value ───────────────────────────────────────────────────────
 
@@ -895,6 +869,9 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       updateProfile,
       setRobotIp,
       deleteFreePlayProgress,
+      syncError,
+      clearSyncError,
+      refreshTeacherData,
     }),
     [
       isReady,
@@ -927,6 +904,9 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       updateProfile,
       setRobotIp,
       deleteFreePlayProgress,
+      syncError,
+      clearSyncError,
+      refreshTeacherData,
     ]
   );
 

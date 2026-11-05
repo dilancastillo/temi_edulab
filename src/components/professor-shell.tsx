@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LogoMark } from "@/components/logo";
 import { useDemoStore } from "@/components/auth-store-provider";
+import { ConnectionBanner } from "@/components/connection-banner";
 
 const navItems = [
   { href: "/profesor", label: "Inicio" },
@@ -17,7 +18,7 @@ const navItems = [
 export function ProfessorShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isReady, logout, profile, session, teacherId } = useDemoStore();
+  const { isReady, logout, profile, session, teacherId, syncError, clearSyncError } = useDemoStore();
 
   useEffect(() => {
     // Redirigir solo si ya está listo Y no hay sesión de docente
@@ -90,6 +91,11 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
             <span className="avatar avatar-small" style={{ width: "1.75rem", height: "1.75rem", fontSize: "0.65rem" }}>{(profile?.fullName ?? "??").slice(0, 2).toUpperCase()}</span>
           )}
         </div>
+        <ConnectionBanner
+          error={syncError}
+          offlineMessage="Sin conexión a internet: los cambios que hagas no se guardarán hasta que vuelva la conexión."
+          onDismissError={clearSyncError}
+        />
         {children}
         <p className="app-copyright">© 2026 All Rights Reserved.</p>
       </main>

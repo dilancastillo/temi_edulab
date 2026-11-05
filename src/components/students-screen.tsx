@@ -8,16 +8,19 @@ import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { getInitials, parseStudentsCsv } from "@/lib/csv";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
-import type { Course, Student, StudentInput } from "@/lib/types";
+import { formatLastSaved } from "@/lib/format-date";
+import type { Course, Mission, Student, StudentInput } from "@/lib/types";
 import { FREE_PLAY_ASSIGNMENT_ID, FREE_PLAY_MISSION_ID } from "@/lib/types";
 import { ExecuteButton } from "@/components/execute-button";
-import { extractCommandsFromWorkspace, extractShowImageBlocks } from "@/lib/robot-adapter";
+import { StudentProgramPreview } from "@/components/student-program-preview";
+import { extractCommandsFromWorkspace } from "@/lib/robot-adapter";
 
 const pageSize = 5;
 const progressFilters = ["Todos", "En curso", "Revisar", "Calificado"] as const;
 
 export function StudentsScreen() {
-  const { addStudent, courses, assignments, deleteStudent, importStudents, missions, students, studentWorks, updateStudent } = useDemoStore();
+  const { addStudent, courses, assignments, deleteStudent, importStudents, missions, refreshTeacherData, students, studentWorks, updateStudent } = useDemoStore();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const searchParams = useSearchParams();
   const initialMissionId = searchParams.get("mision") ?? "all";
   const initialCourseId = searchParams.get("curso") ?? "all";
@@ -30,7 +33,7 @@ export function StudentsScreen() {
   const [mode, setMode] = useState<"add" | "import" | null>(null);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
-  const [studentToPreview, setStudentToPreview] = useState<{ student: Student; workspaceState: unknown } | null>(null);
+  const [studentToPreview, setStudentToPreview] = useState<{ student: Student; workspaceState: unknown; mission?: Mission } | null>(null);
 
   const filteredStudents = useMemo(() => {
     const normalisedQuery = query.trim().toLowerCase();
@@ -85,6 +88,19 @@ export function StudentsScreen() {
       <PageHeader
         actions={
           <div className="action-row">
+            <button
+              className="button button-ghost"
+              disabled={isRefreshing}
+              onClick={async () => {
+                setIsRefreshing(true);
+                await refreshTeacherData();
+                setIsRefreshing(false);
+              }}
+              title="Trae el trabajo más reciente que guardaron los estudiantes"
+              type="button"
+            >
+              {isRefreshing ? "Actualizando…" : "Actualizar"}
+            </button>
             <button className="button button-secondary" onClick={() => setMode("import")} type="button">
               Importar CSV
             </button>
@@ -236,6 +252,11 @@ export function StudentsScreen() {
                       ) : (
                         "Ninguno"
                       )}
+                      {studentWork ? (
+                        <small className="muted" style={{ display: "block", marginTop: "0.25rem" }}>
+                          Guardado {formatLastSaved(studentWork.updatedAt)}
+                        </small>
+                      ) : null}
                     </td>
                     <td>{mission?.title ?? "Ninguno"}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
@@ -249,7 +270,7 @@ export function StudentsScreen() {
                         {studentWork?.workspaceState != null && (
                           <button
                             className="button button-ghost"
-                            onClick={() => setStudentToPreview({ student, workspaceState: studentWork.workspaceState })}
+                            onClick={() => setStudentToPreview({ student, workspaceState: studentWork.workspaceState, mission })}
                             type="button"
                           >
                             Ver
@@ -358,7 +379,8 @@ export function StudentsScreen() {
       ) : null}
 
       {studentToPreview ? (
-        <SequencePreviewModal
+        <StudentProgramPreview
+          mission={studentToPreview.mission}
           studentName={studentToPreview.student.fullName}
           workspaceState={studentToPreview.workspaceState}
           onClose={() => setStudentToPreview(null)}
@@ -532,126 +554,6 @@ function ImportStudentsModal({
       <div className="modal-actions">
         <button className="button button-primary" onClick={onClose} type="button">
           Listo
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
-function SequencePreviewModal({
-  studentName,
-  workspaceState,
-  onClose
-}: Readonly<{
-  studentName: string;
-  workspaceState: unknown;
-  onClose: () => void;
-}>) {
-  const imageBlocks = extractShowImageBlocks(workspaceState);
-
-  // Build full sequence including temi_start, recursing into child blocks
-  const allSteps = (() => {
-    try {
-      if (!workspaceState || typeof workspaceState !== "object") return [];
-      const ws = workspaceState as Record<string, unknown>;
-      const topBlocks = (ws["blocks"] as Record<string, unknown>)?.["blocks"];
-      if (!Array.isArray(topBlocks)) return [];
-
-      const result: Array<{ type: string; fields: Record<string, string>; depth: number }> = [];
-
-      function walk(block: unknown, depth = 0): void {
-        if (!block || typeof block !== "object") return;
-        const b = block as Record<string, unknown>;
-        result.push({ type: b["type"] as string, fields: (b["fields"] as Record<string, string>) ?? {}, depth });
-        // Recurse into child statement blocks (DO, ELSE, etc.)
-        const inputs = b["inputs"] as Record<string, unknown> | undefined;
-        if (inputs) {
-          for (const inputKey of Object.keys(inputs)) {
-            const inputBlock = (inputs[inputKey] as Record<string, unknown>)?.["block"];
-            if (inputBlock) walk(inputBlock, depth + 1);
-          }
-        }
-        // Continue to next sibling
-        const next = (b["next"] as Record<string, unknown>)?.["block"];
-        if (next) walk(next, depth);
-      }
-
-      for (const block of topBlocks) walk(block);
-      return result;
-    } catch { return []; }
-  })();
-
-  let imgCounter = 0;
-  const steps = allSteps.map((block, i) => {
-    if (block.type === "temi_start") {
-      return { iconSrc: null, icon: "🏁", label: "Cuando inicia", imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_move") {
-      return { iconSrc: "/ubicacion.png", icon: null, label: `Ir a: ${block.fields["LOCATION"] ?? ""}`, imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_say") {
-      return { iconSrc: null, icon: "💬", label: `Decir: "${block.fields["TEXT"] ?? ""}"`, imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_show_image") {
-      imgCounter++;
-      const imgNum = imgCounter;
-      const imgBlock = imageBlocks[imgNum - 1];
-      return { iconSrc: "/imagen.png", icon: null, label: `Mostrar imagen ${imgNum}`, imageUrl: imgBlock?.imageUrl ?? null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_show_video") {
-      return { iconSrc: null, icon: "📹", label: "Reproducir video", imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_condition") {
-      return { iconSrc: null, icon: "❓", label: `Condición: "${block.fields["QUESTION"] ?? ""}"`, imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_while_mqtt") {
-      return { iconSrc: null, icon: "📡", label: `Repetir hasta MQTT en topic: ${block.fields["TOPIC"] ?? "robot/stop"}`, imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_while_timer") {
-      return { iconSrc: null, icon: "⏱️", label: `Repetir durante ${block.fields["SECONDS"] ?? "1"} minutos`, imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_wait") {
-      return { iconSrc: null, icon: "⏳", label: `Esperar ${block.fields["MINUTES"] ?? "30"} segundos`, imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_while_listen") {
-      return { iconSrc: null, icon: "👂", label: `Repetir hasta escuchar: "${block.fields["STOP_WORD"] ?? "listo"}"`, imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_while_count") {
-      return { iconSrc: null, icon: "🔢", label: `Repetir mientras contador < ${block.fields["LIMIT"] ?? "5"}`, imageUrl: null, key: i, depth: block.depth };
-    }
-    if (block.type === "temi_repeat") {
-      return { iconSrc: null, icon: "🔁", label: `Repetir ${block.fields["TIMES"] ?? "2"} veces`, imageUrl: null, key: i, depth: block.depth };
-    }
-    return { iconSrc: null, icon: "⬜", label: block.type, imageUrl: null, key: i, depth: block.depth };
-  });
-
-  return (
-    <Modal onClose={onClose} title={`Secuencia de ${studentName}`}>
-      {steps.length === 0 ? (
-        <p style={{ color: "var(--color-text-muted)", marginTop: "1rem" }}>
-          Este estudiante no tiene bloques ejecutables guardados.
-        </p>
-      ) : (
-        <ol style={{ listStyle: "none", padding: 0, margin: "1rem 0", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {steps.map((step) => (
-            <li key={step.key} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem 0.75rem", background: "var(--color-surface)", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", marginLeft: `${step.depth * 1.5}rem` }}>
-              {step.iconSrc
-                 
-                ? <img alt="" src={step.iconSrc} style={{ width: 24, height: 24, objectFit: "contain" }} />
-                : <span style={{ fontSize: "1.25rem" }}>{step.icon}</span>
-              }
-              <span style={{ flex: 1 }}>{step.label}</span>
-              {step.imageUrl && (
-                 
-                <img alt="" src={step.imageUrl} style={{ height: 40, width: "auto", borderRadius: 4, border: "1px solid var(--color-border)" }} />
-              )}
-            </li>
-          ))}
-        </ol>
-      )}
-      <div className="modal-actions">
-        <button className="button button-secondary" onClick={onClose} type="button">
-          Cerrar
         </button>
       </div>
     </Modal>

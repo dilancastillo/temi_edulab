@@ -6,11 +6,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const studentId = searchParams.get("studentId");
 
-  // Prefer JWT session (teacher viewing student) — fall back to query param (student viewing own data)
+  // Se exige una sesión de docente o el teacherId de la sesión del estudiante (igual que antes).
   const session = await getSession(req);
-  const teacherId = session?.teacherId ?? searchParams.get("teacherId");
-
-  if (!teacherId) {
+  if (!session && !searchParams.get("teacherId")) {
     return NextResponse.json(
       { ok: false, message: "No autorizado." },
       { status: 401 }
@@ -22,8 +20,18 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [studentRes, assignmentsRes, worksRes, teacherRes, missionsRes] = await Promise.all([
-      pool.query("SELECT * FROM students WHERE id = $1", [studentId]),
+    const studentRes = await pool.query("SELECT * FROM students WHERE id = $1", [studentId]);
+    const student = studentRes.rows[0] as Record<string, unknown> | undefined;
+    if (!student) {
+      return NextResponse.json({ ok: false, message: "Estudiante no encontrado." }, { status: 404 });
+    }
+
+    // El docente se toma del propio estudiante, no de la cookie ni de la URL: en un navegador
+    // donde también hay un docente conectado (otra pestaña), la cookie es de ese docente y el
+    // estudiante recibía misiones y asignaciones que no eran las suyas (su panel quedaba vacío).
+    const teacherId = student.teacher_id as string;
+
+    const [assignmentsRes, worksRes, teacherRes, missionsRes] = await Promise.all([
       pool.query("SELECT * FROM assignments WHERE teacher_id = $1 AND status = 'active'", [teacherId]),
       pool.query("SELECT * FROM student_works WHERE student_id = $1", [studentId]),
       pool.query("SELECT robot_id FROM teachers WHERE id = $1", [teacherId]),
@@ -32,7 +40,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      student: studentRes.rows[0] ?? null,
+      student,
       assignments: assignmentsRes.rows,
       studentWorks: worksRes.rows,
       robotId: (teacherRes.rows[0]?.robot_id as string | null) ?? null,

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
 import { getRobotId, setRobotId } from "@/lib/robot-adapter";
+import { postJson } from "@/lib/api-client";
 import type { ProfileInput } from "@/lib/types";
 
 export function SettingsScreen() {
@@ -18,6 +19,7 @@ export function SettingsScreen() {
   // Robot ID state
   const [robotIdInput, setRobotIdInput] = useState(() => getRobotId());
   const [robotIdSaved, setRobotIdSaved] = useState(false);
+  const [robotIdError, setRobotIdError] = useState("");
   const [robotConnected, setRobotConnected] = useState<boolean | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -46,21 +48,26 @@ export function SettingsScreen() {
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, []);
 
-  function handleSaveRobotId(e: React.FormEvent) {
+  async function handleSaveRobotId(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = robotIdInput.trim();
     setRobotId(trimmed);
-    setRobotIdSaved(true);
-    setTimeout(() => setRobotIdSaved(false), 2000);
+    setRobotIdError("");
     checkRobotStatus(trimmed);
     // Persistir en BD para que los estudiantes usen el robot correcto
     if (teacherId) {
-      void fetch("/api/teacher/update-robot-id", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teacherId, robotId: trimmed }),
-      });
+      const result = await postJson("/api/teacher/update-robot-id", { teacherId, robotId: trimmed });
+      if (!result.ok) {
+        setRobotIdError(
+          result.offline
+            ? "Sin conexión: el Robot ID se guardó solo en este navegador; tus estudiantes no lo recibirán hasta que lo guardes de nuevo con conexión."
+            : `No se pudo guardar el Robot ID en el servidor (${result.message}).`
+        );
+        return;
+      }
     }
+    setRobotIdSaved(true);
+    setTimeout(() => setRobotIdSaved(false), 2000);
   }
 
   function handleSaveIp(e: React.FormEvent) {
@@ -163,6 +170,7 @@ export function SettingsScreen() {
             </button>
             {robotIdSaved && <span className="success-message" style={{ margin: 0 }}>✅ Guardado</span>}
           </div>
+          {robotIdError ? <p className="form-error" role="alert">{robotIdError}</p> : null}
         </form>
       </section>
 

@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
         outcomes = $6,
         steps = $7,
         allowed_categories = $8,
-        cover_tone = $9
+        cover_tone = $9,
+        solution_workspace = $12
        WHERE id = $10 AND teacher_id = $11`,
       [
         mission.title,
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
         mission.coverTone,
         mission.id,
         mission.teacherId,
+        mission.solutionWorkspace ? JSON.stringify(mission.solutionWorkspace) : null,
       ]
     );
 

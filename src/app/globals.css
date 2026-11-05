@@ -1176,6 +1176,13 @@ td {
   gap: 2rem;
 }
 
+/* Pantallas con editor de bloques (misión y juego libre): menos margen lateral y más ancho.
+   Los textos no se estiran (tienen su propio max-width); el espacio extra lo toma el editor. */
+.student-content:has(.student-page-editor) {
+  width: min(100%, 1760px);
+  padding-inline: clamp(1rem, 2vw, 1.5rem);
+}
+
 .student-hero {
   min-height: 270px;
   display: grid;
@@ -1557,4 +1564,135 @@ td {
   .blockly-card {
     min-height: 560px;
   }
+}
+
+/* ── Editor de la solución de una misión (docente) ─────────────────────────── */
+
+.solution-editor {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 1rem;
+  width: min(96vw, 1600px);
+  height: min(92vh, 1000px);
+  padding: clamp(1rem, 2vw, 1.5rem);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
+}
+
+.solution-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.solution-editor-header h2 {
+  margin: 0.25rem 0;
+  font-size: 1.75rem;
+}
+
+.solution-editor-header p:not(.eyebrow) {
+  margin: 0;
+  max-width: 60rem;
+}
+
+.solution-editor-body {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: 1rem;
+  min-height: 0;
+}
+
+.solution-editor-body .blockly-card {
+  min-height: 0;
+  height: 100%;
+}
+
+.solution-steps {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+
+.solution-step-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.solution-step-button {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.solution-step-button:hover {
+  background: var(--color-surface);
+}
+
+.solution-step-button[aria-current="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.solution-step-button > span:last-child {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.solution-step-number {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.solution-step-fields {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.4rem 0 0.6rem 2.2rem;
+}
+
+@media (max-width: 900px) {
+  .solution-editor-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(360px, 1fr);
+  }
+}
+
+/* Los menús desplegables de Blockly se agregan al <body>: deben quedar encima de los modales. */
+.blocklyDropDownDiv,
+.blocklyWidgetDiv,
+.blocklyTooltipDiv {
+  z-index: 100000 !important;
+}
+
+/* Vista de solo lectura del programa de un estudiante: el editor ocupa todo el ancho. */
+.solution-editor-body-single {
+  grid-template-columns: minmax(0, 1fr);
 }

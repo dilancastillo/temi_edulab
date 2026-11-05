@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { LogoMark } from "@/components/logo";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { UnsavedChangesProvider, useUnsavedChanges } from "@/components/unsaved-changes-provider";
+import { ConnectionBanner } from "@/components/connection-banner";
 
 const studentNavItems = [
   { href: "/estudiante", label: "Inicio" },
@@ -88,13 +89,14 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
         </nav>
         <button
           className="button button-secondary topbar-action"
-          onClick={() => requestNavigation(() => { void logout(); router.replace("/estudiante/login"); })}
+          onClick={() => requestNavigation(() => { void logout("student"); router.replace("/estudiante/login"); })}
           type="button"
         >
           Salir
         </button>
       </header>
       <main className="student-content">
+        <ConnectionBanner offlineMessage="Sin conexión a internet. Tu trabajo se guarda en este dispositivo y se enviará solo cuando vuelva la conexión." />
         {children}
         <p className="app-copyright">© 2026 All Rights Reserved.</p>
       </main>

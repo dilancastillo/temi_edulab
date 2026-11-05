@@ -60,6 +60,8 @@ export type MissionStep = {
   type: ProgramBlockType;
   label: string;
   helper: string;
+  /** Bloque contenedor (por ejemplo temi_repeat) si el paso va dentro de otro; vacío si va en el nivel principal. */
+  parentType?: ProgramBlockType;
 };
 
 export type MissionAgeBand = "7-10" | "9-10" | "11-14" | "15-18";
@@ -76,6 +78,8 @@ export type Mission = {
   status: "published" | "draft";
   coverTone: "blue" | "green" | "yellow" | "red" | "indigo" | "slate";
   steps?: MissionStep[];
+  /** Solución en bloques (estado de Blockly) armada por el docente; de ella salen los pasos. */
+  solutionWorkspace?: unknown;
   allowedCategories?: ("Movimiento" | "Hablar" | "Mostrar" | "Audio" | "Condición" | "Control")[];
 };
 
@@ -87,6 +91,7 @@ export type CreateMissionInput = {
   durationMinutes: number;
   outcomes: string[];
   steps: MissionStep[];
+  solutionWorkspace?: unknown;
   allowedCategories: Mission["allowedCategories"];
   coverTone: Mission["coverTone"];
 };

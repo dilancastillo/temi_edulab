@@ -136,8 +136,8 @@ export async function fetchCustomMissions(teacherId: string): Promise<Mission[]>
 
 export async function insertMission(mission: Mission): Promise<void> {
   await pool.query(
-    `INSERT INTO missions (id, teacher_id, title, summary, category, age_band, duration_minutes, outcomes, steps, allowed_categories, status, cover_tone, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+    `INSERT INTO missions (id, teacher_id, title, summary, category, age_band, duration_minutes, outcomes, steps, allowed_categories, status, cover_tone, created_at, solution_workspace)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
     [
       mission.id,
       mission.teacherId ?? null,
@@ -152,6 +152,7 @@ export async function insertMission(mission: Mission): Promise<void> {
       mission.status,
       mission.coverTone,
       new Date().toISOString(),
+      mission.solutionWorkspace ? JSON.stringify(mission.solutionWorkspace) : null,
     ]
   );
 }
@@ -238,6 +239,9 @@ function rowToMission(row: Record<string, unknown>): Mission {
     allowedCategories: typeof row.allowed_categories === "string"
       ? JSON.parse(row.allowed_categories)
       : (row.allowed_categories as Mission["allowedCategories"]),
+    solutionWorkspace: typeof row.solution_workspace === "string"
+      ? JSON.parse(row.solution_workspace)
+      : (row.solution_workspace ?? undefined),
     status: row.status as Mission["status"],
     coverTone: row.cover_tone as Mission["coverTone"],
   };

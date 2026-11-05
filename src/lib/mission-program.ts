@@ -1,3 +1,4 @@
+import { blockName, extractProgram } from "@/lib/mission-steps";
 export type ProgramBlockType = "temi_start" | "temi_move" | "temi_say" | "temi_show" | "temi_audio" | "temi_show_image" | "temi_show_video" | "temi_condition" | "temi_while_mqtt" | "temi_repeat" | "temi_while_count" | "temi_while_timer" | "temi_while_listen" | "temi_wait" | "temi_ask";
 
 export type ProgramStep = {
@@ -64,65 +65,24 @@ export function extractNavigateStep(block: BlockWithFields): NavigateStep | null
 }
 
 /**
- * Flattens a Blockly workspaceState into a list of { type, parentType } entries,
- * where parentType is the type of the containing block (if any).
+ * Cuántos pasos de la misión cumple el programa del estudiante, en orden.
+ * Con workspaceState la comparación es estricta (tipo de bloque + bloque contenedor);
+ * sin él, se compara solo la secuencia del nivel principal.
  */
-function flattenWorkspace(workspaceState: unknown): Array<{ type: string; parentType?: string }> {
-  try {
-    if (!workspaceState || typeof workspaceState !== "object") return [];
-    const ws = workspaceState as Record<string, unknown>;
-    const topBlocks = (ws["blocks"] as Record<string, unknown>)?.["blocks"];
-    if (!Array.isArray(topBlocks)) return [];
-
-    const result: Array<{ type: string; parentType?: string }> = [];
-
-    function walk(block: unknown, parentType?: string): void {
-      if (!block || typeof block !== "object") return;
-      const b = block as Record<string, unknown>;
-      const type = b["type"] as string;
-      result.push({ type, parentType });
-      // Recurse into child statement inputs (DO, ELSE, etc.)
-      const inputs = b["inputs"] as Record<string, unknown> | undefined;
-      if (inputs) {
-        for (const inputKey of Object.keys(inputs)) {
-          const inputBlock = (inputs[inputKey] as Record<string, unknown>)?.["block"];
-          if (inputBlock) walk(inputBlock, type);
-        }
-      }
-      // Continue to next sibling (same parent)
-      const next = (b["next"] as Record<string, unknown>)?.["block"];
-      if (next) walk(next, parentType);
-    }
-
-    for (const block of topBlocks) walk(block);
-    return result;
-  } catch { return []; }
-}
-
 export function evaluateOrderSteps(
   sequence: string[] | BlockWithFields[],
   program = orderStepsProgram,
   workspaceState?: unknown
 ): ProgramEvaluation {
-  // If any step has a parentType, use workspace-based evaluation
-  const hasNestedSteps = program.some((s) => s.parentType);
-
-  if (hasNestedSteps && workspaceState !== undefined) {
-    const flat = flattenWorkspace(workspaceState);
+  // Con el programa completo (workspace) la evaluación es estricta: el paso N se cumple
+  // solo si el bloque N del programa del estudiante es del mismo tipo y está dentro del
+  // mismo bloque que en la solución. Se cuentan los pasos seguidos desde el primero.
+  if (workspaceState !== undefined) {
+    const actual = extractProgram(workspaceState);
     let completedSteps = 0;
-
     for (const expectedStep of program) {
-      // Find a matching block in the flat list that hasn't been consumed yet
-      const matchIndex = flat.findIndex((entry, idx) => {
-        if (idx < completedSteps) return false; // rough consumption tracking
-        const typeMatch = entry.type === expectedStep.type;
-        const parentMatch = expectedStep.parentType
-          ? entry.parentType === expectedStep.parentType
-          : entry.parentType === undefined || entry.parentType === null;
-        return typeMatch && parentMatch;
-      });
-
-      if (matchIndex === -1) break;
+      const node = actual[completedSteps];
+      if (!node || node.type !== expectedStep.type || node.parentType !== expectedStep.parentType) break;
       completedSteps += 1;
     }
 
@@ -137,7 +97,7 @@ export function evaluateOrderSteps(
       nextStep,
       message: nextStep
         ? nextStep.parentType
-          ? `Siguiente bloque: ${nextStep.label} (dentro de un bloque ${nextStep.parentType}).`
+          ? `Siguiente bloque: ${nextStep.label} (dentro de "${blockName(nextStep.parentType)}").`
           : `Siguiente bloque: ${nextStep.label}.`
         : "Revisa el orden de los bloques."
     };

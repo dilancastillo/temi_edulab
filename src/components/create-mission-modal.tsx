@@ -3,8 +3,12 @@
 import { FormEvent, useState } from "react";
 import { Modal } from "@/components/modal";
 import { useDemoStore } from "@/components/auth-store-provider";
-import type { MissionCategory, MissionAgeBand, Mission } from "@/lib/types";
-import type { ProgramBlockType, ProgramStep } from "@/lib/mission-program";
+import { MissionSolutionEditor } from "@/components/mission-solution-editor";
+import type { MissionCategory, MissionAgeBand, Mission, MissionStep } from "@/lib/types";
+import { blockName, extractProgram, textsFromSteps, workspaceFromSteps, type StepTexts } from "@/lib/mission-steps";
+
+/** Solución vacía para una misión nueva: solo el bloque "cuando inicia". */
+const EMPTY_SOLUTION = { blocks: { languageVersion: 0, blocks: [{ type: "temi_start", id: "start", x: 40, y: 40 }] } };
 
 type CreateMissionModalProps = {
   onClose: () => void;
@@ -15,23 +19,6 @@ type CreateMissionModalProps = {
 const CATEGORIES: MissionCategory[] = ["Fundamentos", "Logica", "Control", "Robotica"];
 const AGE_BANDS: MissionAgeBand[] = ["7-10", "9-10", "11-14", "15-18"];
 const COVER_TONES: Mission["coverTone"][] = ["blue", "green", "yellow", "red", "indigo", "slate"];
-const BLOCK_TYPES: ProgramBlockType[] = [
-  "temi_start",
-  "temi_move",
-  "temi_say",
-  "temi_show",
-  "temi_audio",
-  "temi_show_image",
-  "temi_show_video",
-  "temi_condition",
-  "temi_while_mqtt",
-  "temi_repeat",
-  "temi_while_count",
-  "temi_while_timer",
-  "temi_while_listen",
-  "temi_wait",
-  "temi_ask",
-];
 const ALLOWED_CATEGORY_OPTIONS: NonNullable<Mission["allowedCategories"]> = [
   "Movimiento",
   "Hablar",
@@ -65,10 +52,10 @@ export function CreateMissionModal({ onClose, initialMission, activeAssignmentCo
   // Outcomes
   const [outcomes, setOutcomes] = useState<string[]>(initialMission?.outcomes?.length ? initialMission.outcomes : [""]);
 
-  // Steps
-  const [steps, setSteps] = useState<ProgramStep[]>(
-    initialMission?.steps?.length ? initialMission.steps : [{ type: "temi_start", label: "", helper: "" }]
-  );
+  // Steps: salen de la solución en bloques que arma el docente
+  const [steps, setSteps] = useState<MissionStep[]>(initialMission?.steps ?? []);
+  const [solutionWorkspace, setSolutionWorkspace] = useState<unknown>(initialMission?.solutionWorkspace);
+  const [stepsEditor, setStepsEditor] = useState<{ workspace: unknown; texts: StepTexts } | null>(null);
 
   // Allowed categories
   const [allowedCategories, setAllowedCategories] = useState<NonNullable<Mission["allowedCategories"]>>(
@@ -93,32 +80,13 @@ export function CreateMissionModal({ onClose, initialMission, activeAssignmentCo
     setOutcomes((prev) => prev.map((o, i) => (i === index ? value : o)));
   }
 
-  // ── Steps handlers ─────────────────────────────────────────────────────────
+  // ── Steps editor ───────────────────────────────────────────────────────────
 
-  function addStep() {
-    setSteps((prev) => [...prev, { type: "temi_start", label: "", helper: "" }]);
-  }
-
-  function removeStep(index: number) {
-    setSteps((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function updateStep(index: number, field: keyof ProgramStep, value: string) {
-    setSteps((prev) =>
-      prev.map((s, i) => {
-        if (i !== index) return s;
-        if (field === "parentType") {
-          const updated = { ...s };
-          if (value === "") {
-            delete updated.parentType;
-          } else {
-            updated.parentType = value as ProgramBlockType;
-          }
-          return updated;
-        }
-        return { ...s, [field]: value };
-      })
-    );
+  function openStepsEditor() {
+    // Misiones creadas antes del editor de bloques no tienen solución guardada:
+    // se arma a partir de sus pasos para poder editarlas igual.
+    const workspace = solutionWorkspace ?? (steps.length > 0 ? workspaceFromSteps(steps) : EMPTY_SOLUTION);
+    setStepsEditor({ workspace, texts: textsFromSteps(extractProgram(workspace), steps) });
   }
 
   // ── AllowedCategories handlers ─────────────────────────────────────────────
@@ -146,8 +114,8 @@ export function CreateMissionModal({ onClose, initialMission, activeAssignmentCo
     if (outcomes.some((o) => !o.trim())) {
       errs.outcomes = "Todos los resultados deben tener texto.";
     }
-    if (steps.some((s) => !s.label.trim() || !s.helper.trim())) {
-      errs.steps = "Todos los pasos deben tener etiqueta e instrucción.";
+    if (steps.length < 2) {
+      errs.steps = "Arma los pasos del programa con bloques: \"cuando inicia\" y al menos un bloque más.";
     }
 
     return errs;
@@ -176,6 +144,7 @@ export function CreateMissionModal({ onClose, initialMission, activeAssignmentCo
         durationMinutes: duration,
         outcomes,
         steps,
+        solutionWorkspace,
         allowedCategories,
         coverTone,
       });
@@ -195,6 +164,7 @@ export function CreateMissionModal({ onClose, initialMission, activeAssignmentCo
       durationMinutes: duration,
       outcomes,
       steps,
+      solutionWorkspace,
       allowedCategories,
       coverTone,
     });
@@ -207,7 +177,9 @@ export function CreateMissionModal({ onClose, initialMission, activeAssignmentCo
   }
 
   return (
-    <Modal onClose={onClose} title={isEditing ? "Editar misión" : "Crear misión"}>
+    <>
+    {/* Mientras se editan los pasos, Escape no debe cerrar la misión y perder lo armado. */}
+    <Modal onClose={stepsEditor ? () => {} : onClose} title={isEditing ? "Editar misión" : "Crear misión"}>
       <form className="form-stack" onSubmit={handleSubmit} noValidate>
 
         {/* ── Advertencia de asignaciones activas ── */}
@@ -358,76 +330,33 @@ export function CreateMissionModal({ onClose, initialMission, activeAssignmentCo
         {/* ── Steps ── */}
         <section aria-label="Pasos del programa">
           <p className="eyebrow">Pasos del programa</p>
-          {steps.map((step, index) => (
-            <div key={index} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", flexWrap: "wrap" }}>
-              <div className="field" style={{ flex: "0 0 auto", minWidth: "10rem" }}>
-                <label htmlFor={`cm-step-type-${index}`}>Tipo</label>
-                <select
-                  id={`cm-step-type-${index}`}
-                  value={step.type}
-                  onChange={(e) => updateStep(index, "type", e.target.value)}
-                >
-                  {BLOCK_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field" style={{ flex: "0 0 auto", minWidth: "10rem" }}>
-                <label htmlFor={`cm-step-parent-${index}`}>Va dentro de</label>
-                <select
-                  id={`cm-step-parent-${index}`}
-                  value={step.parentType ?? ""}
-                  onChange={(e) => updateStep(index, "parentType", e.target.value)}
-                >
-                  <option value="">— Nivel raíz —</option>
-                  {BLOCK_TYPES.filter((t) => ["temi_repeat", "temi_while_count", "temi_while_timer", "temi_while_listen", "temi_while_mqtt", "temi_condition"].includes(t)).map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field" style={{ flex: 1, minWidth: "8rem" }}>
-                <label htmlFor={`cm-step-label-${index}`}>Etiqueta</label>
-                <input
-                  id={`cm-step-label-${index}`}
-                  type="text"
-                  value={step.label}
-                  onChange={(e) => updateStep(index, "label", e.target.value)}
-                  aria-describedby={errors.steps ? "cm-steps-error" : undefined}
-                />
-              </div>
-              <div className="field" style={{ flex: 1, minWidth: "8rem" }}>
-                <label htmlFor={`cm-step-helper-${index}`}>Instrucción</label>
-                <input
-                  id={`cm-step-helper-${index}`}
-                  type="text"
-                  value={step.helper}
-                  onChange={(e) => updateStep(index, "helper", e.target.value)}
-                  aria-describedby={errors.steps ? "cm-steps-error" : undefined}
-                />
-              </div>
-              <button
-                type="button"
-                className="button button-ghost"
-                onClick={() => removeStep(index)}
-                aria-label={`Eliminar paso ${index + 1}`}
-                style={{ marginBottom: "0.25rem" }}
-              >
-                ×
-              </button>
-            </div>
-          ))}
+          <p className="muted" style={{ margin: "0.25rem 0 0.75rem" }}>
+            Arma con bloques la solución correcta. Cada bloque es un paso que el estudiante debe armar en el mismo orden y posición.
+          </p>
+          {steps.length > 0 ? (
+            <ol className="solution-step-list" style={{ marginBottom: "0.75rem" }}>
+              {steps.map((step, index) => (
+                <li key={`${step.type}-${index}`}>
+                  <span className="solution-step-button" style={{ cursor: "default" }}>
+                    <span className="solution-step-number">{index + 1}</span>
+                    <span>
+                      <strong>{step.label}</strong>
+                      <small>{blockName(step.type)}{step.parentType ? ` · dentro de "${blockName(step.parentType)}"` : ""}</small>
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : null}
           {errors.steps ? (
             <span id="cm-steps-error" className="field-error">
               {errors.steps}
             </span>
           ) : null}
-          <button type="button" className="button button-secondary" onClick={addStep} style={{ marginTop: "0.5rem" }}>
-            Agregar paso
+          <button type="button" className="button button-secondary" onClick={openStepsEditor} style={{ marginTop: "0.5rem" }}>
+            {steps.length > 0 ? "Editar pasos con bloques" : "Armar pasos con bloques"}
           </button>
         </section>
-
         {/* ── Allowed categories ── */}
         <fieldset>
           <legend>Bloques disponibles</legend>
@@ -459,5 +388,19 @@ export function CreateMissionModal({ onClose, initialMission, activeAssignmentCo
         </div>
       </form>
     </Modal>
+    {stepsEditor ? (
+      <MissionSolutionEditor
+        initialTexts={stepsEditor.texts}
+        initialWorkspace={stepsEditor.workspace}
+        onCancel={() => setStepsEditor(null)}
+        onSave={(result) => {
+          setSolutionWorkspace(result.solutionWorkspace);
+          setSteps(result.steps);
+          setErrors((current) => ({ ...current, steps: undefined }));
+          setStepsEditor(null);
+        }}
+      />
+    ) : null}
+    </>
   );
 }

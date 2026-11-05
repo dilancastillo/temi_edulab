@@ -82,7 +82,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Abre `http://localhost:3000`. Requiere un PostgreSQL accesible en `DATABASE_URL` con las tablas del proyecto y las migraciones de `src/lib/migrations/` aplicadas en orden (`001_...`, `002_...`). Si la pantalla del estudiante muestra "Hola, estudiante" sin misiones, revisar que la base tenga todas las columnas (por ejemplo `teachers.robot_id`).
+Abre `http://localhost:3000`. Requiere un PostgreSQL accesible en `DATABASE_URL` con las tablas del proyecto y las migraciones de `src/lib/migrations/` aplicadas en orden (`001_...`, `002_...`, `003_...`). Si la pantalla del estudiante muestra "Hola, estudiante" sin misiones, revisar que la base tenga todas las columnas (por ejemplo `teachers.robot_id`).
 
 > **Nota:** `npm run dev` fija `NODE_ENV=development`, y en ese modo `src/app/providers.tsx` usa `DemoStoreProvider`, mientras que las pantallas leen el store de `AuthStoreProvider`. Revisar antes de depender del modo dev (ver pendientes).
 
@@ -159,6 +159,18 @@ npm install
 npm run build
 pm2 restart temi-web
 ```
+
+**Migraciones:** si el commit trae un archivo nuevo en `src/lib/migrations/`, aplicarlo en producción **antes** de `pm2 restart` (son idempotentes, con `IF NOT EXISTS`):
+
+```bash
+sudo -u postgres psql -d temi_edulab -f src/lib/migrations/003_add_mission_solution_workspace.sql
+```
+
+| Migración | Qué hace | Producción |
+|---|---|---|
+| `001_create_missions_table.sql` | Tabla de misiones propias del docente | Aplicada |
+| `002_add_teacher_robot_id.sql` | `teachers.robot_id` | Ya existía (se agregó a mano) |
+| `003_add_mission_solution_workspace.sql` | `missions.solution_workspace`: solución en bloques del docente | **Pendiente**: sin ella falla crear o editar misiones |
 
 > El workflow `.github/workflows/test-jeisson_temi-edulab-prod.yml` despliega `test/jeisson` a Azure; **no es el despliegue real**.
 
@@ -237,7 +249,7 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 ### 2. Respaldos (prioridad alta)
 - [ ] No hay respaldo confirmado de la base `temi_edulab` ni de `public/uploads`. Configurar `pg_dump` diario y copia de `public/uploads`, guardados fuera del servidor.
 - [ ] Mover `public/uploads` fuera de la carpeta del repositorio (o agregarlo al `.gitignore`) para no perderlo con un `git clean` o un nuevo clon.
-- [ ] Guardar el esquema completo de la base en el repo. Hoy solo están las migraciones de `missions` (001) y `teachers.robot_id` (002); faltan las tablas `teachers`, `students`, `assignments`, `student_works`, `images` y `videos`. Lo ideal es sacar el esquema real de producción con `pg_dump --schema-only`.
+- [ ] Guardar el esquema completo de la base en el repo. Hoy solo están las migraciones de `missions` (001), `teachers.robot_id` (002) y `missions.solution_workspace` (003); faltan las tablas `teachers`, `students`, `assignments`, `student_works`, `images` y `videos`. Lo ideal es sacar el esquema real de producción con `pg_dump --schema-only`.
 
 ### 3. Errores del robot (`RobotReflectionRunner.kt`)
 - [ ] Trata el estado `reposing` de `goTo` como error y corta todo el programa. Según el SDK es un estado transitorio.
@@ -256,6 +268,8 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 - [ ] Revisar los tests de `TemiLocationServerExecuteTest` y `RobotReflectionRunnerTest` que también fallan en la corrida completa.
 
 ### 4. Errores de la web
+- [x] "A veces los estudiantes no cargan": docente y estudiante comparten las listas en memoria, y al recargar se restauraban las dos sesiones; una sesión de estudiante de otra pestaña (localStorage) reemplazaba el directorio del docente por un solo estudiante. Ahora cada área (`/profesor`, `/estudiante`) restaura solo su sesión, y "Salir" del estudiante ya no cierra la sesión del docente (ni al revés).
+- [x] `/api/student/data` usaba el docente de la cookie antes que el del estudiante: con un docente conectado en el mismo navegador, un estudiante de otro docente veía su panel vacío. Ahora el docente se toma del propio estudiante.
 - [x] La vista previa del programa de un estudiante (botón "Ver") no mostraba las miniaturas de las imágenes: buscaba `base64` y las imágenes ahora se guardan como URL. Corregido en la Fase 0.
 - [ ] `npm run dev` probablemente falla: en modo desarrollo se monta `DemoStoreProvider`, pero las pantallas usan `useAuthStore`.
 - [ ] El robot ID se revierte: al editar el perfil, `update-profile` reescribe `robot_id` con el valor viejo cargado en memoria.
