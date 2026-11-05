@@ -24,7 +24,7 @@ export function StudentShell({ children }: Readonly<{ children: React.ReactNode 
 function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isReady, logout, studentSession } = useDemoStore();
+  const { isReady, logout, studentSession, students } = useDemoStore();
   const { requestNavigation } = useUnsavedChanges();
   const isLoginRoute = pathname === "/estudiante/login";
 
@@ -49,6 +49,9 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
     );
   }
 
+  const studentEmail = students.find((s) => s.id === studentSession.studentId)?.email;
+  const studentLabel = studentEmail ? `${studentSession.displayName} - ${studentEmail}` : studentSession.displayName;
+
   return (
     <div className="student-shell">
       <header className="student-topbar">
@@ -66,7 +69,7 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
             </span>
             <span className="brand-copy" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "0", lineHeight: "1.2" }}>
               <strong style={{ fontSize: "1.1rem", lineHeight: "1.2", textAlign: "left" }}>Esbot EduLab</strong>
-              <small style={{ fontSize: "0.8rem", lineHeight: "1.2", opacity: 0.85, textAlign: "left" }}>{studentSession.displayName}</small>
+              <small style={{ fontSize: "0.8rem", lineHeight: "1.2", opacity: 0.85, textAlign: "left" }}>{studentLabel}</small>
             </span>
           </div>
         </button>
