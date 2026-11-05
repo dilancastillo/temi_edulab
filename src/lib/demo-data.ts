@@ -174,7 +174,7 @@ export const demoMissions: Mission[] = [
     durationMinutes: 25,
     outcomes: ["Eventos", "Interaccion"],
     status: "published",
-    coverTone: "slate"
+    coverTone: "red"
   },
   {
     id: "mission-nested-logic",

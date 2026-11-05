@@ -1111,6 +1111,9 @@ td {
 
 .student-shell {
   min-height: 100vh;
+  overflow-x: clip;
+  /* Permite medir el ancho real de la página (sin la barra de desplazamiento) con cqw. */
+  container-type: inline-size;
   background: var(--color-bg);
 }
 
@@ -1119,56 +1122,208 @@ td {
   top: 0;
   z-index: 1000;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: "brand nav user";
   align-items: center;
-  gap: 1rem;
-  min-height: 5rem;
-  padding: 0.85rem clamp(1rem, 4vw, 3rem);
-  background: var(--color-primary);
+  gap: 1.5rem;
+  min-height: 4.25rem;
+  padding: 0.6rem clamp(1rem, 3vw, 2.5rem);
+  background: linear-gradient(180deg, #2c5db3 0%, var(--color-primary) 100%);
   color: #ffffff;
-  box-shadow: 0 10px 24px rgb(21 32 43 / 16%);
+  border-bottom: 1px solid rgb(255 255 255 / 12%);
+  box-shadow: 0 6px 18px rgb(21 32 43 / 14%);
 }
 
-.student-topbar .brand-mark,
-.student-topbar .brand-copy strong,
-.student-topbar .brand-copy small {
-  border-color: #9fe5f5;
+.student-brand {
+  grid-area: brand;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.25rem 0.4rem 0.25rem 0.25rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
   color: #ffffff;
+  cursor: pointer;
+}
+
+.student-brand:focus-visible,
+.student-nav-link:focus-visible,
+.student-logout:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.student-brand img {
+  display: block;
+  width: 2.8rem;
+  height: 2.8rem;
+  object-fit: contain;
+}
+
+.student-brand-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.student-nav {
+  grid-area: nav;
 }
 
 .student-nav-list {
   display: flex;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 0;
+  gap: 0.25rem;
+  padding: 0.25rem;
   margin: 0;
   list-style: none;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 14%);
 }
 
 .student-nav-link {
   display: inline-flex;
   align-items: center;
-  min-height: 2.75rem;
-  padding: 0 1rem;
-  border-radius: var(--radius);
-  color: #e9f2ff;
-  font-weight: 800;
+  gap: 0.5rem;
+  min-height: 2.4rem;
+  padding: 0 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: rgb(255 255 255 / 82%);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.student-nav-link:hover,
-.student-nav-link[aria-current="page"] {
-  background: rgb(255 255 255 / 14%);
+.student-nav-link svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+}
+
+.student-nav-link:hover {
+  background: rgb(255 255 255 / 12%);
   color: #ffffff;
 }
 
-.topbar-action {
+.student-nav-link[aria-current="page"] {
   background: #ffffff;
+  color: var(--color-primary);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
 }
 
+.student-user {
+  grid-area: user;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.student-avatar {
+  display: inline-grid;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-content: center;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.student-user-copy {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.student-user-copy strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 0.95rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-user-copy small {
+  overflow: hidden;
+  color: rgb(255 255 255 / 75%);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-logout {
+  display: inline-grid;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  margin-left: 0.25rem;
+  place-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 12%);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.student-logout svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.student-logout:hover {
+  background: rgb(255 255 255 / 24%);
+}
+
+@media (max-width: 1050px) {
+  .student-topbar {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "brand user"
+      "nav nav";
+    row-gap: 0.6rem;
+  }
+
+  .student-nav {
+    justify-self: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .student-brand-name {
+    display: none;
+  }
+
+  .student-nav,
+  .student-nav-list {
+    width: 100%;
+  }
+
+  .student-nav-link {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* Todas las páginas del estudiante usan los mismos márgenes que el editor de misión. */
 .student-content {
-  width: min(100%, 1180px);
+  width: min(100%, 1760px);
   margin-inline: auto;
-  padding: clamp(1rem, 4vw, 3rem);
+  padding: var(--student-pad-top) var(--student-pad-x);
+  --student-pad-top: clamp(1rem, 4vw, 3rem);
+  --student-pad-x: clamp(1rem, 2vw, 1.5rem);
 }
 
 .student-page-stack {
@@ -1176,25 +1331,103 @@ td {
   gap: 2rem;
 }
 
-/* Pantallas con editor de bloques (misión y juego libre): menos margen lateral y más ancho.
-   Los textos no se estiran (tienen su propio max-width); el espacio extra lo toma el editor. */
-.student-content:has(.student-page-editor) {
-  width: min(100%, 1760px);
-  padding-inline: clamp(1rem, 2vw, 1.5rem);
-}
-
 .student-hero {
+  position: relative;
   min-height: 270px;
   display: grid;
   align-items: end;
   padding: clamp(1.5rem, 4vw, 3rem);
+  overflow: hidden;
   border-radius: var(--radius);
-  background:
-    #0c1c46
-    url("data:image/svg+xml,%3Csvg width='1200' height='320' viewBox='0 0 1200 320' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1200' height='320' fill='%230c1c46'/%3E%3Crect x='450' y='70' width='260' height='150' rx='10' fill='%2315202b'/%3E%3Cpath d='M180 110h180M210 150h130M785 90h190M820 145h250M760 220h330' stroke='%238dd8f0' stroke-width='7' stroke-linecap='round'/%3E%3Ccircle cx='900' cy='180' r='48' fill='%23ffffff' opacity='.2'/%3E%3C/svg%3E");
-  background-size: cover;
+  background: linear-gradient(135deg, #0a1633 0%, #12275e 55%, #1c3f8f 100%);
   color: #ffffff;
   box-shadow: var(--shadow-card);
+}
+
+.student-hero-copy {
+  position: relative;
+}
+
+/* Saludo en amarillo cálido: contrasta con el azul oscuro (el verde general no combinaba). */
+.student-hero .eyebrow {
+  color: #ffc94d;
+  letter-spacing: 0.06em;
+}
+
+/* Banner a todo el ancho, pegado a la barra superior, cuando es lo primero de la página.
+   El texto queda alineado con el contenido de abajo. */
+.student-content > .student-page-stack:first-child > .student-hero:first-child {
+  margin-top: calc(-1 * var(--student-pad-top));
+  margin-inline: calc(50% - 50cqw);
+  padding-block: clamp(2.5rem, 6vw, 4.5rem);
+  padding-inline: calc(max(0px, (100cqw - 1760px) / 2) + var(--student-pad-x));
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Figuras de juego que se avivan y se apagan en bucle, cada una a su ritmo.
+   Solo cambia la opacidad (no hay desplazamiento), por eso se mantiene aunque el equipo
+   tenga activado "reducir movimiento". */
+.hero-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hero-shape {
+  position: absolute;
+  opacity: 0.12;
+  animation: hero-shape-pulse 4s ease-in-out infinite;
+}
+
+.hero-shape-gamepad {
+  right: -3rem;
+  bottom: -4.5rem;
+  width: 20rem;
+  height: 20rem;
+  transform: rotate(-12deg);
+  animation-duration: 5s;
+}
+
+.hero-shape-puzzle {
+  top: -3rem;
+  right: 28%;
+  width: 11rem;
+  height: 11rem;
+  transform: rotate(18deg);
+  animation-duration: 4s;
+  animation-delay: -1.5s;
+}
+
+.hero-shape-robot {
+  top: 1.25rem;
+  right: 5%;
+  width: 6.5rem;
+  height: 6.5rem;
+  transform: rotate(-8deg);
+  animation-duration: 6s;
+  animation-delay: -3s;
+}
+
+.hero-shape-star {
+  bottom: 1rem;
+  right: 40%;
+  width: 5rem;
+  height: 5rem;
+  transform: rotate(20deg);
+  animation-duration: 3s;
+  animation-delay: -0.8s;
+}
+
+@keyframes hero-shape-pulse {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+
+  50% {
+    opacity: 0.04;
+  }
 }
 
 .student-hero h1 {
@@ -1221,10 +1454,40 @@ td {
 
 .student-mission-row {
   display: grid;
-  grid-template-columns: 260px repeat(3, minmax(220px, 1fr));
+  grid-template-columns: 260px repeat(3, minmax(220px, 380px));
   gap: 1rem;
   overflow-x: auto;
-  padding-bottom: 0.35rem;
+  /* El desplazamiento horizontal recorta la sombra de las tarjetas: se deja espacio para ella
+     y el margen negativo mantiene la fila alineada con el resto de la página. */
+  margin: -0.75rem -1rem -2rem;
+  padding: 0.75rem 1rem 2.25rem;
+}
+
+/* Sombra más corta en esta fila para que quepa completa dentro del espacio de la fila. */
+.student-mission-row > .student-free-card,
+.student-mission-row > .student-mission-card {
+  box-shadow: 0 8px 18px -6px rgb(32 60 90 / 18%);
+}
+
+/* Levantamiento leve al pasar el cursor. */
+.student-mission-row > .student-free-card,
+.student-mission-row > .student-mission-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.student-mission-row > .student-free-card:hover,
+.student-mission-row > .student-mission-card:hover,
+.student-mission-row > .student-free-card:focus-visible,
+.student-mission-row > .student-mission-card:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 22px -8px rgb(32 60 90 / 26%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-mission-row > .student-free-card,
+  .student-mission-row > .student-mission-card {
+    transition: none;
+  }
 }
 
 .student-free-card,
@@ -1270,36 +1533,59 @@ td {
   color: #e4efff;
 }
 
-.mission-preview {
-  display: block;
+/* Tarjetas de misión con el color que elige el docente (coverTone); el resto del diseño es igual. */
+.tone-surface {
+  --tone: #2856a6;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 28% 135%, transparent 0 38%, rgb(255 255 255 / 7%) 38% 52%, transparent 52% 64%, rgb(255 255 255 / 6%) 64% 78%, transparent 78%),
+    linear-gradient(135deg, color-mix(in srgb, var(--tone) 72%, #ffffff) 0%, var(--tone) 70%);
+  color: #ffffff;
+}
+
+.tone-blue { --tone: #2856a6; }
+.tone-green { --tone: #1f8f4d; }
+.tone-yellow { --tone: #c8891f; }
+.tone-red { --tone: #b82d3a; }
+.tone-indigo { --tone: #4338ca; }
+.tone-slate { --tone: #556575; }
+
+.tone-deco {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 110px;
+  height: 100%;
+  pointer-events: none;
+}
+
+.tone-icon {
+  position: absolute;
+  right: -0.5rem;
+  bottom: -0.9rem;
+  width: 6.5rem;
+  height: 6.5rem;
+  transform: rotate(-10deg);
+  pointer-events: none;
+}
+
+.mission-banner {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  min-height: 130px;
   margin-bottom: auto;
-  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+  border-radius: 14px;
 }
 
-.mission-preview-blue {
-  background: #2856a6;
-}
-
-.mission-preview-green {
-  background: #1f8f4d;
-}
-
-.mission-preview-yellow {
-  background: #c8891f;
-}
-
-.mission-preview-red {
-  background: #b82d3a;
-}
-
-.mission-preview-indigo {
-  background: #3046a5;
-}
-
-.mission-preview-slate {
-  background: #556575;
+.mission-banner-title {
+  position: relative;
+  max-width: calc(100% - 5rem);
+  font-size: clamp(1.05rem, 1.4vw, 1.3rem);
+  font-weight: 800;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 15%);
 }
 
 .student-mission-card progress {
@@ -1316,13 +1602,80 @@ td {
   padding: 1.25rem;
 }
 
+/* En pantallas de computador la tarjeta no ocupa todo el ancho. */
+@media (min-width: 1051px) {
+  .student-assigned-card {
+    width: 70%;
+  }
+}
+
+.student-assigned-card.tone-surface {
+  border: 0;
+  border-radius: 14px;
+  padding: 1.4rem 1.5rem;
+  box-shadow:
+    0 14px 30px color-mix(in srgb, var(--tone) 30%, transparent),
+    0 4px 10px rgb(21 32 43 / 10%);
+}
+
+.student-assigned-card .tone-icon {
+  width: 8rem;
+  height: 8rem;
+  right: 0.5rem;
+  bottom: -1.6rem;
+}
+
+.student-assigned-copy {
+  position: relative;
+  display: grid;
+  gap: 0.35rem;
+}
+
 .student-assigned-card h3,
 .student-assigned-card p {
   margin: 0;
 }
 
+.student-assigned-card h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
 .student-assigned-card p {
-  color: var(--color-muted);
+  color: rgb(255 255 255 / 88%);
+}
+
+.student-assigned-card small {
+  color: rgb(255 255 255 / 75%);
+}
+
+.student-assigned-action {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  width: 3.75rem;
+  height: 3.75rem;
+  place-content: center;
+  border-radius: 1.1rem;
+  background: rgb(255 255 255 / 88%);
+  color: var(--tone);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.student-assigned-action svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.student-assigned-action:hover {
+  background: #ffffff;
+  transform: translateX(2px);
+}
+
+.student-assigned-action:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
 }
 
 .editor-header-card {
@@ -1540,7 +1893,6 @@ td {
     width: min(100%, 220px);
   }
 
-  .student-topbar,
   .editor-header-card,
   .student-assigned-card {
     grid-template-columns: 1fr;
@@ -1548,7 +1900,6 @@ td {
     align-items: start;
   }
 
-  .student-nav-list,
   .editor-actions {
     justify-content: start;
   }
@@ -1695,4 +2046,28 @@ td {
 /* Vista de solo lectura del programa de un estudiante: el editor ocupa todo el ancho. */
 .solution-editor-body-single {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* Tipografía del área del estudiante: Nunito (títulos 900, textos 500, etiquetas 700). */
+.student-typography {
+  font-family: var(--font-student), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+}
+
+.student-typography h1 {
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.student-typography h2,
+.student-typography h3,
+.student-typography strong {
+  font-weight: 800;
+}
+
+.student-typography .eyebrow,
+.student-typography .student-nav-link,
+.student-typography .button {
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }

@@ -7,10 +7,38 @@ import { LogoMark } from "@/components/logo";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { UnsavedChangesProvider, useUnsavedChanges } from "@/components/unsaved-changes-provider";
 import { ConnectionBanner } from "@/components/connection-banner";
+import { getInitials } from "@/lib/csv";
+
+// Íconos de contorno (trazos de Lucide, licencia ISC).
+function NavIcon({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
+      {children}
+    </svg>
+  );
+}
 
 const studentNavItems = [
-  { href: "/estudiante", label: "Inicio" },
-  { href: "/estudiante/juego-libre", label: "Juego libre" }
+  {
+    href: "/estudiante",
+    label: "Inicio",
+    icon: (
+      <NavIcon>
+        <path d="M3 10.5 12 3l9 7.5" />
+        <path d="M5 9.5V21h14V9.5" />
+        <path d="M10 21v-6h4v6" />
+      </NavIcon>
+    )
+  },
+  {
+    href: "/estudiante/juego-libre",
+    label: "Juego libre",
+    icon: (
+      <NavIcon>
+        <path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z" />
+      </NavIcon>
+    )
+  }
 ] as const;
 
 export function StudentShell({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -50,30 +78,21 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
   }
 
   const studentEmail = students.find((s) => s.id === studentSession.studentId)?.email;
-  const studentLabel = studentEmail ? `${studentSession.displayName} - ${studentEmail}` : studentSession.displayName;
 
   return (
     <div className="student-shell">
       <header className="student-topbar">
         <button
           aria-label="Ir al inicio estudiante"
-          className="button-reset"
+          className="student-brand"
           onClick={() => requestNavigation(() => router.push("/estudiante"))}
           type="button"
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
         >
-          <div className="brand-lockup" aria-label="Esbot EduLab">
-            <span className="brand-mark" aria-hidden="true" style={{ background: "none", border: "none", boxShadow: "none", padding: 0 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/ic_logo.png" alt="Logo" style={{ width: "2.8rem", height: "2.8rem", objectFit: "contain", display: "block" }} />
-            </span>
-            <span className="brand-copy" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "0", lineHeight: "1.2" }}>
-              <strong style={{ fontSize: "1.1rem", lineHeight: "1.2", textAlign: "left" }}>Esbot EduLab</strong>
-              <small style={{ fontSize: "0.8rem", lineHeight: "1.2", opacity: 0.85, textAlign: "left" }}>{studentLabel}</small>
-            </span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/ic_logo.png" alt="" />
+          <span className="student-brand-name">Esbot EduLab</span>
         </button>
-        <nav aria-label="Navegación estudiante">
+        <nav aria-label="Navegación estudiante" className="student-nav">
           <ul className="student-nav-list">
             {studentNavItems.map((item) => (
               <li key={item.href}>
@@ -82,21 +101,34 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
                   className="student-nav-link"
                   onClick={() => requestNavigation(() => router.push(item.href))}
                   type="button"
-                  style={{ background: "none", border: "none", cursor: "pointer" }}
                 >
+                  {item.icon}
                   {item.label}
                 </button>
               </li>
             ))}
           </ul>
         </nav>
-        <button
-          className="button button-secondary topbar-action"
-          onClick={() => requestNavigation(() => { void logout("student"); router.replace("/estudiante/login"); })}
-          type="button"
-        >
-          Salir
-        </button>
+        <div className="student-user">
+          <span aria-hidden="true" className="student-avatar">{getInitials(studentSession.displayName)}</span>
+          <span className="student-user-copy" title={studentEmail ? `${studentSession.displayName} - ${studentEmail}` : studentSession.displayName}>
+            <strong>{studentSession.displayName}</strong>
+            {studentEmail ? <small>{studentEmail}</small> : null}
+          </span>
+          <button
+            aria-label="Salir"
+            className="student-logout"
+            title="Salir"
+            onClick={() => requestNavigation(() => { void logout("student"); router.replace("/estudiante/login"); })}
+            type="button"
+          >
+            <NavIcon>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <path d="m16 17 5-5-5-5" />
+              <path d="M21 12H9" />
+            </NavIcon>
+          </button>
+        </div>
       </header>
       <main className="student-content">
         <ConnectionBanner offlineMessage="Sin conexión a internet. Tu trabajo se guarda en este dispositivo y se enviará solo cuando vuelva la conexión." />
