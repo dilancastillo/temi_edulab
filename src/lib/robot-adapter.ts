@@ -139,7 +139,15 @@ export type WhileMqttCommand = {
   commands: RobotExecuteCommand[];
 };
 
-export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | AskCaptureCommand | RepeatCommand | WhileCountCommand | WhileTimerCommand | WaitCommand | WhileListenCommand | WhileMqttCommand;
+/** Sonido corto que trae la app del robot (campana, aplausos o confirmación). */
+export type PlayAudioCommand = {
+  type: "PlayAudio";
+  clip: "confirm" | "bell" | "clap";
+};
+
+export type RobotExecuteCommand = NavigateCommand | SayCommand | ShowImageCommand | ShowVideoCommand | AskConditionCommand | AskCaptureCommand | RepeatCommand | WhileCountCommand | WhileTimerCommand | WaitCommand | WhileListenCommand | WhileMqttCommand | PlayAudioCommand;
+
+const AUDIO_CLIPS: PlayAudioCommand["clip"][] = ["confirm", "bell", "clap"];
 
 export async function uploadVideo(file: File): Promise<{ ok: boolean; videoUrl?: string; message?: string }> {
   try {
@@ -307,6 +315,9 @@ export function extractCommandsFromWorkspace(workspaceState: unknown): RobotExec
         const innerCommands: RobotExecuteCommand[] = [];
         walk(innerBlock, innerCommands);
         acc.push({ type: "WhileTimer", seconds, commands: innerCommands });
+      } else if (b["type"] === "temi_audio") {
+        const clip = fields?.["AUDIO"] as PlayAudioCommand["clip"] | undefined;
+        acc.push({ type: "PlayAudio", clip: clip && AUDIO_CLIPS.includes(clip) ? clip : "confirm" });
       } else if (b["type"] === "temi_wait") {
         const seconds = Math.max(1, Math.min(120, parseInt(fields?.["MINUTES"] ?? "30", 10)));
         acc.push({ type: "Wait", seconds });

@@ -169,3 +169,34 @@ describe("executeRobotCommands", () => {
     await expect(executeRobotCommands(commands)).resolves.toBeDefined();
   });
 });
+
+describe("bloque reproducir audio", () => {
+  it("se envía al robot como PlayAudio con el sonido elegido", async () => {
+    const { extractCommandsFromWorkspace } = await import("./robot-adapter");
+    const workspace = {
+      blocks: {
+        blocks: [
+          {
+            type: "temi_start",
+            next: { block: { type: "temi_audio", fields: { AUDIO: "bell" }, next: { block: { type: "temi_audio", fields: { AUDIO: "clap" } } } } },
+          },
+        ],
+      },
+    };
+    expect(extractCommandsFromWorkspace(workspace)).toEqual([
+      { type: "PlayAudio", clip: "bell" },
+      { type: "PlayAudio", clip: "clap" },
+    ]);
+  });
+
+  it("las misiones base con audio mandan sus sonidos al robot", async () => {
+    const { extractCommandsFromWorkspace } = await import("./robot-adapter");
+    const { demoMissions } = await import("./demo-data");
+    const party = demoMissions.find((m) => m.id === "mission-loops")!;
+    const clips = extractCommandsFromWorkspace(party.solutionWorkspace)
+      .filter((c) => c.type === "PlayAudio")
+      .map((c) => (c as { clip: string }).clip);
+    // 3 campanas dentro de «repetir 3 veces» y los aplausos del final.
+    expect(clips).toEqual(["bell", "bell", "bell", "clap"]);
+  });
+});

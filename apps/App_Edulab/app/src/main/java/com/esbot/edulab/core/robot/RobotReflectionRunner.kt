@@ -19,7 +19,8 @@ private const val SPEAK_TIMEOUT_S = 120L
 @Singleton
 class RobotReflectionRunner @Inject constructor(
     private val imageOverlayController: ImageOverlayController,
-    private val videoOverlayController: VideoOverlayController
+    private val videoOverlayController: VideoOverlayController,
+    private val soundPlayer: SoundPlayer = SoundPlayer.None
 ) : RobotCommandRunner {
 
     // Shared execution context — updated by askConditionAndWait after each ASR result
@@ -95,6 +96,7 @@ class RobotReflectionRunner @Inject constructor(
                 Result.success(Unit)
             }
             is RobotCommand.WhileMqtt -> whileMqttAndWait(command.topic, command.commands)
+            is RobotCommand.PlayAudio -> soundPlayer.playAndWait(command.clip)
             is RobotCommand.Wait -> {
                 if (command.seconds < 1) return Result.success(Unit)
                 Log.d(TAG, "Wait: pausando ${command.seconds}s")

@@ -383,6 +383,9 @@ class RobotWebSocketClient @Inject constructor(
                     topic = obj.get("topic").asString,
                     commands = parseCommands(obj.getAsJsonArray("commands"))
                 )
+                "playAudio", "PlayAudio" -> RobotCommand.PlayAudio(
+                    clip = obj.get("clip")?.takeIf { !it.isJsonNull }?.asString ?: "confirm"
+                )
                 "wait", "Wait" -> RobotCommand.Wait(
                     seconds = obj.get("seconds").asInt
                 )

@@ -368,6 +368,11 @@ class TemiLocationServer @Inject constructor(
                             Log.w(TAG, "  ✗ WhileListen: no se pudieron parsear comandos internos")
                         }
                     }
+                    "PlayAudio" -> {
+                        val clip = Regex(""""clip"\s*:\s*"([^"]+)"""").find(context)?.groupValues?.getOrNull(1) ?: "confirm"
+                        commands.add(RobotCommand.PlayAudio(clip))
+                        Log.d(TAG, "  ✓ PlayAudio: clip=$clip")
+                    }
                     "Wait" -> {
                         val secondsMatch = Regex(""""seconds"\s*:\s*(\d+)""").find(context)
                         val seconds = secondsMatch?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 60

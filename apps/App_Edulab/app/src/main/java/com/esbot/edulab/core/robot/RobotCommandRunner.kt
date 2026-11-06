@@ -30,6 +30,8 @@ sealed class RobotCommand {
         val commands: List<RobotCommand>
     ) : RobotCommand()
     data class Wait(val seconds: Int) : RobotCommand()
+    /** Sonido corto: "bell" (campana), "clap" (aplausos) o "confirm" (confirmación). */
+    data class PlayAudio(val clip: String) : RobotCommand()
 }
 
 data class ConditionOption(

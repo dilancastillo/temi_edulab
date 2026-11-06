@@ -26,4 +26,8 @@ object RobotModule {
     @Provides
     @Singleton
     fun provideRobotCommandRunner(runner: RobotReflectionRunner): RobotCommandRunner = runner
+
+    @Provides
+    @Singleton
+    fun provideSoundPlayer(player: AndroidSoundPlayer): SoundPlayer = player
 }
