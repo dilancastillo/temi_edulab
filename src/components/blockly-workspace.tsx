@@ -18,7 +18,12 @@ type BlocklyWorkspaceProps = {
   onBlockSelected?: (blockId: string | null) => void;
   /** Selecciona y centra este bloque (por ejemplo, al elegir un paso en una lista). */
   selectedBlockId?: string | null;
+  /** Solo lectura en un espacio pequeño: sin cuadrícula ni controles, y bloques reducidos que caben completos. */
+  compact?: boolean;
 };
+
+const COMPACT_SCALE = 0.6;
+const COMPACT_PADDING = 12;
 
 const toolbox = {
   kind: "categoryToolbox",
@@ -649,7 +654,7 @@ function collectSequence(workspace: BlocklyType.WorkspaceSvg) {
   return sequence;
 }
 
-export function BlocklyWorkspace({ initialState, onChange, readOnly = false, allowedCategories, onWorkspaceReady, onBlockSelected, selectedBlockId }: Readonly<BlocklyWorkspaceProps>) {
+export function BlocklyWorkspace({ initialState, onChange, readOnly = false, allowedCategories, onWorkspaceReady, onBlockSelected, selectedBlockId, compact = false }: Readonly<BlocklyWorkspaceProps>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<BlocklyType.WorkspaceSvg | null>(null);
   const blocklyRef = useRef<typeof BlocklyType | null>(null);
@@ -699,9 +704,13 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
         readOnly,
         trashcan: !readOnly,
         renderer: "zelos",
-        grid: { spacing: 24, length: 3, colour: "#d9e3ee", snap: true },
-        zoom: { controls: true, wheel: true, startScale: 0.9, maxScale: 1.4, minScale: 0.5 },
-        move: { scrollbars: true, drag: true, wheel: true }
+        grid: compact ? undefined : { spacing: 24, length: 3, colour: "#d9e3ee", snap: true },
+        zoom: compact
+          ? { controls: false, wheel: false, startScale: COMPACT_SCALE, maxScale: COMPACT_SCALE, minScale: COMPACT_SCALE }
+          : { controls: true, wheel: true, startScale: 0.9, maxScale: 1.4, minScale: 0.5 },
+        // En compacto se puede arrastrar para ver el resto; las barras se ocultan con CSS y la rueda
+        // del mouse sigue desplazando la página.
+        move: compact ? { scrollbars: true, drag: true, wheel: false } : { scrollbars: true, drag: true, wheel: true }
       });
 
       workspaceRef.current = workspace;
@@ -733,7 +742,18 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
       emitChange();
       setIsLoading(false);
       // En solo lectura se muestra el programa completo de una vez.
-      if (readOnly) workspace.zoomToFit();
+      if (compact) {
+        // Bloques pequeños pero legibles, empezando por la esquina superior izquierda del programa.
+        // Dentro de un popup el tamaño final llega un instante después: se ajusta entonces.
+        window.requestAnimationFrame(() => {
+          Blockly.svgResize(workspace);
+          workspace.setScale(COMPACT_SCALE);
+          const content = workspace.getMetricsManager().getContentMetrics();
+          workspace.scroll(-content.left + COMPACT_PADDING, -content.top + COMPACT_PADDING);
+        });
+      } else if (readOnly) {
+        workspace.zoomToFit();
+      }
 
       // Restore LABEL for temi_show_image blocks that already have IMAGE_URL
       workspace.getAllBlocks(false)
@@ -909,10 +929,10 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
       workspaceRef.current = null;
       blocklyRef.current = null;
     };
-  }, [initialState, readOnly]);
+  }, [initialState, readOnly, compact]);
 
   return (
-    <div className="blockly-card">
+    <div className={compact ? "blockly-card blockly-card-compact" : "blockly-card"}>
       {isLoading ? <p className="blockly-loading">Cargando editor de bloques...</p> : null}
       <div className="blockly-canvas" ref={containerRef} />
     </div>

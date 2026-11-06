@@ -6,6 +6,8 @@
  * para que la interfaz pueda decir la verdad al usuario en vez de asumir que todo se guardó.
  */
 
+import { reportServerReachable } from "@/lib/connection-status";
+
 export type ApiSuccess = { ok: true; data: Record<string, unknown> };
 export type ApiFailure = { ok: false; offline: boolean; status?: number; message: string };
 export type ApiResult = ApiSuccess | ApiFailure;
@@ -30,8 +32,10 @@ export async function postJson(url: string, body: unknown): Promise<ApiResult> {
     });
   } catch {
     // fetch solo lanza cuando la petición no llega al servidor (red caída, DNS, etc.).
+    reportServerReachable(false);
     return { ok: false, offline: true, message: OFFLINE_MESSAGE };
   }
+  reportServerReachable(true);
 
   let data: Record<string, unknown> = {};
   try {

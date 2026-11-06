@@ -131,7 +131,7 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
         </div>
       </header>
       <main className="student-content">
-        <ConnectionBanner offlineMessage="Sin conexión a internet. Tu trabajo se guarda en este dispositivo y se enviará solo cuando vuelva la conexión." />
+        <ConnectionBanner offlineDetail="Tu trabajo se guarda en este equipo y se enviará cuando vuelva la conexión." />
         {children}
         <p className="app-copyright">© 2026 All Rights Reserved.</p>
       </main>

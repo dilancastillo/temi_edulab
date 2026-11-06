@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session as SupabaseSession } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { baseOverrideId, isBaseMission, mergeWithBaseMissions, originalBaseMission } from "@/lib/base-missions";
 import {
   demoCourses,
   demoInstitution,
@@ -186,7 +187,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         setStudentWorks(data.studentWorks ?? []);
         const uid = data.profile?.teacherId ?? data.profile?.id ?? "";
         setProfile(data.profile ?? buildDefaultProfile(uid, userEmail));
-        setMissions([...demoMissions, ...(data.missions ?? [])]);
+        setMissions(mergeWithBaseMissions(data.missions ?? []));
         if (uid) setTeacherId(uid);
       }
     } catch { /* ignore */ }
@@ -299,7 +300,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
               coverTone: r.cover_tone as Mission["coverTone"],
             };
           });
-          setMissions([...demoMissions, ...customMissions]);
+          setMissions(mergeWithBaseMissions(customMissions));
         }
       }
     } catch { /* silencioso */ }
@@ -334,7 +335,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
             const uid = data.profile?.teacherId ?? data.profile?.id ?? "";
             if (uid) setTeacherId(uid);
             setProfile(data.profile ?? null);
-            setMissions([...demoMissions, ...(data.missions ?? [])]);
+            setMissions(mergeWithBaseMissions(data.missions ?? []));
           }
         }
         // If 401 — teacher is not logged in; silently continue
@@ -619,9 +620,24 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
 
   const editMission = useCallback(async (mission: Mission): Promise<{ ok: boolean; message?: string }> => {
     if (!teacherId) return { ok: false, message: "No hay sesión activa." };
-    const result = await postJson("/api/teacher/update-mission", mission);
+
+    // Misión base: la primera edición crea la copia del docente; las siguientes la actualizan.
+    // En pantalla sigue con el id base para que sus asignaciones no cambien (ver base-missions.ts).
+    let result;
+    let saved: Mission;
+    if (isBaseMission(mission.id)) {
+      const storageId = mission.storageId ?? baseOverrideId(mission.id, teacherId);
+      const { storageId: _s, baseMissionId: _b, ...fields } = mission;
+      const stored = { ...fields, id: storageId, teacherId, status: "published" as const };
+      result = await postJson(mission.storageId ? "/api/teacher/update-mission" : "/api/teacher/create-mission", stored);
+      saved = { ...stored, id: mission.id, storageId, baseMissionId: mission.id };
+    } else {
+      result = await postJson("/api/teacher/update-mission", mission);
+      saved = mission;
+    }
+
     if (result.ok) {
-      setMissions((prev) => prev.map((m) => m.id === mission.id ? mission : m));
+      setMissions((prev) => prev.map((m) => m.id === mission.id ? saved : m));
       return { ok: true };
     }
     return { ok: false, message: result.offline ? "Sin conexión a internet: los cambios no se guardaron." : result.message };
@@ -629,10 +645,19 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
 
   const deleteMission = useCallback(async (missionId: string): Promise<void> => {
     if (!teacherId) return;
+    // Misión base editada: se borra la copia del docente y vuelve la original.
+    const edited = missions.find((m) => m.id === missionId && m.storageId);
+    const original = edited ? originalBaseMission(missionId) : undefined;
+    if (edited && original) {
+      setMissions((prev) => prev.map((m) => m.id === missionId ? original : m));
+      const result = await postJson("/api/teacher/delete-mission", { id: edited.storageId });
+      if (!result.ok) reportSyncFailure("No se pudo restaurar la misión original", result);
+      return;
+    }
     setMissions((prev) => prev.filter((m) => m.id !== missionId));
     const result = await postJson("/api/teacher/delete-mission", { id: missionId });
     if (!result.ok) reportSyncFailure("No se pudo eliminar la misión", result);
-  }, [teacherId, reportSyncFailure]);
+  }, [teacherId, missions, reportSyncFailure]);
 
   // ── 5.11: Student work operations ────────────────────────────────────────────
 

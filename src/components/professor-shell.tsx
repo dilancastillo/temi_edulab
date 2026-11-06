@@ -93,7 +93,7 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
         </div>
         <ConnectionBanner
           error={syncError}
-          offlineMessage="Sin conexión a internet: los cambios que hagas no se guardarán hasta que vuelva la conexión."
+          offlineDetail="Los cambios no se guardarán hasta que vuelva la conexión."
           onDismissError={clearSyncError}
         />
         {children}

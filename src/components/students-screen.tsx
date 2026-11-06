@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { ConfirmDialog, Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
+import { ChevronSelect } from "@/components/chevron-select";
 import { getInitials, parseStudentsCsv } from "@/lib/csv";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
 import { formatLastSaved } from "@/lib/format-date";
@@ -114,74 +115,79 @@ export function StudentsScreen() {
         title="Directorio de Estudiantes"
       />
 
-      <section aria-label="Filtros de estudiantes" className="filter-panel filter-panel-wrap">
-        <label className="search-field" htmlFor="student-search">
-          Buscar
+      <section aria-label="Filtros de estudiantes" className="students-toolbar">
+        <label className="toolbar-search" htmlFor="student-search">
+          <ToolbarIcon d={["M21 21l-4.3-4.3", "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"]} />
+          <span className="sr-only">Buscar</span>
           <input
             id="student-search"
             onChange={(event) => {
               setQuery(event.target.value);
               resetPagination();
             }}
-            placeholder="Nombre o correo"
+            placeholder="Buscar por nombre o correo"
             type="search"
             value={query}
           />
         </label>
-        <label className="select-field" htmlFor="course-filter">
-          Curso
-          <select
-            id="course-filter"
-            onChange={(event) => {
-              setCourseId(event.target.value);
-              resetPagination();
-            }}
-            value={courseId}
-          >
-            <option value="all">Todos</option>
-            {courses.map((course) => (
-              <option key={course.id} value={course.id}>
-                {course.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="select-field" htmlFor="progress-filter">
-          Progreso
-          <select
-            id="progress-filter"
-            onChange={(event) => {
-              setProgress(event.target.value as (typeof progressFilters)[number]);
-              resetPagination();
-            }}
-            value={progress}
-          >
-            {progressFilters.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="select-field" htmlFor="mission-filter">
-          Misión
-          <select
-            id="mission-filter"
-            onChange={(event) => {
-              setMissionId(event.target.value);
-              resetPagination();
-            }}
-            value={missionId}
-          >
-            <option value="all">Todas</option>
-            <option value={FREE_PLAY_MISSION_ID}>Juego libre</option>
-            {missions.map((mission) => (
-              <option key={mission.id} value={mission.id}>
-                {mission.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="toolbar-filters">
+          <label className="toolbar-select" htmlFor="course-filter">
+            <span className="sr-only">Curso</span>
+            <ChevronSelect
+              id="course-filter"
+              onChange={(event) => {
+                setCourseId(event.target.value);
+                resetPagination();
+              }}
+              value={courseId}
+            >
+              <option value="all">Todos los cursos</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.name}
+                </option>
+              ))}
+            </ChevronSelect>
+          </label>
+          <span aria-hidden="true" className="toolbar-divider" />
+          <label className="toolbar-select" htmlFor="progress-filter">
+            <span className="sr-only">Progreso</span>
+            <ChevronSelect
+              id="progress-filter"
+              onChange={(event) => {
+                setProgress(event.target.value as (typeof progressFilters)[number]);
+                resetPagination();
+              }}
+              value={progress}
+            >
+              {progressFilters.map((option) => (
+                <option key={option} value={option}>
+                  {option === "Todos" ? "Todo el progreso" : option}
+                </option>
+              ))}
+            </ChevronSelect>
+          </label>
+          <span aria-hidden="true" className="toolbar-divider" />
+          <label className="toolbar-select" htmlFor="mission-filter">
+            <span className="sr-only">Misión</span>
+            <ChevronSelect
+              id="mission-filter"
+              onChange={(event) => {
+                setMissionId(event.target.value);
+                resetPagination();
+              }}
+              value={missionId}
+            >
+              <option value="all">Todas las misiones</option>
+              <option value={FREE_PLAY_MISSION_ID}>Juego libre</option>
+              {missions.map((mission) => (
+                <option key={mission.id} value={mission.id}>
+                  {mission.title}
+                </option>
+              ))}
+            </ChevronSelect>
+          </label>
+        </div>
       </section>
 
       <section aria-labelledby="students-table-title" className="table-card">
@@ -557,5 +563,16 @@ function ImportStudentsModal({
         </button>
       </div>
     </Modal>
+  );
+}
+
+// Íconos de contorno (trazos de Lucide, licencia ISC) para la barra de filtros.
+function ToolbarIcon({ d }: Readonly<{ d: string[] }>) {
+  return (
+    <svg aria-hidden="true" className="toolbar-icon" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
+      {d.map((path) => (
+        <path d={path} key={path} />
+      ))}
+    </svg>
   );
 }

@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { Modal } from "@/components/modal";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { MissionSolutionEditor } from "@/components/mission-solution-editor";
+import { isBaseMission } from "@/lib/base-missions";
 import type { MissionCategory, MissionAgeBand, Mission, MissionStep } from "@/lib/types";
 import { blockName, extractProgram, textsFromSteps, workspaceFromSteps, type StepTexts } from "@/lib/mission-steps";
 
@@ -186,6 +187,12 @@ export function CreateMissionModal({ onClose, initialMission, activeAssignmentCo
         {isEditing && activeAssignmentCount > 0 ? (
           <p className="hint-card">
             Esta misión está asignada a {activeAssignmentCount} curso{activeAssignmentCount > 1 ? "s" : ""}. Los cambios afectarán a los estudiantes que aún no han enviado su trabajo.
+          </p>
+        ) : null}
+
+        {isEditing && initialMission && isBaseMission(initialMission.id) ? (
+          <p className="hint-card">
+            Es una misión de la biblioteca. Tus cambios solo los verán tú y tus estudiantes, y puedes volver a la versión original con «Restaurar original» en la vista previa.
           </p>
         ) : null}
 

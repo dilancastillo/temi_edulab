@@ -5,6 +5,9 @@ import { PageHeader } from "@/components/page-header";
 import { Modal } from "@/components/modal";
 import { CreateMissionModal } from "@/components/create-mission-modal";
 import { useDemoStore } from "@/components/auth-store-provider";
+import { ChevronSelect } from "@/components/chevron-select";
+import { BlocklyWorkspace } from "@/components/blockly-workspace";
+import { workspaceFromSteps } from "@/lib/mission-steps";
 import type { Mission } from "@/lib/types";
 
 const categoryFilters = [
@@ -14,7 +17,7 @@ const categoryFilters = [
   { value: "Control", label: "Control" },
   { value: "Robotica", label: "Robótica" }
 ] as const;
-const ageFilters = ["Todas", "7-10", "11-14", "15-18"] as const;
+const ageFilters = ["Todas", "7-10", "9-10", "11-14", "15-18"] as const;
 type CategoryFilter = (typeof categoryFilters)[number]["value"];
 
 export function LibraryScreen() {
@@ -44,9 +47,9 @@ export function LibraryScreen() {
         title="Biblioteca de Misiones"
       />
 
-      <section className="filter-panel" aria-label="Filtros de biblioteca">
+      <section className="filter-panel library-filters" aria-label="Filtros de biblioteca">
         <fieldset>
-          <legend>Categoria</legend>
+          <legend>Categoría</legend>
           <div className="segmented-control">
             {categoryFilters.map((option) => (
               <button
@@ -61,22 +64,25 @@ export function LibraryScreen() {
             ))}
           </div>
         </fieldset>
-        <label className="select-field">
+        <label className="select-field library-age">
           Edad
-          <select onChange={(event) => setAgeBand(event.target.value as (typeof ageFilters)[number])} value={ageBand}>
+          <ChevronSelect onChange={(event) => setAgeBand(event.target.value as (typeof ageFilters)[number])} value={ageBand}>
             {ageFilters.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
-          </select>
+          </ChevronSelect>
         </label>
         <button
-          className="button button-primary"
+          className="button button-primary library-create"
           disabled={!teacherId}
           onClick={() => setShowCreateModal(true)}
           type="button"
         >
+          <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={2.4} viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
           Crear misión
         </button>
       </section>
@@ -89,7 +95,7 @@ export function LibraryScreen() {
                 <img src={`/icon_${mission.category.toLowerCase()}.png`} alt="" />
               </span>
               <span className="age-pill">{mission.ageBand} años</span>
-              {mission.teacherId ? <span className="age-pill">Personalizada</span> : null}
+              {mission.baseMissionId ? <span className="age-pill">Editada</span> : mission.teacherId ? <span className="age-pill">Personalizada</span> : null}
             </div>
             <h2>{mission.title}</h2>
             <p>{mission.summary}</p>
@@ -140,14 +146,26 @@ function MissionPreview({
   onDelete,
   onEdit
 }: Readonly<{ mission: Mission; onAssign: (mission: Mission) => void; onClose: () => void; onDelete?: (mission: Mission) => void; onEdit?: (mission: Mission) => void }>) {
+  // Bloques de la solución tal como deben quedar; las misiones antiguas se arman desde sus pasos.
+  const solution = useMemo(
+    () => mission.solutionWorkspace ?? (mission.steps?.length ? workspaceFromSteps(mission.steps) : null),
+    [mission]
+  );
+
   return (
     <Modal onClose={onClose} title={`Vista previa: ${mission.title}`}>
       <div className="preview-layout">
-        <div className={`preview-art preview-art-${mission.coverTone}`} aria-hidden="true">
-          <span>Bloques</span>
-          <span>Evento</span>
-          <span>Accion</span>
-        </div>
+        {solution ? (
+          <div className="preview-blocks" aria-label="Bloques de la solución">
+            <BlocklyWorkspace compact initialState={solution} onChange={() => {}} readOnly />
+          </div>
+        ) : (
+          <div className={`preview-art preview-art-${mission.coverTone}`} aria-hidden="true">
+            <span>Bloques</span>
+            <span>Evento</span>
+            <span>Accion</span>
+          </div>
+        )}
         <div className="preview-copy">
           <span className="age-pill">{mission.ageBand} años</span>
           <p className="eyebrow">Sobre la actividad</p>
@@ -165,12 +183,17 @@ function MissionPreview({
         </div>
       </div>
       <div className="modal-actions">
-        {onDelete && mission.teacherId ? (
+        {onDelete && mission.teacherId && !mission.baseMissionId ? (
           <button className="button button-danger" onClick={() => onDelete(mission)} type="button">
             Eliminar
           </button>
         ) : null}
-        {onEdit && mission.teacherId ? (
+        {onDelete && mission.baseMissionId ? (
+          <button className="button button-secondary" onClick={() => onDelete(mission)} type="button">
+            Restaurar original
+          </button>
+        ) : null}
+        {onEdit ? (
           <button className="button button-secondary" onClick={() => onEdit(mission)} type="button">
             Editar
           </button>

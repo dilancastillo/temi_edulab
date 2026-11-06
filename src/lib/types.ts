@@ -81,6 +81,10 @@ export type Mission = {
   /** Solución en bloques (estado de Blockly) armada por el docente; de ella salen los pasos. */
   solutionWorkspace?: unknown;
   allowedCategories?: ("Movimiento" | "Hablar" | "Mostrar" | "Audio" | "Condición" | "Control")[];
+  /** Si es una misión base editada por el docente: id de la misión base (el id visible es ese). */
+  baseMissionId?: string;
+  /** Si es una misión base editada: id real de la copia guardada en la base de datos. */
+  storageId?: string;
 };
 
 export type CreateMissionInput = {
