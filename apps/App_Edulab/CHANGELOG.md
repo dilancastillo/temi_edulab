@@ -12,6 +12,10 @@ En cada entrega al robot:
 2. Anotar los cambios aquí.
 3. Marcar el commit con la etiqueta `app-vX.Y.Z`.
 
+## 1.0.1 (versionCode 2) — 2026-11-09
+
+- La carita de espera se ve también mientras el robot ejecuta un programa, por ejemplo en el bloque «esperar». Antes la pantalla quedaba en blanco. Las imágenes y los videos del programa siguen saliendo encima.
+
 ## 1.0.0 (versionCode 1) — 2026-11-06
 
 Primera versión numerada. Es la app que corre en el robot Temi a partir de esta fecha.

@@ -130,7 +130,7 @@ Para no seguir agregando deuda técnica mientras se refactoriza (ver "Evaluació
 ## App del robot (`apps/App_Edulab`)
 
 - Se abre con Android Studio. SDK de Temi `com.robotemi:sdk:1.137.1`, `minSdk 24`, `targetSdk 36`.
-- Versión actual: **1.0.0** (`versionCode 1`). Las versiones se anotan en [`apps/App_Edulab/CHANGELOG.md`](apps/App_Edulab/CHANGELOG.md) y cada entrega se marca en git con la etiqueta `app-vX.Y.Z`.
+- Versión actual: **1.0.1** (`versionCode 2`). Las versiones se anotan en [`apps/App_Edulab/CHANGELOG.md`](apps/App_Edulab/CHANGELOG.md) y cada entrega se marca en git con la etiqueta `app-vX.Y.Z`.
 - Se registra en el robot como habilidad (`com.robotemi.sdk.metadata.SKILL`).
 - Servidor: `wss://edulab.esbot.co/api/robot/ws` y base `https://edulab.esbot.co` (constantes en `RobotWebSocketClient.kt`).
 - Credenciales MQTT en `apps/App_Edulab/local.properties` (no se sube a git):

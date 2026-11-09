@@ -26,8 +26,8 @@ android {
         targetSdk = 36
         // Versión de la app (ver apps/App_Edulab/CHANGELOG.md). En cada entrega al robot:
         // subir versionCode en 1 y versionName según el cambio (MAYOR.MENOR.PARCHE).
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

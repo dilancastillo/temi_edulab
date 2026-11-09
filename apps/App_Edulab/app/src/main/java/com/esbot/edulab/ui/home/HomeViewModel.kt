@@ -60,9 +60,7 @@ class HomeViewModel @Inject constructor(
         idleResumeJob?.cancel()
         idleResumeJob = viewModelScope.launch {
             delay(7_000)
-            if (!robotWebSocketClient.executing.value) {
-                _uiState.update { it.copy(showIdleAnimation = true) }
-            }
+            _uiState.update { it.copy(showIdleAnimation = true) }
         }
     }
 
@@ -89,15 +87,13 @@ class HomeViewModel @Inject constructor(
             delay(500)
             _uiState.update { it.copy(isLoading = false) }
         }
-        // Observe robot executing state to show/hide idle animation
+        // La carita se ve también mientras el robot ejecuta un programa (por ejemplo en el
+        // bloque «esperar»), para que la pantalla no quede en blanco. Las imágenes y los
+        // videos del programa se dibujan encima de ella.
         viewModelScope.launch {
-            robotWebSocketClient.executing.collect { isExecuting ->
-                if (isExecuting) {
-                    idleResumeJob?.cancel()
-                    _uiState.update { it.copy(showIdleAnimation = false) }
-                } else {
-                    _uiState.update { it.copy(showIdleAnimation = true) }
-                }
+            robotWebSocketClient.executing.collect {
+                idleResumeJob?.cancel()
+                _uiState.update { it.copy(showIdleAnimation = true) }
             }
         }
         viewModelScope.launch {
