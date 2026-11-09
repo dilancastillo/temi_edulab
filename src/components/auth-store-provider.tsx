@@ -51,6 +51,8 @@ export type AuthStore = {
   session: SupabaseSession | null;
   teacherId: string | null;
   studentSession: { studentId: string; displayName: string } | null;
+  /** Docente al que pertenece el estudiante conectado (área del estudiante). */
+  studentTeacher: { fullName: string; email: string } | null;
   profile: TeacherProfile | null;
   institution: Institution;
   courses: Course[];
@@ -157,6 +159,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   const [session, setSession] = useState<SupabaseSession | null>(null);
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [studentSession, setStudentSession] = useState<{ studentId: string; displayName: string } | null>(null);
+  const [studentTeacher, setStudentTeacher] = useState<{ fullName: string; email: string } | null>(null);
   const [missions, setMissions] = useState<Mission[]>(demoMissions);
   const [students, setStudents] = useState<Student[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -221,8 +224,9 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
   const loadStudentData = useCallback(async (teacherId: string, studentId: string) => {
     try {
       const res = await fetch(`/api/student/data?studentId=${studentId}&teacherId=${teacherId}`);
-      const data = await res.json() as { ok: boolean; student?: Record<string, unknown>; assignments?: unknown[]; studentWorks?: unknown[]; robotId?: string | null; missions?: Mission[] };
+      const data = await res.json() as { ok: boolean; student?: Record<string, unknown>; assignments?: unknown[]; studentWorks?: unknown[]; robotId?: string | null; missions?: Mission[]; teacher?: { fullName: string; email: string } | null };
       if (data.ok) {
+        setStudentTeacher(data.teacher ?? null);
         // Guardar el robotId del docente para que el estudiante use el robot correcto
         if (data.robotId) {
           try { window.localStorage.setItem("esbot.robotId.v1", data.robotId); } catch { /* ignore */ }
@@ -403,6 +407,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     if (scope === "student") {
       try { window.localStorage.removeItem("esbot.studentSession.v1"); } catch { /* ignore */ }
       setStudentSession(null);
+      setStudentTeacher(null);
       return;
     }
     // Clear the server-side session cookie
@@ -866,6 +871,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       session,
       teacherId,
       studentSession,
+      studentTeacher,
       profile,
       institution: demoInstitution,
       courses: demoCourses,
@@ -903,6 +909,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       session,
       teacherId,
       studentSession,
+      studentTeacher,
       profile,
       missions,
       students,

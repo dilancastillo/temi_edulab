@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/logo";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { UnsavedChangesProvider, useUnsavedChanges } from "@/components/unsaved-changes-provider";
@@ -52,7 +52,7 @@ export function StudentShell({ children }: Readonly<{ children: React.ReactNode 
 function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isReady, logout, studentSession, students } = useDemoStore();
+  const { isReady, logout, studentSession, studentTeacher, students } = useDemoStore();
   const { requestNavigation } = useUnsavedChanges();
   const isLoginRoute = pathname === "/estudiante/login";
 
@@ -110,11 +110,7 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
           </ul>
         </nav>
         <div className="student-user">
-          <span aria-hidden="true" className="student-avatar">{getInitials(studentSession.displayName)}</span>
-          <span className="student-user-copy" title={studentEmail ? `${studentSession.displayName} - ${studentEmail}` : studentSession.displayName}>
-            <strong>{studentSession.displayName}</strong>
-            {studentEmail ? <small>{studentEmail}</small> : null}
-          </span>
+          <StudentAccountMenu email={studentEmail} name={studentSession.displayName} teacher={studentTeacher} />
           <button
             aria-label="Salir"
             className="student-logout"
@@ -138,3 +134,65 @@ function StudentShellInner({ children }: Readonly<{ children: React.ReactNode }>
     </div>
   );
 }
+
+/**
+ * Avatar y nombre del estudiante. Al hacer clic se despliega a qué docente pertenece,
+ * para saberlo sin entrar a revisar cada cuenta de docente.
+ */
+function StudentAccountMenu({
+  name,
+  email,
+  teacher,
+}: Readonly<{ name: string; email?: string; teacher: { fullName: string; email: string } | null }>) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="student-account" ref={rootRef}>
+      <button
+        aria-controls="student-account-panel"
+        aria-expanded={open}
+        className="student-account-trigger"
+        onClick={() => setOpen((current) => !current)}
+        title="Ver mi docente"
+        type="button"
+      >
+        <span aria-hidden="true" className="student-avatar">{getInitials(name)}</span>
+        <span className="student-user-copy">
+          <strong>{name}</strong>
+          {email ? <small>{email}</small> : null}
+        </span>
+      </button>
+      {open ? (
+        <div className="student-account-panel" id="student-account-panel" role="region" aria-label="Mi docente">
+          <span className="student-account-label">Docente</span>
+          {teacher ? (
+            <>
+              {teacher.fullName ? <strong>{teacher.fullName}</strong> : null}
+              <span>{teacher.email}</span>
+            </>
+          ) : (
+            <span>No se pudo cargar el docente.</span>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+

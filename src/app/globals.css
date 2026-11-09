@@ -1356,7 +1356,7 @@ td {
 
 /* Banner a todo el ancho, pegado a la barra superior, cuando es lo primero de la página.
    El texto queda alineado con el contenido de abajo. */
-.student-content > .student-page-stack:first-child > .student-hero:first-child {
+.student-content > .student-page-stack > .student-hero:first-child {
   margin-top: calc(-1 * var(--student-pad-top));
   margin-inline: calc(50% - 50cqw);
   padding-block: clamp(2.5rem, 6vw, 4.5rem);
@@ -2369,5 +2369,72 @@ td {
 
 .library-age .chevron-select {
   display: flex;
+}
+
+/* Menú de la cuenta del estudiante: al hacer clic en el avatar muestra su docente. */
+.student-account {
+  position: relative;
+  min-width: 0;
+}
+
+.student-account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.student-account-trigger:hover,
+.student-account-trigger[aria-expanded="true"] {
+  background: rgb(255 255 255 / 12%);
+}
+
+.student-account-trigger:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.student-account-panel {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  z-index: 1100;
+  display: grid;
+  gap: 0.15rem;
+  min-width: 15rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 14px 30px rgb(21 32 43 / 18%);
+  animation: connection-toast-in 0.15s ease-out;
+}
+
+.student-account-label {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.student-account-panel strong {
+  font-size: 0.95rem;
+}
+
+.student-account-panel span:not(.student-account-label) {
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
 }
 

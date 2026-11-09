@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const [assignmentsRes, worksRes, teacherRes, missionsRes] = await Promise.all([
       pool.query("SELECT * FROM assignments WHERE teacher_id = $1 AND status = 'active'", [teacherId]),
       pool.query("SELECT * FROM student_works WHERE student_id = $1", [studentId]),
-      pool.query("SELECT robot_id FROM teachers WHERE id = $1", [teacherId]),
+      pool.query("SELECT robot_id, full_name, email FROM teachers WHERE id = $1", [teacherId]),
       pool.query("SELECT * FROM missions WHERE teacher_id = $1", [teacherId]),
     ]);
 
@@ -44,6 +44,10 @@ export async function GET(req: NextRequest) {
       assignments: assignmentsRes.rows,
       studentWorks: worksRes.rows,
       robotId: (teacherRes.rows[0]?.robot_id as string | null) ?? null,
+      // Para que el estudiante (y quien lo acompañe) sepa de qué docente es.
+      teacher: teacherRes.rows[0]
+        ? { fullName: (teacherRes.rows[0].full_name as string | null) ?? "", email: teacherRes.rows[0].email as string }
+        : null,
       missions: missionsRes.rows,
     });
   } catch (e) {
