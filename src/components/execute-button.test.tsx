@@ -194,4 +194,48 @@ describe("ExecuteButton", () => {
       expect(screen.getByRole("button")).not.toBeDisabled();
     });
   });
+
+  it("deja visible Pausar cuando no llega la respuesta del robot, y lo quita al detenerlo", async () => {
+    mockExecute.mockResolvedValue({ ok: false, message: "No llegó la respuesta del robot.", maybeRunning: true });
+    mockCancel.mockResolvedValue({ ok: true, message: "Cancelado" });
+
+    render(
+      <ExecuteButton
+        workspaceState={workspaceWithTemiMove}
+        sequence={["temi_start", "temi_move"]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /ejecutar en robot/i }));
+
+    const pauseButton = await screen.findByRole("button", { name: /pausar/i });
+    expect(screen.getByText("No llegó la respuesta del robot.")).toBeInTheDocument();
+
+    fireEvent.click(pauseButton);
+
+    await waitFor(() => {
+      expect(mockCancel).toHaveBeenCalledOnce();
+      expect(screen.queryByRole("button", { name: /pausar/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it("quita Pausar si el robot avisa que ya no estaba ejecutando", async () => {
+    mockExecute.mockResolvedValue({ ok: false, message: "Robot ocupado", maybeRunning: true });
+    mockCancel.mockResolvedValue({ ok: false, message: "No hay ejecución activa" });
+
+    render(
+      <ExecuteButton
+        workspaceState={workspaceWithTemiMove}
+        sequence={["temi_start", "temi_move"]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /ejecutar en robot/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /pausar/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("El robot ya había terminado")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /pausar/i })).not.toBeInTheDocument();
+    });
+  });
 });

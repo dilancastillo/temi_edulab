@@ -128,7 +128,7 @@ describe("executeRobotCommands", () => {
     const result = await executeRobotCommands(commands);
 
     expect(result.ok).toBe(false);
-    expect(result.message).toContain("Robot no disponible");
+    expect(result.message).toContain("No llegó la respuesta del robot");
   });
 
   it("devuelve {ok:false} cuando fetch lanza error de red genérico", async () => {
@@ -162,6 +162,66 @@ describe("executeRobotCommands", () => {
 
     expect(result.ok).toBe(false);
     expect(result.message).toBe("Bad request");
+  });
+
+  it("marca maybeRunning cuando el proxy corta la espera (504)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 504,
+      json: async () => { throw new SyntaxError("Unexpected token <"); },
+    } as unknown as Response);
+
+    const result = await executeRobotCommands(commands);
+
+    expect(result.ok).toBe(false);
+    expect(result.maybeRunning).toBe(true);
+  });
+
+  it("marca maybeRunning cuando la red falla", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    const result = await executeRobotCommands(commands);
+
+    expect(result.maybeRunning).toBe(true);
+  });
+
+  it("marca maybeRunning cuando el robot está ocupado con otro programa", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: false, message: "Robot ocupado" }),
+    } as Response);
+
+    const result = await executeRobotCommands(commands);
+
+    expect(result.ok).toBe(false);
+    expect(result.maybeRunning).toBe(true);
+  });
+
+  it("no marca maybeRunning cuando el robot no está conectado", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ ok: false, message: "Robot no conectado" }),
+    } as Response);
+
+    const result = await executeRobotCommands(commands);
+
+    expect(result.ok).toBe(false);
+    expect(result.maybeRunning).toBeUndefined();
+  });
+
+  it("muestra como error un programa que el robot no pudo terminar", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: false, message: "Location not found" }),
+    } as Response);
+
+    const result = await executeRobotCommands(commands);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toBe("Location not found");
   });
 
   it("nunca lanza excepción en ninguna condición de red", async () => {

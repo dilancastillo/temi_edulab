@@ -33,19 +33,22 @@ export function ExecuteButton({ workspaceState, sequence, disabled, label = "Eje
     return false;
   });
   const [canceling, setCanceling] = useState(false);
+  // La página dejó de esperar al robot (tiempo agotado, red o robot ocupado), pero el robot
+  // puede seguir con el programa: se deja visible el botón para detenerlo.
+  const [robotMaybeRunning, setRobotMaybeRunning] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const executionRef = useRef({ id: 0, canceled: false });
 
   // Persist loading state to localStorage
   useEffect(() => {
     try {
-      if (loading) {
+      if (loading || robotMaybeRunning) {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ key: executionKey ?? null }));
       } else {
         window.localStorage.removeItem(STORAGE_KEY);
       }
     } catch { /* ignore */ }
-  }, [loading, executionKey]);
+  }, [loading, robotMaybeRunning, executionKey]);
 
   const hasExecutableCommand = extractCommandsFromWorkspace(workspaceState).length > 0;
   const isDisabled = disabled || !hasExecutableCommand || loading || canceling;
@@ -63,11 +66,13 @@ export function ExecuteButton({ workspaceState, sequence, disabled, label = "Eje
     executionRef.current = { id: executionId, canceled: false };
     setLoading(true);
     setCanceling(false);
+    setRobotMaybeRunning(false);
 
     try {
       const result = await executeRobotCommands(commands);
       if (executionRef.current.id !== executionId || executionRef.current.canceled) return;
       setMessage({ text: result.message, ok: result.ok });
+      setRobotMaybeRunning(result.maybeRunning === true);
     } finally {
       if (executionRef.current.id === executionId) {
         setLoading(false);
@@ -77,7 +82,7 @@ export function ExecuteButton({ workspaceState, sequence, disabled, label = "Eje
   }
 
   async function handlePause() {
-    if (!loading || canceling) return;
+    if ((!loading && !robotMaybeRunning) || canceling) return;
 
     executionRef.current.canceled = true;
     setCanceling(true);
@@ -85,9 +90,12 @@ export function ExecuteButton({ workspaceState, sequence, disabled, label = "Eje
 
     try {
       const result = await cancelRobotExecution();
-      setMessage({ text: result.message, ok: result.ok });
-      if (result.ok) {
+      // "No hay ejecución activa" también confirma que el robot ya está libre.
+      const robotIdle = result.ok || result.message === "No hay ejecución activa";
+      setMessage({ text: result.ok || !robotIdle ? result.message : "El robot ya había terminado", ok: robotIdle });
+      if (robotIdle) {
         setLoading(false);
+        setRobotMaybeRunning(false);
       }
     } finally {
       setCanceling(false);
@@ -104,7 +112,7 @@ export function ExecuteButton({ workspaceState, sequence, disabled, label = "Eje
       >
         {loading ? "Ejecutando..." : label}
       </button>
-      {loading && !canceling ? (
+      {(loading || robotMaybeRunning) && !canceling ? (
         <button
           className="button button-secondary"
           onClick={handlePause}

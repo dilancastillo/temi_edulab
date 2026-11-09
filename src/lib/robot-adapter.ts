@@ -35,6 +35,12 @@ export type RobotCommand =
 export type RobotRunResult = {
   ok: boolean;
   message: string;
+  /**
+   * true cuando no llegó la respuesta final del robot (tiempo agotado, red caída o robot
+   * ocupado): el robot puede seguir ejecutando y la interfaz debe dejar a mano el botón
+   * para detenerlo.
+   */
+  maybeRunning?: boolean;
 };
 
 export interface RobotAdapter {
@@ -175,6 +181,10 @@ export async function uploadImage(file: File): Promise<{ ok: boolean; imageUrl?:
   }
 }
 
+/** Mensaje con el que la app del robot rechaza un programa mientras ejecuta otro. */
+const ROBOT_BUSY_MESSAGE = "Robot ocupado";
+const ROBOT_NO_RESPONSE_MESSAGE = "No llegó la respuesta del robot. Puede que siga ejecutando el programa.";
+
 // 1.2 Enviar comandos al robot vía POST /api/robot/execute
 export async function executeRobotCommands(
   commands: RobotExecuteCommand[]
@@ -185,13 +195,21 @@ export async function executeRobotCommands(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ robotId: getRobotId(), commands }),
     });
+    if (response.status === 504) {
+      return { ok: false, message: ROBOT_NO_RESPONSE_MESSAGE, maybeRunning: true };
+    }
     const data = (await response.json()) as RobotRunResult;
+    if (response.ok && data.message === ROBOT_BUSY_MESSAGE) {
+      return { ok: false, message: data.message, maybeRunning: true };
+    }
     if (response.ok) {
-      return { ok: true, message: data.message ?? "OK" };
+      return { ok: data.ok ?? true, message: data.message ?? "OK" };
     }
     return { ok: false, message: data.message ?? `Error ${response.status}` };
   } catch {
-    return { ok: false, message: "Robot no disponible o tiempo de espera agotado" };
+    // La petición se cortó (red o proxy) o la respuesta no era JSON: el robot pudo recibir
+    // el programa y seguir con él.
+    return { ok: false, message: ROBOT_NO_RESPONSE_MESSAGE, maybeRunning: true };
   }
 }
 
