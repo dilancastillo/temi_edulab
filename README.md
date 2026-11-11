@@ -172,7 +172,7 @@ sudo -u postgres psql -d temi_edulab -f src/lib/migrations/003_add_mission_solut
 | `001_create_missions_table.sql` | Tabla de misiones propias del docente | Aplicada |
 | `002_add_teacher_robot_id.sql` | `teachers.robot_id` | Ya existía (se agregó a mano) |
 | `003_add_mission_solution_workspace.sql` | `missions.solution_workspace`: solución en bloques del docente | Aplicada |
-| `004_add_student_work_created_at.sql` | `student_works.created_at`: primer guardado, usado como "Inicio" en el reporte de actividad | **Pendiente** |
+| `004_add_student_work_created_at.sql` | `student_works.created_at`: primer guardado, usado como "Inicio" en el reporte de actividad | Aplicada |
 
 > El workflow `.github/workflows/test-jeisson_temi-edulab-prod.yml` despliega `test/jeisson` a Azure; **no es el despliegue real**.
 
