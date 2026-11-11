@@ -131,6 +131,8 @@ export type StudentWork = {
   status: StudentWorkStatus;
   updatedAt: string;
   submittedAt?: string;
+  /** Primer guardado. No existe en trabajos anteriores a la migración 004. */
+  createdAt?: string;
 };
 
 export type StudentInput = {

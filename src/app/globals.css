@@ -2438,3 +2438,340 @@ td {
   overflow-wrap: anywhere;
 }
 
+
+/* ---------- Reporte imprimible de actividad (/profesor/reporte) ---------- */
+.report-typography {
+  font-family: var(--font-report), "Segoe UI", Arial, sans-serif;
+  color: #1c2742;
+  background: #fff;
+  min-height: 100vh;
+}
+
+.report-page {
+  max-width: 50rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-feature-settings: "tnum";
+}
+
+.report-notice {
+  padding: 2rem;
+  text-align: center;
+  color: #6b7894;
+}
+
+.report-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.report-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-bottom: 2px solid #2856a3;
+  padding-bottom: 0.75rem;
+}
+
+.report-head img {
+  height: 2.5rem;
+}
+
+.report-head b {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2856a3;
+  letter-spacing: -0.01em;
+}
+
+.report-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: 1.125rem 0 1rem;
+}
+
+.report-group small {
+  display: block;
+  color: #6b7894;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.report-group strong {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.report-group-right {
+  text-align: right;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1.75rem;
+  margin: 0 0 1.375rem;
+}
+
+.report-grid > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  border-bottom: 1px solid #e4e8f0;
+  padding: 0.4375rem 0;
+}
+
+.report-grid dt {
+  color: #6b7894;
+  font-size: 0.75rem;
+}
+
+.report-grid dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.report-page h2 {
+  margin: 1.375rem 0 0.625rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2856a3;
+}
+
+.report-program .blockly-card.blockly-card-compact {
+  min-height: 12rem;
+  border: 1px solid #e4e8f0;
+  border-radius: 0.625rem;
+  background: #f5f7fb;
+}
+
+.report-program .blockly-card-compact .blocklyMainBackground {
+  fill: #f5f7fb !important;
+}
+
+.report-steps {
+  break-inside: avoid;
+}
+
+.report-steps table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.report-steps th {
+  text-align: left;
+  background: #f5f7fb;
+  color: #6b7894;
+  font-weight: 500;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.4375rem 0.625rem;
+}
+
+.report-steps td {
+  border-bottom: 1px solid #e4e8f0;
+  padding: 0.4375rem 0.625rem;
+}
+
+.report-steps tr {
+  break-inside: avoid;
+}
+
+.report-steps-n {
+  width: 2.5rem;
+  color: #6b7894;
+}
+
+.report-steps-result {
+  width: 7.5rem;
+}
+
+.report-ok {
+  color: #1a6b3c;
+  font-weight: 600;
+}
+
+.report-pending {
+  color: #6b7894;
+}
+
+.report-footer {
+  margin-top: 1.625rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid #e4e8f0;
+  color: #8b96ad;
+  font-size: 0.6875rem;
+}
+
+.report-sheet {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+}
+
+.report-sheet > thead > tr > td,
+.report-sheet > tbody > tr > td,
+.report-sheet > tfoot > tr > td {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  vertical-align: top;
+}
+
+.report-sheet-top,
+.report-sheet-bottom {
+  height: 0;
+}
+
+@media print {
+  /* Margen de hoja en 0: así el navegador no imprime fecha, título, URL ni número de página.
+     Los márgenes reales los ponen .report-sheet-top/-bottom (se repiten por hoja) y el padding lateral. */
+  @page {
+    size: Letter;
+    margin: 0;
+  }
+
+  .report-sheet-top {
+    height: 16mm;
+  }
+
+  .report-sheet-bottom {
+    height: 18mm;
+  }
+
+  .report-typography {
+    min-height: 0;
+  }
+
+  .report-page {
+    max-width: none;
+    padding: 0 16mm;
+  }
+
+  .report-toolbar {
+    display: none;
+  }
+
+  .report-program .blockly-card.blockly-card-compact {
+    break-inside: avoid;
+  }
+
+  .report-page h2 {
+    break-after: avoid;
+  }
+}
+
+.report-steps table {
+  min-width: 0;
+}
+
+.report-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(40, 86, 163, 0.28);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.report-download svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.report-download:hover {
+  background: var(--color-primary-strong);
+  transform: translateY(-1px);
+}
+
+/* ---------- Menú de tres puntos en filas de tabla ---------- */
+.row-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.row-menu-trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #5f6f81;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.row-menu-trigger svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.row-menu-trigger:hover,
+.row-menu-trigger[aria-expanded="true"] {
+  background: rgba(95, 111, 129, 0.12);
+  color: #3d4a5a;
+}
+
+.row-menu-panel {
+  position: fixed;
+  z-index: 50;
+  min-width: 9.5rem;
+  padding: 0.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  box-shadow: 0 12px 28px rgba(16, 32, 64, 0.16);
+  display: flex;
+  flex-direction: column;
+}
+
+.row-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.8rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.row-menu-item:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.row-menu-item-danger {
+  color: #b42318;
+}
+
+.row-menu-item-danger:hover {
+  background: #fdecec;
+  color: #b42318;
+}

@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- User-uploaded demo avatars are local data URLs, not optimizable remote assets. */
 "use client";
 
+
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ConfirmDialog, Modal } from "@/components/modal";
@@ -13,6 +14,7 @@ import { formatLastSaved } from "@/lib/format-date";
 import type { Course, Mission, Student, StudentInput } from "@/lib/types";
 import { FREE_PLAY_ASSIGNMENT_ID, FREE_PLAY_MISSION_ID } from "@/lib/types";
 import { ExecuteButton } from "@/components/execute-button";
+import { RowActionsMenu } from "@/components/row-actions-menu";
 import { StudentProgramPreview } from "@/components/student-program-preview";
 import { extractCommandsFromWorkspace } from "@/lib/robot-adapter";
 
@@ -267,12 +269,16 @@ export function StudentsScreen() {
                     <td>{mission?.title ?? "Ninguno"}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <div className="table-actions" style={{ flexWrap: "nowrap" }}>
-                        <button className="button button-secondary" onClick={() => setStudentToEdit(student)} type="button">
-                          Editar
-                        </button>
-                        <button className="button button-danger-outline" onClick={() => setStudentToDelete(student)} type="button">
-                          Eliminar
-                        </button>
+                        <RowActionsMenu
+                          actions={[
+                            { label: "Editar", onSelect: () => setStudentToEdit(student) },
+                            { label: "Eliminar", onSelect: () => setStudentToDelete(student), tone: "danger" },
+                            ...(studentWork?.workspaceState != null
+                              ? [{ label: "Reporte", href: `/profesor/reporte?assignment=${encodeURIComponent(studentWork.assignmentId)}&student=${encodeURIComponent(student.id)}` }]
+                              : [])
+                          ]}
+                          label={`Acciones de ${student.fullName}`}
+                        />
                         {studentWork?.workspaceState != null && (
                           <button
                             className="button button-ghost"

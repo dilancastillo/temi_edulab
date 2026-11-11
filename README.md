@@ -171,7 +171,8 @@ sudo -u postgres psql -d temi_edulab -f src/lib/migrations/003_add_mission_solut
 |---|---|---|
 | `001_create_missions_table.sql` | Tabla de misiones propias del docente | Aplicada |
 | `002_add_teacher_robot_id.sql` | `teachers.robot_id` | Ya existía (se agregó a mano) |
-| `003_add_mission_solution_workspace.sql` | `missions.solution_workspace`: solución en bloques del docente | **Pendiente**: sin ella falla crear o editar misiones |
+| `003_add_mission_solution_workspace.sql` | `missions.solution_workspace`: solución en bloques del docente | Aplicada |
+| `004_add_student_work_created_at.sql` | `student_works.created_at`: primer guardado, usado como "Inicio" en el reporte de actividad | **Pendiente** |
 
 > El workflow `.github/workflows/test-jeisson_temi-edulab-prod.yml` despliega `test/jeisson` a Azure; **no es el despliegue real**.
 
@@ -266,6 +267,8 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 - [x] El robot ID de la pantalla mostraba `unknown` al abrir la app. Ahora se muestra el ID con el que el robot se registra en el servidor, cuando el SDK está listo.
 - [x] `HomeViewModelTest` se quedaba colgado (`runTest` avanzaba sin fin el reloj virtual por el ciclo de la hora). Ahora usa `UnconfinedTestDispatcher` + `runBlocking`: 14 tests en ~4 s.
 - [ ] 6 tests de `RobotWebSocketClientTest` fallan desde abril de 2026: `tearDown` cierra `MockWebServer` con la conexión del cliente abierta ("Gave up waiting for queue to shut down") y la reconexión usa `Handler(Looper.getMainLooper())`, que no funciona en tests JVM. Cerrar el cliente en `tearDown` y no depender de `Looper` para reconectar.
+- [ ] Bucle de sensor (`whileMqttAndWait`): si el mensaje nunca llega, repite para siempre y el robot queda ocupado (solo lo saca **Pausar** o cerrar la app). Falta un tiempo máximo, activar la reconexión automática de MQTT, una pausa corta cuando el bucle está vacío (hoy deja la CPU al 100 %) y revisar el mensaje después de cada bloque, no solo al final de la vuelta. Va en la app 1.0.2.
+- [ ] «repetir mientras tiempo» solo mira el reloj al terminar cada vuelta: no corta los bucles que tiene adentro (con un bucle de sensor adentro, los minutos nunca se cumplen).
 - [ ] Revisar los tests de `TemiLocationServerExecuteTest` y `RobotReflectionRunnerTest` que también fallan en la corrida completa.
 
 ### 4. Errores de la web
@@ -275,7 +278,7 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 - [ ] `npm run dev` probablemente falla: en modo desarrollo se monta `DemoStoreProvider`, pero las pantallas usan `useAuthStore`.
 - [ ] El robot ID se revierte: al editar el perfil, `update-profile` reescribe `robot_id` con el valor viejo cargado en memoria.
 - [ ] El docente lee el robot ID de `localStorage`, no de su perfil; en otro navegador aparece `temi-1`.
-- [ ] El bloque **reproducir audio** no genera comando y el robot no hace nada.
+- [x] El bloque **reproducir audio** no generaba comando (corregido: `PlayAudio`, app 1.0.0).
 - [ ] "Calificado" y "completados" se muestran pero nada los actualiza: falta la acción de calificar.
 - [ ] Nombres de campos cruzados: `temi_while_timer` usa `SECONDS` para minutos y `temi_wait` usa `MINUTES` para segundos.
 
@@ -284,6 +287,8 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 - [ ] Actualizar el SDK a 1.138 para usar la voz en español de Colombia (`ES_CO`) y pausas con `<break>`.
 - [ ] Bloques nuevos con el SDK: girar (`turnBy`), mover la cabeza (`tiltAngle`), seguir a una persona (`beWithMe`), patrullar (`patrol`), detectar personas y elegir la velocidad del recorrido.
 - [ ] Mostrar en el robot si está registrado en el servidor.
+- [ ] Ejecutar sin esperar a que el robot termine: hoy `/api/robot/execute` espera la respuesta final (hasta 5 min; nginx quedó en 310 s). Mejor que el robot confirme que empezó y la página consulte el estado.
+- [ ] Bloque **«esperar señal del sensor en [topic] hasta [N] s»** con tres bocas: «si dice alta», «si dice normal» y «si no llega nada». Lee el contenido del mensaje MQTT (hoy cualquier mensaje sirve). Pensado para la actividad de temperatura: el sensor publica `alta` o `normal` en un solo topic (por ejemplo `robot/temperatura`) después de cada medición. Variante: que el sensor mande el número y el bloque compare con un límite. Necesita bloque en la web y soporte en la app.
 - [ ] Revisar la rama `mblock/test` (control del robot desde mBlock) antes de decidir el camino del editor de código.
 
 ### 6. Limpieza

@@ -28,6 +28,9 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
     }
   }, [isReady, router, session, teacherId]);
 
+  // El reporte imprimible se muestra sin la barra lateral ni el encabezado.
+  const isReportRoute = pathname.startsWith("/profesor/reporte");
+
   // Mostrar loading solo si NO está listo, O si está listo pero no hay sesión ni teacherId
   if (!isReady || (isReady && !session && !teacherId)) {
     return (
@@ -36,6 +39,10 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
         <p>Cargando el panel docente...</p>
       </main>
     );
+  }
+
+  if (isReportRoute) {
+    return <>{children}</>;
   }
 
   return (

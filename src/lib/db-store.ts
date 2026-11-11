@@ -89,8 +89,8 @@ export async function fetchStudentWorks(teacherId: string): Promise<StudentWork[
 
 export async function upsertStudentWork(work: StudentWork): Promise<void> {
   await pool.query(
-    `INSERT INTO student_works (id, teacher_id, institution_id, student_id, assignment_id, mission_id, workspace_state, step_index, status, updated_at, submitted_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    `INSERT INTO student_works (id, teacher_id, institution_id, student_id, assignment_id, mission_id, workspace_state, step_index, status, updated_at, submitted_at, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$10)
      ON CONFLICT (student_id, assignment_id) DO UPDATE SET
        workspace_state = EXCLUDED.workspace_state,
        step_index = EXCLUDED.step_index,
@@ -205,6 +205,7 @@ function rowToStudentWork(row: Record<string, unknown>): StudentWork {
     status: row.status as StudentWork["status"],
     updatedAt: (row.updated_at as Date).toISOString(),
     submittedAt: row.submitted_at ? (row.submitted_at as Date).toISOString() : undefined,
+    createdAt: row.created_at ? (row.created_at as Date).toISOString() : undefined,
   };
 }
 

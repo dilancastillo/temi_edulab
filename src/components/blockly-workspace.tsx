@@ -20,6 +20,12 @@ type BlocklyWorkspaceProps = {
   selectedBlockId?: string | null;
   /** Solo lectura en un espacio pequeño: sin cuadrícula ni controles, y bloques reducidos que caben completos. */
   compact?: boolean;
+  /**
+   * Con `compact`: el recuadro toma la altura del programa completo, sin scroll
+   * (para imprimirlo). Avisa por `onFitted` cuando ya está dibujado.
+   */
+  fitContent?: boolean;
+  onFitted?: () => void;
 };
 
 const COMPACT_SCALE = 0.6;
@@ -654,8 +660,10 @@ function collectSequence(workspace: BlocklyType.WorkspaceSvg) {
   return sequence;
 }
 
-export function BlocklyWorkspace({ initialState, onChange, readOnly = false, allowedCategories, onWorkspaceReady, onBlockSelected, selectedBlockId, compact = false }: Readonly<BlocklyWorkspaceProps>) {
+export function BlocklyWorkspace({ initialState, onChange, readOnly = false, allowedCategories, onWorkspaceReady, onBlockSelected, selectedBlockId, compact = false, fitContent = false, onFitted }: Readonly<BlocklyWorkspaceProps>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const onFittedRef = useRef(onFitted);
+  const [fitHeight, setFitHeight] = useState<number | null>(null);
   const workspaceRef = useRef<BlocklyType.WorkspaceSvg | null>(null);
   const blocklyRef = useRef<typeof BlocklyType | null>(null);
   const onChangeRef = useRef(onChange);
@@ -665,7 +673,8 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
   useEffect(() => {
     onChangeRef.current = onChange;
     onBlockSelectedRef.current = onBlockSelected;
-  }, [onChange, onBlockSelected]);
+    onFittedRef.current = onFitted;
+  }, [onChange, onBlockSelected, onFitted]);
 
   // Selección desde afuera (por ejemplo, al hacer clic en un paso de la lista).
   useEffect(() => {
@@ -750,6 +759,16 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
           workspace.setScale(COMPACT_SCALE);
           const content = workspace.getMetricsManager().getContentMetrics();
           workspace.scroll(-content.left + COMPACT_PADDING, -content.top + COMPACT_PADDING);
+          if (!fitContent) return;
+          // Altura del recuadro = altura del programa (ya en píxeles de pantalla), y se vuelve a
+          // dibujar con ese tamaño para que no quede nada por fuera.
+          setFitHeight(Math.ceil(content.height + COMPACT_PADDING * 2));
+          window.requestAnimationFrame(() => {
+            Blockly.svgResize(workspace);
+            const again = workspace.getMetricsManager().getContentMetrics();
+            workspace.scroll(-again.left + COMPACT_PADDING, -again.top + COMPACT_PADDING);
+            onFittedRef.current?.();
+          });
         });
       } else if (readOnly) {
         workspace.zoomToFit();
@@ -929,10 +948,13 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
       workspaceRef.current = null;
       blocklyRef.current = null;
     };
-  }, [initialState, readOnly, compact]);
+  }, [initialState, readOnly, compact, fitContent]);
 
   return (
-    <div className={compact ? "blockly-card blockly-card-compact" : "blockly-card"}>
+    <div
+      className={compact ? "blockly-card blockly-card-compact" : "blockly-card"}
+      style={fitHeight != null ? { height: fitHeight, minHeight: 0 } : undefined}
+    >
       {isLoading ? <p className="blockly-loading">Cargando editor de bloques...</p> : null}
       <div className="blockly-canvas" ref={containerRef} />
     </div>
