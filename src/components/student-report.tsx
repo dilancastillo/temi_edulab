@@ -92,7 +92,7 @@ export function StudentReport({ assignmentId, studentId }: Readonly<StudentRepor
     );
   }
 
-  const statusLabel = work.status === "submitted" ? "Entregada" : "En curso";
+  const statusLabel = work.status === "graded" ? "Calificada" : work.status === "submitted" ? "Entregada" : "En curso";
 
   return (
     <main className="report-page">
@@ -138,7 +138,15 @@ export function StudentReport({ assignmentId, studentId }: Readonly<StudentRepor
         {work.createdAt ? <div><dt>Inicio</dt><dd>{formatDateTime(work.createdAt)}</dd></div> : null}
         <div><dt>Último guardado</dt><dd>{formatDateTime(work.updatedAt)}</dd></div>
         {work.submittedAt ? <div><dt>Entregado</dt><dd>{formatDateTime(work.submittedAt)}</dd></div> : null}
+        {work.status === "graded" && work.grade ? <div><dt>Calificación</dt><dd>{work.grade}</dd></div> : null}
       </dl>
+
+      {work.status === "graded" && work.feedback ? (
+        <section className="report-feedback">
+          <h2>Comentario del docente</h2>
+          <p>{work.feedback}</p>
+        </section>
+      ) : null}
 
       <h2>Programa del estudiante</h2>
       {workspaceState != null ? (

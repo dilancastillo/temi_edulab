@@ -89,6 +89,8 @@ export type AuthStore = {
   // Trabajos: devuelven si el servidor confirmó el guardado (ok) o si no hubo conexión (offline).
   saveStudentWork: (input: SaveStudentWorkInput) => Promise<SaveResult>;
   submitStudentWork: (input: SubmitStudentWorkInput) => Promise<SaveResult>;
+  /** Docente: califica un trabajo (nota libre corta y comentario opcional). */
+  gradeStudentWork: (input: { workId: string; grade: string; feedback: string; missionTitle?: string }) => Promise<SaveResult>;
 
   // Sincronización del docente: mensaje de la última acción que no se pudo guardar.
   syncError: string | null;
@@ -279,9 +281,13 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
               missionId: r.mission_id as string,
               workspaceState: r.workspace_state,
               stepIndex: Number(r.step_index),
-              status: r.status as "draft" | "submitted",
+              status: r.status as StudentWork["status"],
               updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : new Date().toISOString(),
               submittedAt: r.submitted_at ? new Date(r.submitted_at as string).toISOString() : undefined,
+              grade: (r.grade as string | null) ?? undefined,
+              feedback: (r.feedback as string | null) ?? undefined,
+              gradedAt: r.graded_at ? new Date(r.graded_at as string).toISOString() : undefined,
+              missionTitle: (r.mission_title as string | null) ?? undefined,
             };
           }));
         }
@@ -791,6 +797,20 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     return { ok: true };
   }, [teacherId, assignments]);
 
+  const gradeStudentWork = useCallback(async (input: { workId: string; grade: string; feedback: string; missionTitle?: string }): Promise<SaveResult> => {
+    const result = await postJson("/api/teacher/grade-work", input);
+    if (!result.ok) return { ok: false, offline: result.offline, message: result.message };
+    const gradedAt = typeof result.data.gradedAt === "string" ? result.data.gradedAt : new Date().toISOString();
+    setStudentWorks((current) =>
+      current.map((w) =>
+        w.id === input.workId
+          ? { ...w, status: "graded" as const, grade: input.grade.trim(), feedback: input.feedback.trim() || undefined, gradedAt, missionTitle: input.missionTitle ?? w.missionTitle }
+          : w
+      )
+    );
+    return { ok: true };
+  }, []);
+
   // ── 5.12: Profile & student login ────────────────────────────────────────────
 
   const updateProfile = useCallback(async (input: ProfileInput): Promise<void> => {
@@ -897,6 +917,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       deleteMission,
       saveStudentWork,
       submitStudentWork,
+      gradeStudentWork,
       updateProfile,
       setRobotIp,
       deleteFreePlayProgress,
@@ -933,6 +954,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
       deleteMission,
       saveStudentWork,
       submitStudentWork,
+      gradeStudentWork,
       updateProfile,
       setRobotIp,
       deleteFreePlayProgress,

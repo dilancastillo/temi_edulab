@@ -173,6 +173,7 @@ sudo -u postgres psql -d temi_edulab -f src/lib/migrations/003_add_mission_solut
 | `002_add_teacher_robot_id.sql` | `teachers.robot_id` | Ya existía (se agregó a mano) |
 | `003_add_mission_solution_workspace.sql` | `missions.solution_workspace`: solución en bloques del docente | Aplicada |
 | `004_add_student_work_created_at.sql` | `student_works.created_at`: primer guardado, usado como "Inicio" en el reporte de actividad | Aplicada |
+| `005_add_student_work_grade.sql` | Calificación: `grade`, `feedback`, `graded_at` y `mission_title` en `student_works`; quita la llave hacia `assignments` (si existe) para conservar los trabajos calificados | **Pendiente** |
 
 > El workflow `.github/workflows/test-jeisson_temi-edulab-prod.yml` despliega `test/jeisson` a Azure; **no es el despliegue real**.
 
@@ -279,7 +280,7 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 - [ ] El robot ID se revierte: al editar el perfil, `update-profile` reescribe `robot_id` con el valor viejo cargado en memoria.
 - [ ] El docente lee el robot ID de `localStorage`, no de su perfil; en otro navegador aparece `temi-1`.
 - [x] El bloque **reproducir audio** no generaba comando (corregido: `PlayAudio`, app 1.0.0).
-- [ ] "Calificado" y "completados" se muestran pero nada los actualiza: falta la acción de calificar.
+- [x] "Calificado" y "completados" se muestran pero nada los actualiza (resuelto: ventana Revisar con nota y comentario, migración 005).
 - [ ] Nombres de campos cruzados: `temi_while_timer` usa `SECONDS` para minutos y `temi_wait` usa `MINUTES` para segundos.
 
 ### 5. Funciones nuevas

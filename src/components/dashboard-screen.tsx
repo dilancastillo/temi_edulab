@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ChevronSelect } from "@/components/chevron-select";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { FREE_PLAY_ASSIGNMENT_ID } from "@/lib/types";
@@ -11,8 +12,19 @@ const ITEMS_PER_PAGE = 3;
 export function DashboardScreen() {
   const { assignments, courses, missions, students, studentWorks } = useDemoStore();
   const activeAssignments = assignments.filter((assignment) => assignment.status === "active" && missions.some((m) => m.id === assignment.missionId) && courses.some((c) => c.id === assignment.courseId));
-  const studentsToReview = students.filter((student) => student.progress === "Revisar").length;
-  const gradedStudents = students.filter((student) => student.progress === "Calificado").length;
+  // Los indicadores cuentan trabajos (estudiante + misión), no estudiantes: un estudiante puede
+  // tener una misión por revisar y otra calificada. Solo cuentan las asignaciones activas.
+  const [metricMissionId, setMetricMissionId] = useState("all");
+  const metricMissions = missions.filter((mission) => activeAssignments.some((a) => a.missionId === mission.id));
+  const studentIds = new Set(students.map((student) => student.id));
+  const worksOf = (assignmentIds: Set<string>) =>
+    studentWorks.filter((w) => assignmentIds.has(w.assignmentId) && studentIds.has(w.studentId));
+  const metricWorks = worksOf(
+    new Set(activeAssignments.filter((a) => metricMissionId === "all" || a.missionId === metricMissionId).map((a) => a.id))
+  );
+  const studentsToReview = metricWorks.filter((w) => w.status === "submitted").length;
+  const gradedStudents = metricWorks.filter((w) => w.status === "graded").length;
+  const studentsLink = (progreso: string) => `/profesor/estudiantes?mision=${metricMissionId}&curso=all&progreso=${encodeURIComponent(progreso)}`;
 
   const hasFreePlayProgress = studentWorks.some((w) => w.assignmentId === FREE_PLAY_ASSIGNMENT_ID);
 
@@ -30,28 +42,36 @@ export function DashboardScreen() {
         title="Bienvenido, Profesor"
       />
 
-      <section aria-label="Indicadores principales" className="metric-grid">
-        <article className="metric-card">
-          <span className="metric-icon metric-icon-yellow" aria-hidden="true">
-            <img src="/ic_revisar.png" alt="" />
-          </span>
-          <p>Estudiantes por revisar</p>
-          <strong>{studentsToReview}</strong>
-        </article>
-        <article className="metric-card">
-          <span className="metric-icon metric-icon-green" aria-hidden="true">
-            <img src="/ic_revisados.png" alt="" />
-          </span>
-          <p>Estudiantes calificados</p>
-          <strong>{gradedStudents}</strong>
-        </article>
-        {/*
-        <article className="metric-card">
-          <span className="metric-icon metric-icon-blue" aria-hidden="true" />
-          <p>Preparación de misiones</p>
-          <strong>{robotReadiness}%</strong>
-        </article>
-        */}
+      <section aria-label="Indicadores principales" className="metric-section">
+        <div className="metric-filter">
+          <label className="toolbar-select" htmlFor="metric-mission">
+            <span className="sr-only">Misión de los indicadores</span>
+            <ChevronSelect id="metric-mission" onChange={(event) => setMetricMissionId(event.target.value)} value={metricMissionId}>
+              <option value="all">Todas las misiones</option>
+              {metricMissions.map((mission) => (
+                <option key={mission.id} value={mission.id}>
+                  {mission.title}
+                </option>
+              ))}
+            </ChevronSelect>
+          </label>
+        </div>
+        <div className="metric-grid">
+          <Link className="metric-card metric-card-link" href={studentsLink("Revisar")}>
+            <span className="metric-icon metric-icon-yellow" aria-hidden="true">
+              <img src="/ic_revisar.png" alt="" />
+            </span>
+            <p>Estudiantes por revisar</p>
+            <strong>{studentsToReview}</strong>
+          </Link>
+          <Link className="metric-card metric-card-link" href={studentsLink("Calificado")}>
+            <span className="metric-icon metric-icon-green" aria-hidden="true">
+              <img src="/ic_revisados.png" alt="" />
+            </span>
+            <p>Estudiantes calificados</p>
+            <strong>{gradedStudents}</strong>
+          </Link>
+        </div>
       </section>
 
       <section className="panel-section" aria-labelledby="active-missions-title">
@@ -78,6 +98,16 @@ export function DashboardScreen() {
                   <p>
                     {course.name} · Código de misión: <strong>{assignment.missionCode}</strong>
                   </p>
+                  {(() => {
+                    const works = worksOf(new Set([assignment.id]));
+                    const toReview = works.filter((w) => w.status === "submitted").length;
+                    const graded = works.filter((w) => w.status === "graded").length;
+                    return (
+                      <p className="assignment-counts">
+                        {toReview} por revisar · {graded} calificados
+                      </p>
+                    );
+                  })()}
                 </div>
                 <div className="assignment-actions">
                   <Link className="button button-secondary" href={`/profesor/estudiantes?mision=${assignment.missionId}&curso=${assignment.courseId}`}>

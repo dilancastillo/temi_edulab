@@ -10,6 +10,14 @@ export function StudentDashboardScreen() {
   const availableAssignments = assignments.filter(
     (assignment) => assignment.status === "active" && assignment.courseId === student?.courseId
   );
+  // Misiones calificadas cuya asignación ya no está activa (el docente la archivó o la borró):
+  // el estudiante las sigue viendo con su nota.
+  const archivedGraded = studentWorks.filter(
+    (work) =>
+      work.studentId === student?.id &&
+      work.status === "graded" &&
+      !availableAssignments.some((assignment) => assignment.id === work.assignmentId)
+  );
 
   return (
     <div className="student-page-stack">
@@ -45,15 +53,28 @@ export function StudentDashboardScreen() {
               <Link className="student-mission-card" href={`/estudiante/misiones/${assignment.id}`} key={assignment.id}>
                 {(() => {
                   const total = mission.steps?.length ?? 5;
-                  const current = work?.status === "submitted" ? total : (work?.stepIndex ?? 0);
+                  const finished = work?.status === "submitted" || work?.status === "graded";
+                  const current = finished ? total : (work?.stepIndex ?? 0);
                   return (
                     <>
-                      <MissionBanner done={work?.status === "submitted"} title={mission.title} tone={mission.coverTone} />
-                      <small>{work?.status === "submitted" ? "Enviado" : `${current} de ${total} pasos`}</small>
+                      <MissionBanner done={finished} title={mission.title} tone={mission.coverTone} />
+                      <small>{work?.status === "graded" ? `Calificada · ${work.grade}` : work?.status === "submitted" ? "Enviado" : `${current} de ${total} pasos`}</small>
                       <progress aria-label={`Progreso de ${mission.title}`} max={total} value={current} />
                     </>
                   );
                 })()}
+              </Link>
+            );
+          })}
+
+          {archivedGraded.map((work) => {
+            const mission = missions.find((candidate) => candidate.id === work.missionId);
+            const title = mission?.title ?? work.missionTitle ?? "Misión";
+            return (
+              <Link className="student-mission-card" href={`/estudiante/misiones/${work.assignmentId}`} key={work.id}>
+                <MissionBanner done title={title} tone={mission?.coverTone ?? "slate"} />
+                <small>Calificada · {work.grade}</small>
+                <progress aria-label={`Progreso de ${title}`} max={1} value={1} />
               </Link>
             );
           })}
@@ -71,17 +92,17 @@ export function StudentDashboardScreen() {
 
             return (
               <article className={`student-assigned-card tone-surface tone-${mission.coverTone}`} key={assignment.id}>
-                <MissionArt done={work?.status === "submitted"} />
+                <MissionArt done={work?.status === "submitted" || work?.status === "graded"} />
                 <div className="student-assigned-copy">
                   <h3>{mission.title}</h3>
                   <p>{mission.summary}</p>
-                  <small>Código: {assignment.missionCode}</small>
+                  <small>{work?.status === "graded" ? `Calificada · ${work.grade}` : `Código: ${assignment.missionCode}`}</small>
                 </div>
                 <Link
-                  aria-label={work?.status === "submitted" ? `Ver entrega de ${mission.title}` : `Continuar ${mission.title}`}
+                  aria-label={work?.status === "submitted" || work?.status === "graded" ? `Ver entrega de ${mission.title}` : `Continuar ${mission.title}`}
                   className="student-assigned-action"
                   href={`/estudiante/misiones/${assignment.id}`}
-                  title={work?.status === "submitted" ? "Ver entrega" : "Continuar"}
+                  title={work?.status === "submitted" || work?.status === "graded" ? "Ver entrega" : "Continuar"}
                 >
                   <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} viewBox="0 0 24 24">
                     <path d="M5 12h14" />

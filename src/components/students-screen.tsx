@@ -15,6 +15,7 @@ import type { Course, Mission, Student, StudentInput } from "@/lib/types";
 import { FREE_PLAY_ASSIGNMENT_ID, FREE_PLAY_MISSION_ID } from "@/lib/types";
 import { ExecuteButton } from "@/components/execute-button";
 import { RowActionsMenu } from "@/components/row-actions-menu";
+import { StudentWorkReview } from "@/components/student-work-review";
 import { StudentProgramPreview } from "@/components/student-program-preview";
 import { extractCommandsFromWorkspace } from "@/lib/robot-adapter";
 
@@ -28,16 +29,21 @@ export function StudentsScreen() {
   const searchParams = useSearchParams();
   const initialMissionId = searchParams.get("mision") ?? "all";
   const initialCourseId = searchParams.get("curso") ?? "all";
+  const progressParam = searchParams.get("progreso");
+  const initialProgress = (progressFilters as readonly string[]).includes(progressParam ?? "")
+    ? (progressParam as (typeof progressFilters)[number])
+    : "Todos";
 
   const [query, setQuery] = useState("");
   const [courseId, setCourseId] = useState(initialCourseId);
-  const [progress, setProgress] = useState<(typeof progressFilters)[number]>("Todos");
+  const [progress, setProgress] = useState<(typeof progressFilters)[number]>(initialProgress);
   const [missionId, setMissionId] = useState(initialMissionId);
   const [page, setPage] = useState(1);
   const [mode, setMode] = useState<"add" | "import" | null>(null);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [studentToPreview, setStudentToPreview] = useState<{ student: Student; workspaceState: unknown; mission?: Mission } | null>(null);
+  const [workToReview, setWorkToReview] = useState<{ student: Student; workId: string; mission?: Mission } | null>(null);
 
   /**
    * Asignación, trabajo y progreso de un estudiante según el filtro de misión.
@@ -57,7 +63,7 @@ export function StudentsScreen() {
     const hasMission = Boolean(activeAssignment || missionAssignment);
     let progressLabel: RowProgress | null = null;
     if (hasMission) {
-      if (student.progress === "Calificado") progressLabel = "Calificado";
+      if (studentWork?.status === "graded") progressLabel = "Calificado";
       else if (studentWork?.status === "submitted") progressLabel = "Revisar";
       else if (studentWork) progressLabel = "En curso";
       else progressLabel = "Sin iniciar";
@@ -265,7 +271,7 @@ export function StudentsScreen() {
                         <span>Sin iniciar</span>
                       ) : progressLabel ? (
                         <span className={`status-pill status-${progressLabel.toLowerCase().replace(" ", "-")}`}>
-                          {progressLabel}
+                          {progressLabel === "Calificado" && studentWork?.grade ? `Calificado · ${studentWork.grade}` : progressLabel}
                         </span>
                       ) : (
                         "Ninguno"
@@ -283,6 +289,9 @@ export function StudentsScreen() {
                           actions={[
                             { label: "Editar", onSelect: () => setStudentToEdit(student) },
                             { label: "Eliminar", onSelect: () => setStudentToDelete(student), tone: "danger" },
+                            ...(studentWork?.workspaceState != null && studentWork.assignmentId !== FREE_PLAY_ASSIGNMENT_ID
+                              ? [{ label: "Revisar", onSelect: () => setWorkToReview({ student, workId: studentWork.id, mission }) }]
+                              : []),
                             ...(studentWork?.workspaceState != null
                               ? [{ label: "Reporte", href: `/profesor/reporte?assignment=${encodeURIComponent(studentWork.assignmentId)}&student=${encodeURIComponent(student.id)}` }]
                               : [])
@@ -399,6 +408,19 @@ export function StudentsScreen() {
           tone="danger"
         />
       ) : null}
+
+      {workToReview ? (() => {
+        // Se lee el trabajo actual del store para que la ventana refleje la calificación recién guardada.
+        const work = studentWorks.find((candidate) => candidate.id === workToReview.workId);
+        return work ? (
+          <StudentWorkReview
+            mission={workToReview.mission}
+            onClose={() => setWorkToReview(null)}
+            studentName={workToReview.student.fullName}
+            work={work}
+          />
+        ) : null;
+      })() : null}
 
       {studentToPreview ? (
         <StudentProgramPreview

@@ -25,7 +25,8 @@ export async function POST(req: NextRequest) {
          step_index = EXCLUDED.step_index,
          status = EXCLUDED.status,
          updated_at = EXCLUDED.updated_at,
-         submitted_at = EXCLUDED.submitted_at`,
+         submitted_at = EXCLUDED.submitted_at
+       WHERE student_works.status <> 'graded'`,
       [
         body.id, body.teacherId, body.institutionId, body.studentId,
         body.assignmentId, body.missionId,

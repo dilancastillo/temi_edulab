@@ -2775,3 +2775,168 @@ td {
   background: #fdecec;
   color: #b42318;
 }
+
+/* ---------- Ventana Revisar (calificación del docente) ---------- */
+.review-main {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.review-main .blockly-card {
+  min-height: 0;
+  height: 100%;
+}
+
+.review-steps-summary {
+  margin: 0 0 0.25rem;
+}
+
+.review-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius);
+}
+
+.review-step > span:last-child {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.review-step small {
+  color: #5f6f81;
+}
+
+.review-step .solution-step-number {
+  background: #c9d2dd;
+}
+
+.review-step-done .solution-step-number {
+  background: #1a8a4c;
+}
+
+.review-step-done small {
+  color: #1a6b3c;
+  font-weight: 600;
+}
+
+.review-grade {
+  display: grid;
+  grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.review-grade .field {
+  margin: 0;
+}
+
+.review-grade textarea {
+  resize: vertical;
+  min-height: 2.75rem;
+}
+
+.review-grade-actions {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: end;
+}
+
+.review-grade-actions .form-error,
+.review-grade-actions .success-message {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 900px) {
+  .review-grade {
+    grid-template-columns: 1fr;
+  }
+
+  .review-grade-actions {
+    justify-items: start;
+  }
+}
+
+/* ---------- Indicadores del inicio por misión ---------- */
+.metric-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.metric-filter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.metric-filter .toolbar-select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+}
+
+.metric-card-link {
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.metric-card-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(16, 32, 64, 0.1);
+}
+
+.assignment-counts {
+  margin: 0.2rem 0 0;
+  color: #5f6f81;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ---------- Misión calificada (estudiante) ---------- */
+.graded-badge {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  min-width: 7rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 1rem;
+  background: #e4f4ea;
+  color: #1a6b3c;
+}
+
+.graded-badge small {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.graded-badge strong {
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+.graded-feedback {
+  white-space: pre-wrap;
+}
+
+.report-feedback {
+  break-inside: avoid;
+}
+
+.report-feedback p {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #e4e8f0;
+  border-radius: 0.5rem;
+  white-space: pre-wrap;
+}

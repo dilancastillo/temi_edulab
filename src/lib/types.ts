@@ -117,7 +117,7 @@ export type Assignment = {
   reviewCount: number;
 };
 
-export type StudentWorkStatus = "draft" | "submitted";
+export type StudentWorkStatus = "draft" | "submitted" | "graded";
 
 export type StudentWork = {
   id: string;
@@ -133,6 +133,12 @@ export type StudentWork = {
   submittedAt?: string;
   /** Primer guardado. No existe en trabajos anteriores a la migración 004. */
   createdAt?: string;
+  /** Calificación del docente (texto libre corto) y su comentario. */
+  grade?: string;
+  feedback?: string;
+  gradedAt?: string;
+  /** Nombre de la misión al calificar: se muestra si la misión ya no existe. */
+  missionTitle?: string;
 };
 
 export type StudentInput = {

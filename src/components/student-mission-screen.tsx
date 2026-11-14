@@ -19,8 +19,14 @@ export function StudentMissionScreen() {
   const { assignments, missions, studentSession, studentWorks, students } = useDemoStore();
   const student = students.find((candidate) => candidate.id === studentSession?.studentId);
   const assignment = assignments.find((candidate) => candidate.id === assignmentId && candidate.courseId === student?.courseId);
-  const mission = missions.find((candidate) => candidate.id === assignment?.missionId);
-  const work = studentWorks.find((candidate) => candidate.assignmentId === assignment?.id && candidate.studentId === student?.id);
+  const work = studentWorks.find((candidate) => candidate.assignmentId === assignmentId && candidate.studentId === student?.id);
+  const mission = missions.find((candidate) => candidate.id === (assignment?.missionId ?? work?.missionId));
+
+  // Una misión calificada se ve siempre (solo lectura), aunque el docente haya archivado o
+  // borrado la misión o la asignación.
+  if (student && work?.status === "graded") {
+    return <GradedMissionView mission={mission} work={work} />;
+  }
 
   if (!student || !assignment || !mission) {
     return (
@@ -202,6 +208,49 @@ function MissionEditor({
           title="¿Listo para enviar?"
         />
       ) : null}
+    </div>
+  );
+}
+
+/** Misión calificada: solo lectura, con la nota y el comentario del docente. */
+function GradedMissionView({ mission, work }: Readonly<{ mission?: Mission; work: StudentWork }>) {
+  const [initial] = useState(() => work.workspaceState);
+  const title = mission?.title ?? work.missionTitle ?? "Misión";
+  const steps = useMemo(() => mission?.steps ?? [], [mission]);
+  const evaluation = useMemo(() => (steps.length ? evaluateOrderSteps([], steps, initial) : null), [steps, initial]);
+
+  return (
+    <div className="student-page-stack student-page-editor">
+      <section className="editor-header-card">
+        <div>
+          <p className="eyebrow">Misión calificada</p>
+          <h1>{title}</h1>
+          {mission?.summary ? <p>{mission.summary}</p> : null}
+        </div>
+        <div className="graded-badge" aria-label={`Calificación: ${work.grade ?? ""}`}>
+          <small>Calificación</small>
+          <strong>{work.grade}</strong>
+        </div>
+      </section>
+
+      <section className="mission-editor-layout">
+        <aside className="mission-instructions" aria-labelledby="graded-feedback-title">
+          <h2 id="graded-feedback-title">Comentario de tu profesor</h2>
+          <p className={work.feedback ? "graded-feedback" : "muted"}>{work.feedback ?? "Tu profesor no dejó comentario."}</p>
+          <p className="hint-card">Esta misión ya fue calificada: puedes ver tus bloques, pero ya no se pueden cambiar.</p>
+          {evaluation ? (
+            <ol className="step-list">
+              {steps.map((step, index) => (
+                <li className={index < evaluation.completedSteps ? "step-done" : ""} key={`${step.type}-${index}`}>
+                  <strong>{step.label}</strong>
+                  <span>{step.helper}</span>
+                </li>
+              ))}
+            </ol>
+          ) : null}
+        </aside>
+        <BlocklyWorkspace initialState={initial} onChange={() => {}} readOnly />
+      </section>
     </div>
   );
 }

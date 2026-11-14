@@ -96,7 +96,8 @@ export async function upsertStudentWork(work: StudentWork): Promise<void> {
        step_index = EXCLUDED.step_index,
        status = EXCLUDED.status,
        updated_at = EXCLUDED.updated_at,
-       submitted_at = EXCLUDED.submitted_at`,
+       submitted_at = EXCLUDED.submitted_at
+     WHERE student_works.status <> 'graded'`,
     [
       work.id, work.teacherId, work.institutionId, work.studentId,
       work.assignmentId, work.missionId,
@@ -206,6 +207,10 @@ function rowToStudentWork(row: Record<string, unknown>): StudentWork {
     updatedAt: (row.updated_at as Date).toISOString(),
     submittedAt: row.submitted_at ? (row.submitted_at as Date).toISOString() : undefined,
     createdAt: row.created_at ? (row.created_at as Date).toISOString() : undefined,
+    grade: (row.grade as string | null) ?? undefined,
+    feedback: (row.feedback as string | null) ?? undefined,
+    gradedAt: row.graded_at ? (row.graded_at as Date).toISOString() : undefined,
+    missionTitle: (row.mission_title as string | null) ?? undefined,
   };
 }
 
