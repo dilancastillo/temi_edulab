@@ -53,7 +53,9 @@ export function StudentsScreen() {
           !normalisedQuery ||
           student.fullName.toLowerCase().includes(normalisedQuery) ||
           student.email.toLowerCase().includes(normalisedQuery);
-        return matchesQuery && studentIdsWithFreePlay.has(student.id);
+        const matchesCourse = courseId === "all" || student.courseId === courseId;
+        const matchesProgress = progress === "Todos" || student.progress === progress;
+        return matchesQuery && matchesCourse && matchesProgress && studentIdsWithFreePlay.has(student.id);
       });
     }
 
