@@ -260,7 +260,10 @@ export function StudentsScreen() {
                     </td>
                     <td>{course?.name ?? "Sin curso"}</td>
                     <td>
-                      {progressLabel ? (
+                      {progressLabel === "Sin iniciar" ? (
+                        // Texto plano, como la columna Curso: solo los estados con trabajo llevan pastilla.
+                        <span>Sin iniciar</span>
+                      ) : progressLabel ? (
                         <span className={`status-pill status-${progressLabel.toLowerCase().replace(" ", "-")}`}>
                           {progressLabel}
                         </span>

@@ -843,11 +843,6 @@ td {
   object-fit: cover;
 }
 
-.status-sin-iniciar {
-  background: #eef1f5;
-  color: #5f6f81;
-}
-
 .status-en-curso {
   background: #dcf0ff;
   color: #19507b;
