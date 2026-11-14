@@ -2,7 +2,7 @@
 "use client";
 
 
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ConfirmDialog, Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
@@ -19,7 +19,8 @@ import { StudentProgramPreview } from "@/components/student-program-preview";
 import { extractCommandsFromWorkspace } from "@/lib/robot-adapter";
 
 const pageSize = 5;
-const progressFilters = ["Todos", "En curso", "Revisar", "Calificado"] as const;
+const progressFilters = ["Todos", "Sin iniciar", "En curso", "Revisar", "Calificado"] as const;
+type RowProgress = Exclude<(typeof progressFilters)[number], "Todos">;
 
 export function StudentsScreen() {
   const { addStudent, courses, assignments, deleteStudent, importStudents, missions, refreshTeacherData, students, studentWorks, updateStudent } = useDemoStore();
@@ -38,8 +39,35 @@ export function StudentsScreen() {
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [studentToPreview, setStudentToPreview] = useState<{ student: Student; workspaceState: unknown; mission?: Mission } | null>(null);
 
+  /**
+   * Asignación, trabajo y progreso de un estudiante según el filtro de misión.
+   * El progreso sale del trabajo guardado: sin guardar nada es "Sin iniciar", con algún
+   * cambio guardado "En curso" y entregado "Revisar". Sin misión asignada no hay progreso.
+   */
+  const rowInfo = useCallback((student: Student) => {
+    const activeAssignment = assignments.find((a) => a.status === "active" && a.courseId === student.courseId);
+    const missionAssignment = missionId !== "all" && missionId !== FREE_PLAY_MISSION_ID
+      ? assignments.find((a) => a.missionId === missionId && a.courseId === student.courseId && a.status === "active")
+      : activeAssignment;
+    const studentWork = missionId === FREE_PLAY_MISSION_ID
+      ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === FREE_PLAY_ASSIGNMENT_ID)
+      : missionAssignment
+        ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === missionAssignment.id)
+        : undefined;
+    const hasMission = Boolean(activeAssignment || missionAssignment);
+    let progressLabel: RowProgress | null = null;
+    if (hasMission) {
+      if (student.progress === "Calificado") progressLabel = "Calificado";
+      else if (studentWork?.status === "submitted") progressLabel = "Revisar";
+      else if (studentWork) progressLabel = "En curso";
+      else progressLabel = "Sin iniciar";
+    }
+    return { activeAssignment, studentWork, progressLabel };
+  }, [assignments, missionId, studentWorks]);
+
   const filteredStudents = useMemo(() => {
     const normalisedQuery = query.trim().toLowerCase();
+    const matchesProgress = (student: Student) => progress === "Todos" || rowInfo(student).progressLabel === progress;
 
     // Para juego libre: mostrar estudiantes que tienen progreso en free-play
     if (missionId === FREE_PLAY_MISSION_ID) {
@@ -54,8 +82,7 @@ export function StudentsScreen() {
           student.fullName.toLowerCase().includes(normalisedQuery) ||
           student.email.toLowerCase().includes(normalisedQuery);
         const matchesCourse = courseId === "all" || student.courseId === courseId;
-        const matchesProgress = progress === "Todos" || student.progress === progress;
-        return matchesQuery && matchesCourse && matchesProgress && studentIdsWithFreePlay.has(student.id);
+        return matchesQuery && matchesCourse && matchesProgress(student) && studentIdsWithFreePlay.has(student.id);
       });
     }
 
@@ -74,11 +101,10 @@ export function StudentsScreen() {
         student.fullName.toLowerCase().includes(normalisedQuery) ||
         student.email.toLowerCase().includes(normalisedQuery);
       const matchesCourse = courseId === "all" || student.courseId === courseId;
-      const matchesProgress = progress === "Todos" || student.progress === progress;
       const matchesMission = courseIdsWithMission === null || courseIdsWithMission.has(student.courseId);
-      return matchesQuery && matchesCourse && matchesProgress && matchesMission;
+      return matchesQuery && matchesCourse && matchesMission && matchesProgress(student);
     });
-  }, [assignments, courseId, missionId, progress, query, students, studentWorks]);
+  }, [assignments, courseId, missionId, progress, query, rowInfo, students, studentWorks]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
   const boundedPage = Math.min(page, totalPages);
@@ -213,30 +239,9 @@ export function StudentsScreen() {
               {pageStudents.map((student) => {
                 const course = courses.find((candidate) => candidate.id === student.courseId);
                 
-                // Buscar si hay una asignación activa para el curso del estudiante
-                const activeAssignment = assignments.find(
-                  (a) => a.status === "active" && a.courseId === student.courseId
-                );
-                
+                const { activeAssignment, studentWork, progressLabel } = rowInfo(student);
                 const displayMissionId = missionId !== "all" ? missionId : activeAssignment?.missionId;
                 const mission = missions.find((candidate) => candidate.id === displayMissionId);
-
-                // Calcular progreso por misión usando studentWorks
-                const missionAssignment = missionId !== "all" && missionId !== FREE_PLAY_MISSION_ID
-                  ? assignments.find((a) => a.missionId === missionId && a.courseId === student.courseId && a.status === "active")
-                  : activeAssignment;
-                const studentWork = missionId === FREE_PLAY_MISSION_ID
-                  ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === FREE_PLAY_ASSIGNMENT_ID)
-                  : missionAssignment
-                    ? studentWorks.find((w) => w.studentId === student.id && w.assignmentId === missionAssignment.id)
-                    : null;
-                const missionProgress: typeof student.progress = studentWork?.status === "submitted"
-                  ? "Revisar"
-                  : missionId !== "all" && missionAssignment
-                    ? "En curso"
-                    : activeAssignment
-                      ? "En curso"
-                      : "En curso"; // Fallback si no hay misión activa pero el estudiante tiene progreso
 
                 return (
                   <tr key={student.id}>
@@ -255,9 +260,9 @@ export function StudentsScreen() {
                     </td>
                     <td>{course?.name ?? "Sin curso"}</td>
                     <td>
-                      {activeAssignment || missionAssignment ? (
-                        <span className={`status-pill status-${missionProgress.toLowerCase().replace(" ", "-")}`}>
-                          {missionProgress}
+                      {progressLabel ? (
+                        <span className={`status-pill status-${progressLabel.toLowerCase().replace(" ", "-")}`}>
+                          {progressLabel}
                         </span>
                       ) : (
                         "Ninguno"
