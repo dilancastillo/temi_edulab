@@ -10,7 +10,7 @@ import { useDemoStore } from "@/components/auth-store-provider";
 import { ChevronSelect } from "@/components/chevron-select";
 import { getInitials, parseStudentsCsv } from "@/lib/csv";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
-import { formatLastSaved } from "@/lib/format-date";
+import { formatSavedAt } from "@/lib/format-date";
 import type { Course, Mission, Student, StudentInput } from "@/lib/types";
 import { FREE_PLAY_ASSIGNMENT_ID, FREE_PLAY_MISSION_ID } from "@/lib/types";
 import { ExecuteButton } from "@/components/execute-button";
@@ -126,22 +126,36 @@ export function StudentsScreen() {
         actions={
           <div className="action-row">
             <button
-              className="button button-ghost"
+              aria-label={isRefreshing ? "Actualizando" : "Actualizar"}
+              className={`round-icon-button${isRefreshing ? " is-spinning" : ""}`}
               disabled={isRefreshing}
               onClick={async () => {
                 setIsRefreshing(true);
                 await refreshTeacherData();
                 setIsRefreshing(false);
               }}
-              title="Trae el trabajo más reciente que guardaron los estudiantes"
+              title="Actualizar: trae el trabajo más reciente que guardaron los estudiantes"
               type="button"
             >
-              {isRefreshing ? "Actualizando…" : "Actualizar"}
+              <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
+                {/* Ícono "refresh" de Tabler (licencia MIT): dos flechas en círculo. */}
+                <path d="M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4" />
+                <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+              </svg>
             </button>
-            <button className="button button-secondary" onClick={() => setMode("import")} type="button">
+            <button className="pill-button pill-button-outline" onClick={() => setMode("import")} type="button">
+              <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
+                <path d="M12 16V4" />
+                <path d="m7 9 5-5 5 5" />
+                <path d="M4 20h16" />
+              </svg>
               Importar CSV
             </button>
-            <button className="button button-primary" onClick={() => setMode("add")} type="button">
+            <button className="pill-button pill-button-primary" onClick={() => setMode("add")} type="button">
+              <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} viewBox="0 0 24 24">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
               Agregar estudiante
             </button>
           </div>
@@ -226,7 +240,7 @@ export function StudentsScreen() {
         </div>
       </section>
 
-      <section aria-labelledby="students-table-title" className="table-card">
+      <section aria-labelledby="students-table-title" className="table-card students-table">
         <div className="sr-only" id="students-table-title">
           Estudiantes filtrados
         </div>
@@ -234,11 +248,11 @@ export function StudentsScreen() {
           <table>
             <thead>
               <tr>
-                <th scope="col">Nombre</th>
+                <th scope="col">Estudiante</th>
                 <th scope="col">Curso</th>
                 <th scope="col">Progreso</th>
                 <th scope="col">Misión</th>
-                <th scope="col">Acciones</th>
+                <th scope="col"><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
@@ -248,6 +262,10 @@ export function StudentsScreen() {
                 const { activeAssignment, studentWork, progressLabel } = rowInfo(student);
                 const displayMissionId = missionId !== "all" ? missionId : activeAssignment?.missionId;
                 const mission = missions.find((candidate) => candidate.id === displayMissionId);
+                const rowAssignment = assignments.find(
+                  (a) => a.status === "active" && a.courseId === student.courseId && a.missionId === displayMissionId
+                );
+                const tone = progressLabel === "Calificado" ? "ok" : progressLabel === "Revisar" ? "rv" : progressLabel === "En curso" ? "en" : "no";
 
                 return (
                   <tr key={student.id}>
@@ -256,7 +274,7 @@ export function StudentsScreen() {
                         {student.avatarUrl ? (
                           <img alt="" className="avatar avatar-image" src={student.avatarUrl} />
                         ) : (
-                          <span className="avatar">{getInitials(student.fullName)}</span>
+                          <span className={`avatar avatar-tone-${tone}`}>{getInitials(student.fullName)}</span>
                         )}
                         <span>
                           <strong>{student.fullName}</strong>
@@ -264,49 +282,27 @@ export function StudentsScreen() {
                         </span>
                       </div>
                     </td>
-                    <td>{course?.name ?? "Sin curso"}</td>
+                    <td className="students-cell-strong">{course?.name ?? "Sin curso"}</td>
                     <td>
-                      {progressLabel === "Sin iniciar" ? (
-                        // Texto plano, como la columna Curso: solo los estados con trabajo llevan pastilla.
-                        <span>Sin iniciar</span>
-                      ) : progressLabel ? (
-                        <span className={`status-pill status-${progressLabel.toLowerCase().replace(" ", "-")}`}>
-                          {progressLabel === "Calificado" && studentWork?.grade ? `Calificado · ${studentWork.grade}` : progressLabel}
-                        </span>
+                      {progressLabel ? (
+                        <>
+                          <span className={`progress-pill progress-pill-${tone}`}>
+                            {progressLabel === "Calificado" && studentWork?.grade ? `Calificado · ${studentWork.grade}` : progressLabel}
+                          </span>
+                          <small className="students-cell-sub">
+                            {studentWork ? `Guardado ${formatSavedAt(studentWork.updatedAt)}` : "Aún no guarda cambios"}
+                          </small>
+                        </>
                       ) : (
-                        "Ninguno"
+                        <span className="students-cell-strong">Ninguno</span>
                       )}
-                      {studentWork ? (
-                        <small className="muted" style={{ display: "block", marginTop: "0.25rem" }}>
-                          Guardado {formatLastSaved(studentWork.updatedAt)}
-                        </small>
-                      ) : null}
                     </td>
-                    <td>{mission?.title ?? "Ninguno"}</td>
+                    <td>
+                      <span className="students-cell-strong students-cell-title">{mission?.title ?? (missionId === FREE_PLAY_MISSION_ID ? "Juego libre" : "Ninguno")}</span>
+                      {rowAssignment ? <small className="students-cell-sub">Código {rowAssignment.missionCode}</small> : null}
+                    </td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <div className="table-actions" style={{ flexWrap: "nowrap" }}>
-                        <RowActionsMenu
-                          actions={[
-                            { label: "Editar", onSelect: () => setStudentToEdit(student) },
-                            { label: "Eliminar", onSelect: () => setStudentToDelete(student), tone: "danger" },
-                            ...(studentWork?.workspaceState != null && studentWork.assignmentId !== FREE_PLAY_ASSIGNMENT_ID
-                              ? [{ label: "Revisar", onSelect: () => setWorkToReview({ student, workId: studentWork.id, mission }) }]
-                              : []),
-                            ...(studentWork?.workspaceState != null
-                              ? [{ label: "Reporte", href: `/profesor/reporte?assignment=${encodeURIComponent(studentWork.assignmentId)}&student=${encodeURIComponent(student.id)}` }]
-                              : [])
-                          ]}
-                          label={`Acciones de ${student.fullName}`}
-                        />
-                        {studentWork?.workspaceState != null && (
-                          <button
-                            className="button button-ghost"
-                            onClick={() => setStudentToPreview({ student, workspaceState: studentWork.workspaceState, mission })}
-                            type="button"
-                          >
-                            Ver
-                          </button>
-                        )}
                         {studentWork?.workspaceState != null && (
                           <ExecuteButton
                             inline
@@ -320,6 +316,28 @@ export function StudentsScreen() {
                             })}
                           />
                         )}
+                        {studentWork?.workspaceState != null && (
+                          <button
+                            className="students-link"
+                            onClick={() => setStudentToPreview({ student, workspaceState: studentWork.workspaceState, mission })}
+                            type="button"
+                          >
+                            Ver
+                          </button>
+                        )}
+                        <RowActionsMenu
+                          actions={[
+                            { label: "Editar", onSelect: () => setStudentToEdit(student) },
+                            { label: "Eliminar", onSelect: () => setStudentToDelete(student), tone: "danger" },
+                            ...(studentWork?.workspaceState != null && studentWork.assignmentId !== FREE_PLAY_ASSIGNMENT_ID
+                              ? [{ label: "Revisar", onSelect: () => setWorkToReview({ student, workId: studentWork.id, mission }) }]
+                              : []),
+                            ...(studentWork?.workspaceState != null
+                              ? [{ label: "Reporte", href: `/profesor/reporte?assignment=${encodeURIComponent(studentWork.assignmentId)}&student=${encodeURIComponent(student.id)}` }]
+                              : [])
+                          ]}
+                          label={`Acciones de ${student.fullName}`}
+                        />
                       </div>
                     </td>
                   </tr>

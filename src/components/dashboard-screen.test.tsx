@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase", () => ({
 }));
 
 describe("DashboardScreen", () => {
-  it("renders professor summary metrics", async () => {
+  it("renders the welcome header and the missions in progress", async () => {
     render(
       <AuthStoreProvider>
         <DashboardScreen />
@@ -30,7 +30,7 @@ describe("DashboardScreen", () => {
     );
 
     expect(await screen.findByRole("heading", { name: /bienvenido, profesor/i })).toBeInTheDocument();
-    expect(screen.getByText(/estudiantes por revisar/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /misiones en curso/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ver todas/i })).toHaveAttribute("href", "/profesor/misiones");
   });
 });

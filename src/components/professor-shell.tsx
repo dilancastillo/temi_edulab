@@ -7,12 +7,70 @@ import { LogoMark } from "@/components/logo";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { ConnectionBanner } from "@/components/connection-banner";
 
+// Íconos de contorno (trazos de Lucide, licencia ISC).
+function NavIcon({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <svg aria-hidden="true" className="nav-link-icon" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
+      {children}
+    </svg>
+  );
+}
+
 const navItems = [
-  { href: "/profesor", label: "Inicio" },
-  { href: "/profesor/estudiantes", label: "Estudiantes" },
-  { href: "/profesor/biblioteca", label: "Biblioteca" },
-  { href: "/profesor/misiones", label: "Misiones en curso" },
-  { href: "/profesor/configuracion", label: "Configuración" }
+  {
+    href: "/profesor",
+    label: "Inicio",
+    icon: (
+      <NavIcon>
+        <path d="M3 10.5 12 3l9 7.5" />
+        <path d="M5 9.5V21h14V9.5" />
+        <path d="M10 21v-6h4v6" />
+      </NavIcon>
+    )
+  },
+  {
+    href: "/profesor/estudiantes",
+    label: "Estudiantes",
+    icon: (
+      <NavIcon>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </NavIcon>
+    )
+  },
+  {
+    href: "/profesor/biblioteca",
+    label: "Biblioteca",
+    icon: (
+      <NavIcon>
+        <path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2" />
+        <path d="M8 7h7" />
+        <path d="M8 11h5" />
+      </NavIcon>
+    )
+  },
+  {
+    href: "/profesor/misiones",
+    label: "Misiones en curso",
+    icon: (
+      <NavIcon>
+        <path d="M4 22V4" />
+        <path d="M4 4h12l-2 4 2 4H4" />
+      </NavIcon>
+    )
+  },
+  {
+    href: "/profesor/configuracion",
+    label: "Configuración",
+    icon: (
+      <NavIcon>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </NavIcon>
+    )
+  }
 ] as const;
 
 export function ProfessorShell({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -66,6 +124,7 @@ export function ProfessorShell({ children }: Readonly<{ children: React.ReactNod
               return (
                 <li key={item.href}>
                   <Link aria-current={isActive ? "page" : undefined} className="nav-link" href={item.href}>
+                    {item.icon}
                     {item.label}
                   </Link>
                 </li>

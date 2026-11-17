@@ -11,3 +11,12 @@ export function formatLastSaved(iso: string, now: Date = new Date()): string {
   if (date.getTime() >= startOfToday - dayMs) return `ayer ${time}`;
   return `${date.toLocaleDateString("es-CO", { day: "numeric", month: "short" })} ${time}`;
 }
+
+/** "6 nov · 8:20 a. m." (fecha corta y hora del último guardado). */
+export function formatSavedAt(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const time = new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit", hour12: true }).format(date);
+  return `${date.getDate()} ${months[date.getMonth()]} · ${time}`;
+}

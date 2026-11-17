@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { AssignmentRow, formatAssignedDate } from "@/components/assignment-row";
 import { ConfirmDialog } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
@@ -9,7 +10,8 @@ import { FREE_PLAY_ASSIGNMENT_ID } from "@/lib/types";
 import type { Assignment } from "@/lib/types";
 
 export function MissionsScreen() {
-  const { archiveAssignment, assignments, courses, deleteAssignment, missions, studentWorks, deleteFreePlayProgress } = useDemoStore();
+  const { archiveAssignment, assignments, courses, deleteAssignment, missions, students, studentWorks, deleteFreePlayProgress } = useDemoStore();
+  const studentIds = new Set(students.map((student) => student.id));
   const [showArchived, setShowArchived] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = useState<Assignment | null>(null);
   const [confirmDeleteFreePlay, setConfirmDeleteFreePlay] = useState(false);
@@ -39,68 +41,58 @@ export function MissionsScreen() {
         title={showArchived ? "Misiones archivadas" : "Misiones en curso"}
       />
 
-      <section className="assignment-list" aria-label="Listado de misiones">
-        {visibleAssignments.length === 0 ? (
-          <div className="empty-state">
-            <h2>No hay misiones para mostrar</h2>
-            <p>Asigna una misión desde la biblioteca o cambia el filtro de archivadas.</p>
-          </div>
-        ) : null}
+      {visibleAssignments.length === 0 && !(!showArchived && hasFreePlayProgress) ? (
+        <div className="empty-state">
+          <h2>No hay misiones para mostrar</h2>
+          <p>Asigna una misión desde la biblioteca o cambia el filtro de archivadas.</p>
+        </div>
+      ) : (
+        <section className="assignment-rows" aria-label="Listado de misiones">
+          {visibleAssignments.map((assignment) => {
+            const mission = missions.find((candidate) => candidate.id === assignment.missionId);
+            const course = courses.find((candidate) => candidate.id === assignment.courseId);
 
-        {visibleAssignments.map((assignment) => {
-          const mission = missions.find((candidate) => candidate.id === assignment.missionId);
-          const course = courses.find((candidate) => candidate.id === assignment.courseId);
+            if (!mission || !course) return null;
+            const works = studentWorks.filter((w) => w.assignmentId === assignment.id && studentIds.has(w.studentId));
 
-          if (!mission || !course) return null;
+            return (
+              <AssignmentRow
+                icon={{ src: `/icon_${mission.category.toLowerCase()}.png`, tone: mission.coverTone }}
+                iconActions={[
+                  ...(assignment.status === "active"
+                    ? [{ label: "Archivar", icon: "archive" as const, onClick: () => archiveAssignment(assignment.id) }]
+                    : []),
+                  { label: "Eliminar", icon: "close" as const, tone: "danger" as const, onClick: () => setAssignmentToDelete(assignment) },
+                ]}
+                key={assignment.id}
+                primary={{ label: "Ver progreso", href: `/profesor/estudiantes?mision=${assignment.missionId}&curso=${assignment.courseId}` }}
+                stats={[
+                  { value: formatAssignedDate(assignment.assignedAt), label: "Asignada" },
+                  { value: String(works.filter((w) => w.status === "submitted").length), label: "Por revisar" },
+                  { value: String(works.filter((w) => w.status === "graded").length), label: "Calificados" },
+                ]}
+                subtitle={`${course.name} · Código ${assignment.missionCode}`}
+                title={mission.title}
+              />
+            );
+          })}
 
-          return (
-            <article className="assignment-card assignment-card-wide" key={assignment.id}>
-              <span className={`mission-symbol mission-symbol-${mission.coverTone}`} aria-hidden="true">
-                <img src={`/icon_${mission.category.toLowerCase()}.png`} alt="" />
-              </span>
-              <div>
-                <h2>{mission.title}</h2>
-                <p>
-                  {course.name} · Código de misión: <strong>{assignment.missionCode}</strong>
-                </p>
-                <p className="muted">
-                  {assignment.completedCount} completados · {assignment.reviewCount} por revisar
-                </p>
-              </div>
-              <div className="assignment-actions assignment-actions-right">
-                {assignment.status === "active" ? (
-                  <button className="button button-primary" onClick={() => archiveAssignment(assignment.id)} type="button">
-                    Archivar
-                  </button>
-                ) : null}
-                <button className="button button-danger-outline" onClick={() => setAssignmentToDelete(assignment)} type="button">
-                  Eliminar
-                </button>
-              </div>
-            </article>
-          );
-        })}
-
-        {!showArchived && hasFreePlayProgress ? (
-          <article className="assignment-card assignment-card-wide">
-            <span className="mission-symbol mission-symbol-indigo" aria-hidden="true">
-              <span style={{ fontSize: "1.5rem" }}>🎮</span>
-            </span>
-            <div>
-              <h2>Juego libre</h2>
-              <p className="muted">Exploración libre de bloques — sin código ni curso</p>
-            </div>
-            <div className="assignment-actions assignment-actions-right">
-              <Link className="button button-secondary" href="/profesor/estudiantes?mision=free-play&curso=all">
-                Ver progreso
-              </Link>
-              <button className="button button-danger-outline" onClick={() => setConfirmDeleteFreePlay(true)} type="button">
-                Eliminar
-              </button>
-            </div>
-          </article>
-        ) : null}
-      </section>
+          {!showArchived && hasFreePlayProgress ? (
+            <AssignmentRow
+              icon={{ emoji: "🎮", tone: "indigo" }}
+              iconActions={[{ label: "Eliminar progreso de juego libre", icon: "close", tone: "danger", onClick: () => setConfirmDeleteFreePlay(true) }]}
+              primary={{ label: "Ver progreso", href: "/profesor/estudiantes?mision=free-play&curso=all" }}
+              stats={[
+                { value: "—", label: "Asignada" },
+                { value: String(new Set(studentWorks.filter((w) => w.assignmentId === FREE_PLAY_ASSIGNMENT_ID).map((w) => w.studentId)).size), label: "Estudiantes" },
+                { value: "—", label: "Calificados" },
+              ]}
+              subtitle="Exploración libre de bloques"
+              title="Juego libre"
+            />
+          ) : null}
+        </section>
+      )}
 
       {assignmentToDelete ? (
         <ConfirmDialog

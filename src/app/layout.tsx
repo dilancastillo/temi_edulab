@@ -1,6 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import { Nunito_Sans } from "next/font/google";
 import { AppProviders } from "@/app/providers";
 import "@/app/globals.css";
+
+// Tipografía de toda la plataforma (se descarga en el build y se sirve desde el propio servidor).
+const appFont = Nunito_Sans({
+  subsets: ["latin"],
+  variable: "--font-app",
+  display: "swap"
+});
 
 export const metadata: Metadata = {
   title: "Esbot EduLab",
@@ -15,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es">
+    <html className={appFont.variable} lang="es">
       <body>
         <AppProviders>{children}</AppProviders>
       </body>
