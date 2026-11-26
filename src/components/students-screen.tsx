@@ -8,7 +8,8 @@ import { ConfirmDialog, Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { useDemoStore } from "@/components/auth-store-provider";
 import { ChevronSelect } from "@/components/chevron-select";
-import { getInitials, parseStudentsCsv } from "@/lib/csv";
+import { getInitials } from "@/lib/csv";
+import { ImportStudentsModal } from "@/components/import-students-modal";
 import { readFileAsDataUrl, validateImageFile } from "@/lib/file-validation";
 import { formatSavedAt } from "@/lib/format-date";
 import type { Course, Mission, Student, StudentInput } from "@/lib/types";
@@ -149,7 +150,7 @@ export function StudentsScreen() {
                 <path d="m7 9 5-5 5 5" />
                 <path d="M4 20h16" />
               </svg>
-              Importar CSV
+              Importar Excel / CSV
             </button>
             <button className="pill-button pill-button-primary" onClick={() => setMode("add")} type="button">
               <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} viewBox="0 0 24 24">
@@ -400,11 +401,10 @@ export function StudentsScreen() {
 
       {mode === "import" ? (
         <ImportStudentsModal
+          courses={courses}
+          existingEmails={students.map((student) => student.email)}
           onClose={() => setMode(null)}
-          onImport={(rows) => {
-            const result = importStudents(rows);
-            return result;
-          }}
+          onImport={async (rows) => importStudents(rows)}
         />
       ) : null}
 
@@ -548,76 +548,6 @@ function StudentFormModal({
         </div>
         {submitError ? <p className="form-error" role="alert">{submitError}</p> : null}
       </form>
-    </Modal>
-  );
-}
-
-function ImportStudentsModal({
-  onClose,
-  onImport
-}: Readonly<{
-  onClose: () => void;
-  onImport: (rows: ReturnType<typeof parseStudentsCsv>["students"]) => Promise<{ added: number; skipped: string[] }>;
-}>) {
-  const [csvName, setCsvName] = useState("");
-  const [errors, setErrors] = useState<string[]>([]);
-  const [summary, setSummary] = useState("");
-
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setCsvName(file.name);
-    setSummary("");
-
-    if (file.size > 256 * 1024) {
-      setErrors(["El archivo debe pesar máximo 256 KB para el modo demo."]);
-      return;
-    }
-
-    if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
-      setErrors(["Carga un archivo CSV."]);
-      return;
-    }
-
-    const text = await file.text();
-    const parsed = parseStudentsCsv(text);
-    if (parsed.errors.length > 0) {
-      setErrors(parsed.errors);
-      return;
-    }
-
-    const result = await onImport(parsed.students);
-    setErrors(result.skipped);
-    setSummary(`${result.added} estudiantes importados desde ${file.name}.`);
-  }
-
-  return (
-    <Modal onClose={onClose} title="Importar estudiantes">
-      <div className="import-panel">
-        <p>Sube un CSV con encabezados: nombre, correo, curso.</p>
-        <label className="file-button">
-          Seleccionar CSV
-          <input accept=".csv,text/csv" onChange={handleFileChange} type="file" />
-        </label>
-        {csvName ? <p className="muted">Archivo: {csvName}</p> : null}
-        {summary ? <p className="success-message">{summary}</p> : null}
-        {errors.length > 0 ? (
-          <div className="form-error" role="alert">
-            <strong>Revisa estos detalles:</strong>
-            <ul>
-              {errors.map((error) => (
-                <li key={error}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </div>
-      <div className="modal-actions">
-        <button className="button button-primary" onClick={onClose} type="button">
-          Listo
-        </button>
-      </div>
     </Modal>
   );
 }

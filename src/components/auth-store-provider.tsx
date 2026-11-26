@@ -500,11 +500,9 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     const nextStudents: Student[] = [];
 
     for (const imported of importedStudents) {
-      const course = demoCourses.find(
-        (c) => c.name.toLowerCase() === imported.courseName.trim().toLowerCase()
-      );
+      const course = demoCourses.find((c) => c.id === imported.courseId);
       if (!course) {
-        skipped.push(`${imported.fullName}: curso "${imported.courseName}" no existe.`);
+        skipped.push(`${imported.fullName}: el curso no existe.`);
         continue;
       }
       if (existingEmails.has(imported.email.toLowerCase())) {
@@ -519,7 +517,7 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
         courseId: course.id,
         fullName: imported.fullName,
         email: imported.email,
-        password: "cambiar2026",
+        password: imported.password,
         progress: "En curso",
         createdAt: new Date().toISOString(),
       });
@@ -529,9 +527,15 @@ export function AuthStoreProvider({ children }: Readonly<{ children: React.React
     const results = await Promise.all(nextStudents.map((s) => postJson("/api/student/create", s)));
     const failed = nextStudents.filter((_, index) => !results[index].ok);
     if (failed.length > 0) {
+      // Los que el servidor rechazó (por ejemplo, correo de otro docente) no quedan en la lista.
+      const failedIds = new Set(failed.map((s) => s.id));
+      setStudents((current) => current.filter((s) => !failedIds.has(s.id)));
       const firstFailure = results.find((r) => !r.ok) as ApiFailure;
       reportSyncFailure(`No se pudieron guardar ${failed.length} de ${nextStudents.length} estudiantes importados`, firstFailure);
-      skipped.push(...failed.map((s) => `${s.fullName}: no se pudo guardar (${firstFailure.offline ? "sin conexión" : firstFailure.message}).`));
+      nextStudents.forEach((s, index) => {
+        const result = results[index];
+        if (!result.ok) skipped.push(`${s.fullName}: no se pudo guardar (${result.offline ? "sin conexión" : result.message}).`);
+      });
     }
     return { added: nextStudents.length - failed.length, skipped };
   }, [teacherId, students, reportSyncFailure]);

@@ -365,12 +365,10 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
     const nextStudents: Student[] = [];
 
     for (const importedStudent of importedStudents) {
-      const course = demoCourses.find(
-        (candidate) => candidate.name.toLowerCase() === importedStudent.courseName.trim().toLowerCase()
-      );
+      const course = demoCourses.find((candidate) => candidate.id === importedStudent.courseId);
 
       if (!course) {
-        skipped.push(`${importedStudent.fullName}: curso "${importedStudent.courseName}" no existe.`);
+        skipped.push(`${importedStudent.fullName}: el curso no existe.`);
         continue;
       }
 
@@ -387,7 +385,7 @@ export function DemoStoreProvider({ children }: Readonly<{ children: React.React
         courseId: course.id,
         fullName: importedStudent.fullName,
         email: importedStudent.email,
-        password: "cambiar2026",
+        password: importedStudent.password,
         progress: "En curso",
         createdAt: new Date().toISOString()
       });

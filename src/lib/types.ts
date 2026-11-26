@@ -156,15 +156,12 @@ export type ProfileInput = {
   avatarUrl?: string;
 };
 
+/** Estudiante leído del archivo de importación y ya validado (curso del selector). */
 export type ImportedStudent = {
   fullName: string;
   email: string;
-  courseName: string;
-};
-
-export type ImportResult = {
-  students: ImportedStudent[];
-  errors: string[];
+  password: string;
+  courseId: string;
 };
 
 export type StudentLoginResult = {

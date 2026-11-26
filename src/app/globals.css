@@ -1034,6 +1034,110 @@ td {
   gap: 0.7rem;
 }
 
+.import-intro {
+  margin: 0;
+  color: #5f6f81;
+  line-height: 1.5;
+}
+
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.import-file-label {
+  position: relative;
+  cursor: pointer;
+}
+
+.import-file-label input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.import-file-name {
+  margin: 0;
+}
+
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.3rem 0 0;
+}
+
+.import-count {
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.import-count-ok {
+  background: #e7f6ec;
+  color: #1f7a3f;
+}
+
+.import-count-error {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.import-preview {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+}
+
+.import-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.import-preview th {
+  position: sticky;
+  top: 0;
+  padding: 0.55rem 0.75rem;
+  background: #f5f7fb;
+  color: #5f6f81;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.import-preview td {
+  padding: 0.55rem 0.75rem;
+  border-top: 1px solid #eef1f5;
+  vertical-align: top;
+}
+
+.import-row-error td {
+  background: #fff8f7;
+}
+
+.import-status-ok {
+  color: #1f7a3f;
+  font-weight: 700;
+}
+
+.import-errors {
+  margin: 0;
+  padding-left: 1rem;
+  color: #b42318;
+}
+
+.import-outcome {
+  display: grid;
+  gap: 0.5rem;
+}
+
 .file-button {
   display: inline-flex;
   align-items: center;
