@@ -14,16 +14,26 @@ export function setRobotId(id: string): void {
   }
 }
 
-export async function fetchRobotLocations(): Promise<string[]> {
+/**
+ * Zonas del mapa del robot configurado. fromRobot es false cuando el robot no respondió y la
+ * lista es la de respaldo: en ese caso no se sabe qué zonas tiene el robot.
+ */
+export async function fetchRobotLocationList(): Promise<{ locations: string[]; fromRobot: boolean }> {
   try {
-    const response = await fetch(`/api/robot/locations?robotId=${getRobotId()}`);
-    const data = (await response.json()) as { locations?: string[] };
+    const response = await fetch(`/api/robot/locations?robotId=${encodeURIComponent(getRobotId())}`);
+    const data = (await response.json()) as { locations?: string[]; fallback?: boolean };
     const locations = data.locations;
-    if (!Array.isArray(locations) || locations.length === 0) return FALLBACK_LOCATIONS;
-    return locations;
+    if (!Array.isArray(locations) || locations.length === 0 || data.fallback) {
+      return { locations: FALLBACK_LOCATIONS, fromRobot: false };
+    }
+    return { locations, fromRobot: true };
   } catch {
-    return FALLBACK_LOCATIONS;
+    return { locations: FALLBACK_LOCATIONS, fromRobot: false };
   }
+}
+
+export async function fetchRobotLocations(): Promise<string[]> {
+  return (await fetchRobotLocationList()).locations;
 }
 
 export type RobotCommand =
@@ -185,10 +195,47 @@ export async function uploadImage(file: File): Promise<{ ok: boolean; imageUrl?:
 const ROBOT_BUSY_MESSAGE = "Robot ocupado";
 const ROBOT_NO_RESPONSE_MESSAGE = "No llegó la respuesta del robot. Puede que siga ejecutando el programa.";
 
+/** Zonas de navegación usadas en el programa, incluidas las de bucles y condiciones anidadas. */
+export function collectNavigateLocations(value: unknown, acc = new Set<string>()): Set<string> {
+  if (Array.isArray(value)) {
+    for (const item of value) collectNavigateLocations(item, acc);
+  } else if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if (obj.type === "Navigate" && typeof obj.location === "string" && obj.location) acc.add(obj.location);
+    for (const child of Object.values(obj)) {
+      if (child && typeof child === "object") collectNavigateLocations(child, acc);
+    }
+  }
+  return acc;
+}
+
+/**
+ * Zonas del programa que el robot actual no tiene en su mapa. Si el robot no responde con su
+ * lista no se puede comprobar y no se bloquea nada (el envío dará su propio error).
+ */
+async function findMissingLocations(commands: RobotExecuteCommand[]): Promise<string[]> {
+  const used = collectNavigateLocations(commands);
+  if (used.size === 0) return [];
+  const { locations, fromRobot } = await fetchRobotLocationList();
+  if (!fromRobot) return [];
+  return [...used].filter((l) => !locations.includes(l));
+}
+
 // 1.2 Enviar comandos al robot vía POST /api/robot/execute
 export async function executeRobotCommands(
   commands: RobotExecuteCommand[]
 ): Promise<RobotRunResult> {
+  const missing = await findMissingLocations(commands);
+  if (missing.length > 0) {
+    const names = missing.map((l) => `«${l}»`).join(", ");
+    return {
+      ok: false,
+      message:
+        missing.length === 1
+          ? `La zona ${names} no existe en este robot. Cámbiala por una zona de este robot para ejecutar.`
+          : `Las zonas ${names} no existen en este robot. Cámbialas por zonas de este robot para ejecutar.`,
+    };
+  }
   try {
     const response = await fetch(`/api/robot/execute`, {
       method: "POST",

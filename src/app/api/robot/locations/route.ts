@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectionRegistry, pendingRequests } from "@/lib/ws-registry";
 
-const FALLBACK = { locations: ["Sala Principal"] };
+// fallback: true indica que la lista no viene del robot (desconectado o sin respuesta).
+const FALLBACK = { locations: ["Sala Principal"], fallback: true };
 
 type LocationsRequestMessage = {
   type: "locations";

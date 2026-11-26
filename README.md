@@ -281,6 +281,8 @@ Revisión completa de código hecha en octubre de 2026 sobre el commit `dde489f`
 - [ ] El docente lee el robot ID de `localStorage`, no de su perfil; en otro navegador aparece `temi-1`.
 - [x] El bloque **reproducir audio** no generaba comando (corregido: `PlayAudio`, app 1.0.0).
 - [x] "Calificado" y "completados" se muestran pero nada los actualiza (resuelto: ventana Revisar con nota y comentario, migración 005).
+- [x] Al cambiar de robot, el bloque **ir a** reemplazaba la zona guardada por la primera zona del robot nuevo (Blockly rechaza valores fuera de la lista), y al volver a guardar se perdía. Ahora el menú lee las zonas del robot actual, conserva la guardada marcada «(no está en este robot)» y **Ejecutar** avisa sin enviar el programa si usa una zona que el robot no tiene.
+- [ ] El estudiante solo recibe el robot del docente al cargar la página: si el docente cambia de robot en plena clase, el estudiante sigue viendo las zonas del robot anterior hasta presionar F5. Propuesta liviana: consultar el robot del docente al abrir una misión o Juego libre y al volver a la pestaña, y pedir las zonas al robot solo si cambió (sin consultas periódicas, para no cargar el servidor ni el robot).
 - [ ] Nombres de campos cruzados: `temi_while_timer` usa `SECONDS` para minutos y `temi_wait` usa `MINUTES` para segundos.
 
 ### 5. Funciones nuevas

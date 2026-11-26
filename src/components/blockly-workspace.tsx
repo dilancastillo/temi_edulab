@@ -97,10 +97,6 @@ function getFieldTextElement(field: BlocklyType.Field | null | undefined): HTMLE
   return withText?.getTextElement?.() ?? null;
 }
 
-function setDropdownOptions(field: BlocklyType.Field, options: [string, string][]) {
-  (field as unknown as { menuGenerator_: [string, string][] }).menuGenerator_ = options;
-}
-
 // Íconos de contorno blanco (trazos de Lucide, licencia ISC) dibujados como SVG dentro del bloque:
 // se ven igual en cualquier sistema, a diferencia de los emojis.
 function outlineIcon(paths: string): string {
@@ -142,11 +138,62 @@ function updateImagePreview(block: BlocklyType.Block) {
   if (block.rendered) (block as BlocklyType.BlockSvg).render();
 }
 
-function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
+// Zonas del robot configurado ahora. Los menús de zona las leen cada vez que se abren, así que
+// al cambiar de robot basta con actualizarlas (los bloques se definen una sola vez por página).
+let robotLocations: string[] = [];
+// false cuando la lista es la de respaldo (robot desconectado): entonces no se marca ninguna zona
+// como ajena, porque no se sabe qué zonas tiene el robot.
+let robotLocationsKnown = false;
+
+export const MISSING_LOCATION_SUFFIX = " (no está en este robot)";
+
+function setRobotLocations(locations: string[], known: boolean) {
+  robotLocations = locations;
+  robotLocationsKnown = known;
+}
+
+/**
+ * Opciones del menú de zonas: las del robot actual y, si el bloque tiene guardada una zona que
+ * este robot no tiene, también esa (marcada). Así nunca se cambia ni se pierde lo que eligió el estudiante.
+ */
+function locationMenuOptions(current: string | null | undefined): [string, string][] {
+  const options: [string, string][] = robotLocations.map((l) => [l, l]);
+  if (current && !robotLocations.includes(current)) {
+    options.unshift([robotLocationsKnown ? `${current}${MISSING_LOCATION_SUFFIX}` : current, current]);
+  }
+  return options.length > 0 ? options : [["Sin ubicaciones", "Sin ubicaciones"]];
+}
+
+/** Menú de zonas que acepta cualquier zona guardada, aunque no exista en el robot actual. */
+function createLocationFieldClass(Blockly: typeof BlocklyType) {
+  return class LocationDropdown extends Blockly.FieldDropdown {
+    constructor() {
+      super(function (this: BlocklyType.FieldDropdown) {
+        return locationMenuOptions(this.getValue());
+      });
+    }
+
+    static fromJson() {
+      return new LocationDropdown();
+    }
+
+    protected override doClassValidation_(newValue?: string): string | null {
+      return typeof newValue === "string" && newValue !== "" ? newValue : null;
+    }
+
+    protected override doValueUpdate_(newValue: string) {
+      // Las opciones dependen del valor (la zona guardada se agrega si falta): se regeneran.
+      (this as unknown as { generatedOptions: unknown }).generatedOptions = null;
+      super.doValueUpdate_(newValue);
+    }
+  };
+}
+
+function defineTemiBlocks(Blockly: typeof BlocklyType) {
   if (Blockly.Blocks.temi_start) return;
 
-  const dropdownOptions: [string, string][] =
-    locations.length > 0 ? locations.map((l) => [l, l]) : [["Sin Ubicaciones", "Sin Ubicaciones"]];
+  const LocationDropdown = createLocationFieldClass(Blockly);
+  Blockly.fieldRegistry.register("field_location", LocationDropdown);
 
   Blockly.common.defineBlocksWithJsonArray([
     {
@@ -160,7 +207,7 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     {
       type: "temi_move",
       message0: "ir a %1",
-      args0: [{ type: "field_dropdown", name: "LOCATION", options: dropdownOptions }],
+      args0: [{ type: "field_location", name: "LOCATION" }],
       previousStatement: null,
       nextStatement: null,
       colour: 215,
@@ -463,11 +510,8 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
 
       // Add all three possible field types, but only one will be visible at a time
       // Navigate: dropdown with locations
-      const locationOptions: [string, string][] = locations.length > 0 
-        ? locations.map((l) => [l, l]) 
-        : [["Sala Principal", "Sala Principal"]];
       row.appendField(
-        new Blockly.FieldDropdown(locationOptions),
+        new LocationDropdown() as BlocklyType.FieldDropdown,
         `ACTION_VALUE_NAVIGATE_${i}`
       );
       
@@ -562,18 +606,8 @@ function defineTemiBlocks(Blockly: typeof BlocklyType, locations: string[]) {
     // Show the appropriate one
     if (actionType === "Navigate") {
       if (navField) {
+        // El menú lee las zonas del robot actual y conserva la zona guardada (LocationDropdown).
         navField.setVisible(true);
-        // Update dropdown options with actual locations
-        const locationOptions: [string, string][] = locations.length > 0 
-          ? locations.map((l) => [l, l]) 
-          : [["Sala Principal", "Sala Principal"]];
-        
-        // Update the dropdown's options
-        setDropdownOptions(navField, locationOptions);
-        
-        // Set default value if not set
-        const currentValue = block.getFieldValue(`ACTION_VALUE_NAVIGATE_${optionIndex}`) || locationOptions[0][1];
-        block.setFieldValue(currentValue, `ACTION_VALUE_NAVIGATE_${optionIndex}`);
       }
     } else if (actionType === "Say") {
       if (sayField) sayField.setVisible(true);
@@ -694,14 +728,15 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
       const Blockly = await import("blockly");
       if (!isMounted || !containerRef.current) return;
 
-      const { fetchRobotLocations } = await import("@/lib/robot-adapter");
-      const locations = await fetchRobotLocations();
+      const { fetchRobotLocationList } = await import("@/lib/robot-adapter");
+      const { locations, fromRobot } = await fetchRobotLocationList();
+      setRobotLocations(locations, fromRobot);
 
       if (!isMounted || !containerRef.current) return;
       // Verificar que el contenedor sigue en el documento
       if (!document.contains(containerRef.current)) return;
 
-      defineTemiBlocks(Blockly, locations);
+      defineTemiBlocks(Blockly);
       blocklyRef.current = Blockly;
 
       const filteredToolbox = allowedCategories

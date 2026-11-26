@@ -80,12 +80,56 @@ describe("extractLocationFromWorkspace", () => {
 describe("executeRobotCommands", () => {
   const commands = [{ type: "Navigate" as const, location: "Sala Principal" }];
 
+  const locationsResponse = (body: unknown) =>
+    ({ ok: true, status: 200, json: async () => body }) as Response;
+
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    // Antes de enviar se consultan las zonas del robot: la primera llamada a fetch es esa.
+    vi.mocked(fetch).mockResolvedValueOnce(locationsResponse({ locations: ["Sala Principal", "Cocina"] }));
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("no envía el programa si usa una zona que el robot actual no tiene", async () => {
+    const result = await executeRobotCommands([{ type: "Navigate", location: "Patio" }]);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("«Patio»");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("detecta zonas ajenas dentro de bucles y condiciones", async () => {
+    const result = await executeRobotCommands([
+      {
+        type: "Repeat",
+        times: 2,
+        commands: [
+          {
+            type: "AskCondition",
+            question: "¿A dónde?",
+            options: [{ keyword: "patio", action: { type: "Navigate", location: "Patio" } }],
+          },
+        ],
+      } as never,
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("«Patio»");
+  });
+
+  it("no bloquea si el robot no respondió con sus zonas (lista de respaldo)", async () => {
+    vi.mocked(fetch).mockReset();
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(locationsResponse({ locations: ["Sala Principal"], fallback: true }))
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ok: true, message: "OK" }) } as Response);
+
+    const result = await executeRobotCommands([{ type: "Navigate", location: "Patio" }]);
+
+    expect(result.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("devuelve {ok:true, message} cuando fetch responde 200 con ok:true", async () => {
