@@ -710,6 +710,8 @@ export function BlocklyWorkspace({ initialState, onChange, readOnly = false, all
 
       const workspace = Blockly.inject(containerRef.current, {
         toolbox: filteredToolbox,
+        // Íconos y sonidos de Blockly servidos por la plataforma (el servidor de demo de Google ya no los sirve).
+        media: "/blockly-media/",
         readOnly,
         trashcan: !readOnly,
         renderer: "zelos",
