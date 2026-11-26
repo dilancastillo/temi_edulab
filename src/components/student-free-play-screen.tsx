@@ -1,5 +1,6 @@
 "use client";
 
+import { showSaveToast } from "@/lib/save-toast";
 import { useRef, useState } from "react";
 import { BlocklyWorkspace } from "@/components/blockly-workspace";
 import { useDemoStore } from "@/components/auth-store-provider";
@@ -54,7 +55,7 @@ function FreePlayEditor({ studentId, existingWork }: Readonly<{ studentId: strin
           ) : null}
         </div>
         <div className="editor-actions" style={{ flexDirection: "column", alignItems: "flex-end", gap: "0.5rem" }}>
-          <button className="button button-secondary" onClick={() => void autosave.saveNow()} type="button">
+          <button className="button button-secondary" onClick={() => void autosave.saveNow().then(showSaveToast)} type="button">
             Guardar
           </button>
           <SaveStatusIndicator errorMessage={autosave.errorMessage} lastSavedAt={autosave.lastSavedAt} status={autosave.status} />

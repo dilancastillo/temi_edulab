@@ -1,5 +1,6 @@
 "use client";
 
+import { showSaveToast } from "@/lib/save-toast";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
@@ -143,7 +144,7 @@ function MissionEditor({
         </div>
         <div className="editor-actions" style={{ flexDirection: "column", alignItems: "flex-end", gap: "0.5rem" }}>
           <div style={{ display: "flex", gap: "0.75rem" }}>
-            <button className="button button-secondary" onClick={() => void autosave.saveNow()} type="button">
+            <button className="button button-secondary" onClick={() => void autosave.saveNow().then(showSaveToast)} type="button">
               Guardar
             </button>
             <button
